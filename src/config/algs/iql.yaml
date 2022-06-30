@@ -4,8 +4,8 @@
 action_selector: "epsilon_greedy"
 epsilon_start: 1.0
 epsilon_finish: 0.05
-epsilon_anneal_time: 50000
-evaluation_epsilon: 0.0
+epsilon_anneal_time: 200000
+evaluation_epsilon: 0.05
 runner: "episode"
 
 buffer_size: 5000
@@ -22,10 +22,12 @@ obs_individual_obs: False
 
 agent_output_type: "q"
 learner: "q_learner"
-standardise_returns: False
+standardise_returns: True
 standardise_rewards: True
 double_q: True
-use_rnn: False
+use_rnn: True
 mixer: # Mixer becomes None
 
 name: "iql"
+
+
