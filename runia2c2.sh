@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# envs=(15x15-4p-3f 8x8-2p-2f-2s-c 10x10-3p-3f-2s 8x8-2p-2f-c 15x15-4p-5f 15x15-3p-5f 10x10-3p-3f)
-envs=(15x15-4p-5f-v1 15x15-3p-5f-v1 10x10-3p-3f-v1)  # 15x15-4p-3f-v1 
+envs=(8x8-2p-2f-coop-v1 2s-8x8-2p-2f-coop-v1 2s-10x10-3p-3f-v1)
 seeds=(291174067 392184168 402285178 493194269 503295279)
 
 for e in "${envs[@]}"
