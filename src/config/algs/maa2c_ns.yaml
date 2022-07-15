@@ -1,4 +1,4 @@
-# --- COMA specific parameters ---
+# --- MAA2C specific parameters ---
 
 action_selector: "soft_policies"
 mask_before_softmax: True
@@ -13,9 +13,9 @@ env_args:
   state_last_action: False # critic adds last action internally
 
 # update the target network every {} training steps
-target_update_interval_or_tau: 200
+target_update_interval_or_tau: 0.01
 
-lr: 0.0003
+lr: 0.0005
 
 obs_agent_id: False
 obs_last_action: False
@@ -26,7 +26,7 @@ agent: "rnn_ns"
 agent_output_type: "pi_logits"
 learner: "actor_critic_learner"
 entropy_coef: 0.01
-use_rnn: False
+use_rnn: True
 standardise_returns: False
 standardise_rewards: True
 q_nstep: 5 # 1 corresponds to normal r + gammaV

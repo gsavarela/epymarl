@@ -13,7 +13,7 @@ env_args:
   state_last_action: False # critic adds last action internally
 
 # update the target network every {} training steps
-target_update_interval_or_tau: 200
+target_update_interval_or_tau: 0.01
 
 lr: 0.0005
 
@@ -25,10 +25,10 @@ mac: "non_shared_mac"
 agent: "rnn_ns"
 agent_output_type: "pi_logits"
 learner: "actor_critic_learner"
-entropy_coef: 0.001
+entropy_coef: 0.01
 standardise_returns: False
 standardise_rewards: True
-use_rnn: False
+use_rnn: True
 q_nstep: 5 # 1 corresponds to normal r + gammaV
 critic_type: "ac_critic_ns"
 name: "ia2c_ns"
