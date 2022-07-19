@@ -1,7 +1,8 @@
-import copy
+from copy import deepcopy
 from components.episode_buffer import EpisodeBatch
 from modules.critics.centralV import CentralVCritic
 from utils.rl_utils import build_td_lambda_targets
+import numpy as np
 import torch as th
 from torch.optim import Adam
 from modules.critics import REGISTRY as critic_resigtry
@@ -10,17 +11,20 @@ from components.standarize_stream import RunningMeanStd
 
 class ActorCriticSingleLearner:
     def __init__(self, mac, scheme, logger, args):
-        self.args = args
-        self.n_agents = args.n_agents
-        self.n_actions = args.n_actions
+        self.args = deepcopy(args)
+        # This is the number of player agents not reinforcement learning agents
+        self.n_agents = 1
+        self.n_actions = self.args.n_actions
+        self.n_joint_actions = self.n_actions ** self.args.n_agents
+        self._build_action_map()
         self.logger = logger
 
         self.mac = mac
         self.agent_params = list(mac.parameters())
         self.agent_optimiser = Adam(params=self.agent_params, lr=args.lr)
 
-        self.critic = critic_resigtry[args.critic_type](scheme, args)
-        self.target_critic = copy.deepcopy(self.critic)
+        self.critic = critic_resigtry[args.critic_type](scheme, self.joint_args)
+        self.target_critic = deepcopy(self.critic)
 
         self.critic_params = list(self.critic.parameters())
         self.critic_optimiser = Adam(params=self.critic_params, lr=args.lr)
@@ -35,9 +39,33 @@ class ActorCriticSingleLearner:
         if self.args.standardise_rewards:
             self.rew_ms = RunningMeanStd(shape=(1,), device=device)
 
+    @property
+    def joint_args(self):
+        _args = deepcopy(self.args)
+        _args.n_actions = _args.n_actions**_args.n_agents
+        _args.n_agents = 1
+        return _args
+
+    def to_joint(self, actions):
+        """Transforms player actions to joint action"""
+        ashape = actions.shape[:2] + (1,)
+        with th.no_grad():
+            _pow = self.action_map.repeat(ashape).unsqueeze(3)
+            _actions = th.sum(actions * _pow, dim=2).type(th.int64)
+        return _actions
+
+    def _build_action_map(self):
+        # Attention: The most significant agent is the zero-agent
+        self.action_map = th.pow(
+            th.ones(self.args.n_agents) * self.n_actions,
+            th.arange(self.args.n_agents - 1, -1, -1)
+        ).view(1, 1, -1)
+
+
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
         # Get the relevant quantities
 
+        # TODO: In case the reward is no longer central average this!
         rewards = batch["reward"][:, :-1]
         actions = batch["actions"][:, :]
         terminated = batch["terminated"][:, :-1].float()
@@ -54,8 +82,8 @@ class ActorCriticSingleLearner:
             self.logger.console_logger.error("Actor Critic Learner: mask.sum() == 0 at t_env {}".format(t_env))
             return
 
-        mask = mask.repeat(1, 1, self.n_agents)
-
+        # unsqueeze over the last dim
+        # mask = mask.repeat(1, 1, self.n_agents)
         critic_mask = mask.clone()
 
         mac_out = []
@@ -68,16 +96,16 @@ class ActorCriticSingleLearner:
         pi = mac_out
         advantages, critic_train_stats = self.train_critic_sequential(self.critic, self.target_critic, batch, rewards,
                                                                       critic_mask)
-        actions = actions[:, :-1]
+        actions = self.to_joint(actions[:, :-1])
         advantages = advantages.detach()
         # Calculate policy grad with mask
 
-        pi[mask == 0] = 1.0
+        # pi[mask == 0] = 1.0
 
-        pi_taken = th.gather(pi, dim=3, index=actions).squeeze(3)
+        pi_taken = th.gather(pi, dim=2, index=actions)
         log_pi_taken = th.log(pi_taken + 1e-10)
 
-        entropy = -th.sum(pi * th.log(pi + 1e-10), dim=-1)
+        entropy = -th.sum(pi * th.log(pi + 1e-10), dim=-1, keepdim=True)
         pg_loss = -((advantages * log_pi_taken + self.args.entropy_coef * entropy) * mask).sum() / mask.sum()
 
         # Optimise agents
@@ -101,7 +129,7 @@ class ActorCriticSingleLearner:
             self.logger.log_stat("advantage_mean", (advantages * mask).sum().item() / mask.sum().item(), t_env)
             self.logger.log_stat("pg_loss", pg_loss.item(), t_env)
             self.logger.log_stat("agent_grad_norm", grad_norm.item(), t_env)
-            self.logger.log_stat("pi_max", (pi.max(dim=-1)[0] * mask).sum().item() / mask.sum().item(), t_env)
+            self.logger.log_stat("pi_max", (pi.max(dim=-1, keepdim=True)[0] * mask).sum().item() / mask.sum().item(), t_env)
             self.log_stats_t = t_env
 
     def train_critic_sequential(self, critic, target_critic, batch, rewards, mask):
@@ -149,17 +177,17 @@ class ActorCriticSingleLearner:
         nstep_values = th.zeros_like(values[:, :-1])
         for t_start in range(rewards.size(1)):
             nstep_return_t = th.zeros_like(values[:, 0])
-            for step in range(nsteps + 1):
-                t = t_start + step
+            for _step in range(nsteps + 1):
+                t = t_start + _step
                 if t >= rewards.size(1):
                     break
-                elif step == nsteps:
-                    nstep_return_t += self.args.gamma ** step * values[:, t] * mask[:, t]
+                elif _step == nsteps:
+                    nstep_return_t += self.args.gamma ** _step * values[:, t] * mask[:, t]
                 elif t == rewards.size(1) - 1 and self.args.add_value_last_step:
-                    nstep_return_t += self.args.gamma ** step * rewards[:, t] * mask[:, t]
-                    nstep_return_t += self.args.gamma ** (step + 1) * values[:, t+1]
+                    nstep_return_t += self.args.gamma ** _step * rewards[:, t] * mask[:, t]
+                    nstep_return_t += self.args.gamma ** (_step + 1) * values[:, t+1]
                 else:
-                    nstep_return_t += self.args.gamma ** step * rewards[:, t] * mask[:, t]
+                    nstep_return_t += self.args.gamma ** _step * rewards[:, t] * mask[:, t]
             nstep_values[:, t_start, :] = nstep_return_t
         return nstep_values
 

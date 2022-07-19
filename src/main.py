@@ -88,8 +88,6 @@ if __name__ == '__main__':
     # config_dict = {**config_dict, **env_config, **alg_config}
     config_dict = recursive_dict_update(config_dict, env_config)
     config_dict = recursive_dict_update(config_dict, alg_config)
-    print(config_dict)
-    import ipdb; ipdb.set_trace()
 
     try:
         map_name = config_dict["env_args"]["map_name"]
