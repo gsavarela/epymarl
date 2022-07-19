@@ -1,15 +1,26 @@
+from copy import deepcopy
 from modules.agents import REGISTRY as agent_REGISTRY
 from components.action_selectors import REGISTRY as action_REGISTRY
 import torch as th
 
-class NonSharedMAC:
+
+# This multi-agent controller shares parameters between agents
+class SAC:
     def __init__(self, scheme, groups, args):
         self.n_agents = args.n_agents
         self.args = args
         input_shape = self._get_input_shape(scheme)
-        self._build_agents(input_shape)
+        self._build_agent(input_shape)
         self.agent_output_type = args.agent_output_type
+
+        args = deepcopy(self.args)
+        args.n_actions = self.args.n_actions ** self.args.n_agents
+
+        print(self.args)
+        print(args)
         self.action_selector = action_REGISTRY[args.action_selector](args)
+        import ipdb; ipdb.set_trace()
+
         self.hidden_states = None
 
     def select_actions(self, ep_batch, t_ep, t_env, bs=slice(None), test_mode=False):
@@ -31,12 +42,12 @@ class NonSharedMAC:
                 # Make the logits for unavailable actions very negative to minimise their affect on the softmax
                 reshaped_avail_actions = avail_actions.reshape(ep_batch.batch_size * self.n_agents, -1)
                 agent_outs[reshaped_avail_actions == 0] = -1e10
-
             agent_outs = th.nn.functional.softmax(agent_outs, dim=-1)
+
         return agent_outs.view(ep_batch.batch_size, self.n_agents, -1)
 
     def init_hidden(self, batch_size):
-        self.hidden_states = self.agent.init_hidden().unsqueeze(0).expand(batch_size, -1, -1)  # bav
+        self.hidden_states = self.agent.init_hidden().unsqueeze(0).expand(batch_size, self.n_agents, -1)  # bav
 
     def parameters(self):
         return self.agent.parameters()
@@ -53,7 +64,10 @@ class NonSharedMAC:
     def load_models(self, path):
         self.agent.load_state_dict(th.load("{}/agent.th".format(path), map_location=lambda storage, loc: storage))
 
-    def _build_agents(self, input_shape):
+    def _build_agent(self, input_shape):
+        # Single agent arguments
+        args = deepcopy(self.args)
+        args.n_actions = self.args.n_actions ** self.args.n_agents
         self.agent = agent_REGISTRY[self.args.agent](input_shape, self.args)
 
     def _build_inputs(self, batch, t):
@@ -79,4 +93,5 @@ class NonSharedMAC:
             input_shape += scheme["actions_onehot"]["vshape"][0]
         if self.args.obs_agent_id:
             input_shape += self.n_agents
+
         return input_shape

@@ -28,17 +28,17 @@ obs_agent_id: False
 obs_last_action: False
 obs_individual_obs: False
 
-mac: "non_shared_mac"
-agent: "rnn_ns"
+mac: "single_ac"
+agent: "rnn"
 agent_output_type: "pi_logits"
-learner: "actor_critic_learner"
+learner: "actor_critic_single_learner"
 entropy_coef: 0.01
 use_rnn: True
 standardise_returns: False
 standardise_rewards: True
 q_nstep: 5 # 1 corresponds to normal r + gammaV
-critic_type: "cv_critic_ns"
+critic_type: "cv_critic"
 
-name: "maa2c_ns"
+name: "sgla2c"
 
 t_max: 20050000

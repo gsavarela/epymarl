@@ -3,11 +3,18 @@
 action_selector: "soft_policies"
 mask_before_softmax: True
 
-runner: "parallel"
+# TODO: UNCOMMENT THIS
+# runner: "parallel"
 
-buffer_size: 10
-batch_size_run: 10
-batch_size: 10
+# buffer_size: 10
+# batch_size_run: 10
+# batch_size: 10
+
+runner: "episode"
+
+buffer_size: 1
+batch_size_run: 1
+batch_size: 1
 
 env_args:
   state_last_action: False # critic adds last action internally
@@ -28,6 +35,7 @@ learner: "actor_critic_learner"
 entropy_coef: 0.01
 standardise_returns: False
 standardise_rewards: True
+joint_rewards: False
 use_rnn: True
 q_nstep: 5 # 1 corresponds to normal r + gammaV
 critic_type: "ac_critic_ns"
