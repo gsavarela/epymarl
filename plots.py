@@ -7,10 +7,11 @@ Reference
 Proceedings of the Neural Information Processing Systems Track on Datasets and Benchmarks, 2021
 """
 import json
-from typing import List
+from typing import Dict
 from pathlib import Path
 import re
 import string
+from collections import defaultdict
 
 from utils import standard_error
 import numpy as np
@@ -23,6 +24,7 @@ MEAN_CURVE_COLOR = (0.89, 0.282, 0.192)
 SMOOTHING_CURVE_COLOR = (0.33, 0.33, 0.33)
 SEED_PATTERN = r"seed=(.*?)\)"
 M_PATTERN = r"M=(.*?)\,"
+
 
 def _savefig(suptitle: str, save_directory_path: Path = None) -> None:
     """Saves a figure, named after suptitle, if save_directory_path is provided
@@ -87,15 +89,16 @@ def _snakefy(title_case: str) -> str:
     fmt = title_case.translate(str.maketrans("", "", string.punctuation))
     return "_".join(fmt.lower().split())
 
+
 def task_plot(
     timesteps: Array,
     returns: Array,
-    c_is: Array,
+    std_errors: Array,
     suptitle: str,
     algoname: str,
     save_directory_path: Path = None,
 ) -> None:
-    """Plots Figure 11 from [1]
+    """Plots Figure 11 for a sigle algo from [1]
 
     Episodic returns of all algorithms with parameter sharing in all environments
     showing the mean and the 95% confidence interval over five different seeds.
@@ -106,9 +109,8 @@ def task_plot(
         The number of timesteps.
     returns: Array
         The returns collected during training, e.g, rewards.
-    c_is: Array,
+    std_errors: Array,
         The confidence interval.
-    suptitle: str,
     algoname: str,
         Legend
     ylabel: str
@@ -121,45 +123,158 @@ def task_plot(
     """
     fig = plt.figure()
     fig.set_size_inches(FIGURE_X, FIGURE_Y)
+    normalize_y_axis = ('Foraging' in suptitle)
 
-    # TODO: Place style for different algos.
-    # e.g, IA2C -- orange and 'x'
-    plt.plot(timesteps, returns, label=algoname, marker='x', linestyle='-', c='C1')
-    plt.fill_between(timesteps, returns - c_is, returns + c_is, facecolor="C1", alpha=0.25)
+    if algoname == "IA2C":
+        marker, color = "x", "C1"
+    if algoname == "IPPO":
+        marker, color = "|", "C2"
+    elif algoname == "MAA2C":
+        marker, color = "p", "C5"
+    elif algoname == "MAPPO":
+        marker, color = "h", "C6"
+    else:
+        marker, color = "^", "C0"
+
+    plt.plot(timesteps, returns, label=algoname, marker=marker, linestyle="-", c=color)
+    plt.fill_between(
+        timesteps,
+        returns - std_errors,
+        returns + std_errors,
+        facecolor=color,
+        alpha=0.25,
+    )
 
     plt.xlabel("Environment Timesteps")
     plt.ylabel("Episodic Return")
     plt.legend(loc=4)
-    plt.ylim(bottom=0, top=1.1)
+    if normalize_y_axis:
+        plt.ylim(bottom=0, top=1.1)
     plt.suptitle(suptitle)
-    plt.grid(which='major', axis='both')
+    plt.grid(which="major", axis="both")
     _savefig(suptitle, save_directory_path)
     plt.show()
     plt.close(fig)
 
-BASE_PATH = Path('results/sacred/ia2c/')
-for base_path in BASE_PATH.glob('lbforaging*'):
-    test_returns = []
-    test_steps = []
-    sample_size = 0
-    for path in base_path.rglob('metrics.json'):
-        with path.open('r') as f:
-            data = json.load(f)
 
-        if 'test_return_mean' in data:
-            values = data['test_return_mean']['values']
-            print(f'source: {path.parent} n_points:{len(values)}')
-            test_returns.append(data['test_return_mean']['values'])
-            test_steps.append(data['test_return_mean']['steps'])
-            sample_size += 1
+def task_plot2(
+    timesteps: Dict,
+    returns: Dict,
+    std_errors: Dict,
+    suptitle: str,
+    save_directory_path: Path = None,
+) -> None:
+    """Plots Figure 11 from [1] for many algorithms
 
-    X = np.vstack(test_steps)
-    Y = np.vstack(test_returns)
+    Episodic returns of all algorithms with parameter sharing in all environments
+    showing the mean and the 95% confidence interval over five different seeds.
 
-    # Computes average returns
-    mu_y = np.mean(Y, axis=0)
-    std_y = np.std(Y, axis=0)
-    ci_y = standard_error(std_y, sample_size, 0.95)
-    taskname = base_path.stem.split(':')[-1]
 
-    task_plot(np.mean(X, axis=0), mu_y, ci_y, taskname, 'IA2C', Path.cwd())
+    Parameters
+    ----------
+    timesteps: Dict[Array]
+        Key is the algoname and value is the number of timesteps.
+    returns:  Dict[Array]
+        Key is the algoname and value is the return collected during training, e.g, rewards.
+    std_errors: Dict[Array]
+        Key is the algoname and value is the confidence interval.
+    suptitle: str,
+        The superior title
+    ylabel: str
+        The name of the metric.
+    save_directory_path: Path = None
+        Saves the reward plot on a pre-defined path.
+
+    """
+    fig = plt.figure()
+    fig.set_size_inches(FIGURE_X, FIGURE_Y)
+    normalize_y_axis = ('Foraging' in suptitle)
+    minor_x_ticks = ('rware' in suptitle)
+
+    for algoname in timesteps:
+
+        if algoname == "IA2C":
+            marker, color = "x", "C1"
+        elif algoname == "IPPO":
+            marker, color = "|", "C2"
+        elif algoname == "MAA2C":
+            marker, color = "p", "C5"
+        elif algoname == "MAPPO":
+            marker, color = "h", "C7"
+        else:
+            marker, color = "^", "C0"
+        X = timesteps[algoname]
+        Y = returns[algoname]
+        err = std_errors[algoname]
+        plt.plot(X, Y, label=algoname, marker=marker, linestyle="-", c=color)
+        plt.fill_between(X, Y - err, Y + err, facecolor=color, alpha=0.25)
+
+    plt.xlabel("Environment Timesteps")
+    plt.ylabel("Episodic Return")
+    plt.legend(loc=4)
+    if normalize_y_axis:
+        plt.ylim(bottom=0, top=1.1)
+    plt.suptitle(suptitle)
+    if minor_x_ticks:
+        x_ticks = [x for x in X if (x - 5_000) % 5_000_000 == 0]
+        plt.xticks(ticks=x_ticks)
+
+    plt.grid(which="major", axis="both")
+    _savefig(suptitle, save_directory_path)
+    _savefig(suptitle, save_directory_path)
+    plt.show()
+    plt.close(fig)
+
+
+if __name__ == "__main__":
+    BASE_PATH = Path("results/sacred/")
+    # algos_paths = BASE_PATH.glob("ia2c")  # Only look for ia2c or maa2c
+    algos_paths = BASE_PATH.glob("sgla2c")  # Only look for ia2c or maa2c
+    # algos_paths = BASE_PATH.glob("*ppo")  # Only look for ia2c or maa2c
+    # algos_paths = BASE_PATH.glob("ippo")  # Only look for ia2c or maa2c
+    steps = defaultdict(list)
+    results = defaultdict(list)
+    for algo_path in algos_paths:
+        algo_name = algo_path.stem.upper()
+        for task_path in algo_path.glob("lbforaging*"):
+
+            task_name = task_path.stem.split(':')[-1].split('-v')[0]
+            sample_size = 0
+
+            for path in task_path.rglob("metrics.json"):
+                with path.open("r") as f:
+                    data = json.load(f)
+
+                if "test_return_mean" in data:
+                    _steps = data["test_return_mean"]["steps"]
+                    _values = data["test_return_mean"]["values"]
+                    print(f"source: {task_name} n_points:{len(_values)}")
+
+                    # Get at most the 41 first evaluations
+                    steps[(algo_name, task_name)].append(_steps[:41])
+                    results[(algo_name, task_name)].append(_values[:41])
+                    sample_size += 1
+
+            import ipdb; ipdb.set_trace()
+            steps[(algo_name, task_name)] = np.vstack(steps[(algo_name, task_name)])
+            results[(algo_name, task_name)] = np.vstack(results[(algo_name, task_name)])
+
+    # Unique algos and tasks
+    algo_names, task_names = zip(*[*results.keys()])
+    algo_names, task_names = sorted(set(algo_names)), sorted(set(task_names))
+
+    # Makes a plot per task
+    for task_name in task_names:
+        xs = defaultdict(list)
+        mus = defaultdict(list)
+        std_errors = defaultdict(list)
+
+        for algo_name in algo_names:
+            if (algo_name, task_name) in steps:
+                # Computes average returns
+                xs[algo_name] = np.mean(steps[(algo_name, task_name)], axis=0)
+                mus[algo_name] = np.mean(results[(algo_name, task_name)], axis=0)
+                std = np.std(results[(algo_name, task_name)], axis=0)
+                std_errors[algo_name] = standard_error(std, sample_size, 0.95)
+
+        task_plot2(xs, mus, std_errors, task_name, Path.cwd() / "plots" / task_name.split('-')[0].lower())
