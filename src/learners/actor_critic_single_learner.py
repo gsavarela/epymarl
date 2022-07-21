@@ -13,17 +13,17 @@ class ActorCriticSingleLearner:
     def __init__(self, mac, scheme, logger, args):
         self.args = deepcopy(args)
         # This is the number of player agents not reinforcement learning agents
-        self.n_agents = 1
-        self.n_actions = self.args.n_actions
-        self.n_joint_actions = self.n_actions ** self.args.n_agents
-        self._build_action_map()
+        # self.n_agents = 1
+        # self.n_actions = self.args.n_actions
+        # self.n_joint_actions = self.n_actions ** self.args.n_agents
+        # self._build_action_map()
         self.logger = logger
 
         self.mac = mac
         self.agent_params = list(mac.parameters())
         self.agent_optimiser = Adam(params=self.agent_params, lr=args.lr)
 
-        self.critic = critic_resigtry[args.critic_type](scheme, self.joint_args)
+        self.critic = critic_resigtry[args.critic_type](scheme, self.mac.joint_args)
         self.target_critic = deepcopy(self.critic)
 
         self.critic_params = list(self.critic.parameters())
@@ -35,31 +35,25 @@ class ActorCriticSingleLearner:
 
         device = "cuda" if args.use_cuda else "cpu"
         if self.args.standardise_returns:
-            self.ret_ms = RunningMeanStd(shape=(self.n_agents,), device=device)
+            # This should have the number of players.
+            self.ret_ms = RunningMeanStd(shape=(1,), device=device)
         if self.args.standardise_rewards:
             self.rew_ms = RunningMeanStd(shape=(1,), device=device)
 
-    @property
-    def joint_args(self):
-        _args = deepcopy(self.args)
-        _args.n_actions = _args.n_actions**_args.n_agents
-        _args.n_agents = 1
-        return _args
-
-    def to_joint(self, actions):
-        """Transforms player actions to joint action"""
-        ashape = actions.shape[:2] + (1,)
-        with th.no_grad():
-            _pow = self.action_map.repeat(ashape).unsqueeze(3)
-            _actions = th.sum(actions * _pow, dim=2).type(th.int64)
-        return _actions
-
-    def _build_action_map(self):
-        # Attention: The most significant agent is the zero-agent
-        self.action_map = th.pow(
-            th.ones(self.args.n_agents) * self.n_actions,
-            th.arange(self.args.n_agents - 1, -1, -1)
-        ).view(1, 1, -1)
+    # def to_joint(self, actions):
+    #     """Transforms player actions to joint action"""
+    #     ashape = actions.shape[:2] + (1,)
+    #     with th.no_grad():
+    #         _pow = self.action_map.repeat(ashape).unsqueeze(3)
+    #         _actions = th.sum(actions * _pow, dim=2).type(th.int64)
+    #     return _actions
+    #
+    # def _build_action_map(self):
+    #     # Attention: The most significant agent is the zero-agent
+    #     self.action_map = th.pow(
+    #         th.ones(self.args.n_agents) * self.n_actions,
+    #         th.arange(self.args.n_agents - 1, -1, -1)
+    #     ).view(1, 1, -1)
 
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
@@ -96,7 +90,7 @@ class ActorCriticSingleLearner:
         pi = mac_out
         advantages, critic_train_stats = self.train_critic_sequential(self.critic, self.target_critic, batch, rewards,
                                                                       critic_mask)
-        actions = self.to_joint(actions[:, :-1])
+        actions = self.mac.encode(actions[:, :-1])
         advantages = advantages.detach()
         # Calculate policy grad with mask
 

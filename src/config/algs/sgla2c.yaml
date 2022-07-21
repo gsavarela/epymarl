@@ -22,7 +22,7 @@ obs_agent_id: False
 obs_last_action: False
 obs_individual_obs: False
 
-mac: "single_ac"
+mac: "sac"
 agent: "rnn"
 agent_output_type: "pi_logits"
 learner: "actor_critic_single_learner"

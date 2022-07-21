@@ -147,6 +147,7 @@ class SAC:
 
         Attention: The most significant player is the zero-player
         """
+        
         self._encode_map = th.pow(
             th.ones(self.n_players) * self.args.n_actions,
             th.arange(self.n_players - 1, -1, -1)
