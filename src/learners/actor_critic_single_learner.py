@@ -12,11 +12,6 @@ from components.standarize_stream import RunningMeanStd
 class ActorCriticSingleLearner:
     def __init__(self, mac, scheme, logger, args):
         self.args = deepcopy(args)
-        # This is the number of player agents not reinforcement learning agents
-        # self.n_agents = 1
-        # self.n_actions = self.args.n_actions
-        # self.n_joint_actions = self.n_actions ** self.args.n_agents
-        # self._build_action_map()
         self.logger = logger
 
         self.mac = mac
@@ -39,22 +34,6 @@ class ActorCriticSingleLearner:
             self.ret_ms = RunningMeanStd(shape=(1,), device=device)
         if self.args.standardise_rewards:
             self.rew_ms = RunningMeanStd(shape=(1,), device=device)
-
-    # def to_joint(self, actions):
-    #     """Transforms player actions to joint action"""
-    #     ashape = actions.shape[:2] + (1,)
-    #     with th.no_grad():
-    #         _pow = self.action_map.repeat(ashape).unsqueeze(3)
-    #         _actions = th.sum(actions * _pow, dim=2).type(th.int64)
-    #     return _actions
-    #
-    # def _build_action_map(self):
-    #     # Attention: The most significant agent is the zero-agent
-    #     self.action_map = th.pow(
-    #         th.ones(self.args.n_agents) * self.n_actions,
-    #         th.arange(self.args.n_agents - 1, -1, -1)
-    #     ).view(1, 1, -1)
-
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
         # Get the relevant quantities
