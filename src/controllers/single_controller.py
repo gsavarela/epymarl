@@ -10,6 +10,35 @@ from components.action_selectors import REGISTRY as action_REGISTRY
 
 # This multi-agent controller shares parameters between agents
 class SAC:
+    """SingleAgentController (SAC): Models a single RL-based agent
+
+    * Provides a wrapper for the actions emitted from the single agent
+    to the environment (embeddings).
+
+    * Delegates actor functions to the agent
+
+    * Requires: RNNAgent CentralVCritic ActorCriticSingleLeaner
+
+    Attributes:
+    ----------
+    args: Namespace
+        The original game settings.
+
+    joint_args: Namespace
+        The game settings according to the single agent perspective.
+
+    Methods:
+    --------
+    select_actions(self, ep_batch, t_ep, t_env, bs, test_mode): torch.LongTensor
+        Selects an action for each instance in the ep_batch
+
+    forward(self, ep_batch, t, test_mode): torch.LongTensor
+        Performs a forward pass on agent
+
+    init_hidden(self, batch_size: int): None
+        Initialize hidden state for the agent
+
+    """ 
     def __init__(self, scheme, groups, args):
         self.n_agents = 1
         self.args = deepcopy(args)
@@ -26,12 +55,18 @@ class SAC:
         assert (
             args.mask_before_softmax == False
         ), "SAC:mask_before_softmax not implemented"
+        assert (
+            args.critic_type == "cv_critic"
+        ), "SAC:SingleAgentController requires cv_critic"
+        assert (
+            args.learner == "actor_critic_single_learner"
+        ), "SAC:SingleAgentController requires actor_critic_single_learner"
         self.hidden_states = None
 
     @property
     def joint_args(self):
         _args = deepcopy(self.args)
-        _args.n_actions = _args.n_actions**_args.n_agents
+        _args.n_actions = _args.n_actions ** _args.n_agents
         _args.n_agents = 1
         return _args
 
@@ -44,9 +79,10 @@ class SAC:
         chosen_actions = self.action_selector.select_action(
             agent_outputs[bs], avail_actions[bs], t_env, test_mode=test_mode
         )
-        # TODO: convert choosen actions into players actions
-        chosen_actions = F.embedding(chosen_actions, self.embeddings)
-        return chosen_actions
+        players_actions = F.embedding(chosen_actions, self.embeddings)
+        print(players_actions, type(players_actions))
+        import ipdb; ipdb.set_trace()
+        return players_actions
 
     def forward(self, ep_batch, t, test_mode=False):
         agent_inputs = self._build_inputs(ep_batch, t)
@@ -63,7 +99,6 @@ class SAC:
                 )
                 agent_outs[reshaped_avail_actions == 0] = -1e10
             agent_outs = th.nn.functional.softmax(agent_outs, dim=-1)
-
 
         return agent_outs.view(ep_batch.batch_size, -1)
 
@@ -115,7 +150,6 @@ class SAC:
             for na in range(self.joint_args.n_actions)
         ]
         self.embeddings = th.from_numpy(np.vstack(embs))
-
 
     def _build_inputs(self, batch, t):
         # Assumes homogenous agents with flat observations.
