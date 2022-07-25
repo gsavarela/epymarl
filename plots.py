@@ -125,13 +125,13 @@ def task_plot(
     fig.set_size_inches(FIGURE_X, FIGURE_Y)
     normalize_y_axis = ('Foraging' in suptitle)
 
-    if algoname == "IA2C":
+    if algoname.startswith("IA2C"):
         marker, color = "x", "C1"
-    if algoname == "IPPO":
+    if algoname.startswith("IPPO"):
         marker, color = "|", "C2"
-    elif algoname == "MAA2C":
+    elif algoname.startswith("MAA2C"):
         marker, color = "p", "C5"
-    elif algoname == "MAPPO":
+    elif algoname.startswith("MAPPO"):
         marker, color = "h", "C6"
     else:
         marker, color = "^", "C0"
@@ -193,13 +193,13 @@ def task_plot2(
 
     for algoname in timesteps:
 
-        if algoname == "IA2C":
+        if algoname.startswith("IA2C"):
             marker, color = "x", "C1"
-        elif algoname == "IPPO":
+        elif algoname.startswith("IPPO"):
             marker, color = "|", "C2"
-        elif algoname == "MAA2C":
+        elif algoname.startswith("MAA2C"):
             marker, color = "p", "C5"
-        elif algoname == "MAPPO":
+        elif algoname.startswith("MAPPO"):
             marker, color = "h", "C7"
         else:
             marker, color = "^", "C0"
@@ -226,16 +226,20 @@ def task_plot2(
     plt.close(fig)
 
 
-if __name__ == "__main__":
+def main():
+    """Plots many models for the same task"""
     BASE_PATH = Path("results/sacred/")
-    # algos_paths = BASE_PATH.glob("ia2c")  # Only look for ia2c or maa2c
+    # algos_paths = BASE_PATH.glob("*a2c")  # Only look for ia2c or maa2c
     algos_paths = BASE_PATH.glob("sgla2c")  # Only look for ia2c or maa2c
+    # algos_paths = BASE_PATH.glob("maa2c_ns")  # Only look for ia2c or maa2c
+    # algos_paths = BASE_PATH.glob("maa2c")  # Only look for ia2c or maa2c
     # algos_paths = BASE_PATH.glob("*ppo")  # Only look for ia2c or maa2c
     # algos_paths = BASE_PATH.glob("ippo")  # Only look for ia2c or maa2c
     steps = defaultdict(list)
     results = defaultdict(list)
     for algo_path in algos_paths:
         algo_name = algo_path.stem.upper()
+        # for task_path in algo_path.glob("lbforaging*"):
         for task_path in algo_path.glob("lbforaging*"):
 
             task_name = task_path.stem.split(':')[-1].split('-v')[0]
@@ -255,9 +259,9 @@ if __name__ == "__main__":
                     results[(algo_name, task_name)].append(_values[:41])
                     sample_size += 1
 
-            import ipdb; ipdb.set_trace()
-            steps[(algo_name, task_name)] = np.vstack(steps[(algo_name, task_name)])
-            results[(algo_name, task_name)] = np.vstack(results[(algo_name, task_name)])
+            if sample_size > 0:
+                steps[(algo_name, task_name)] = np.vstack(steps[(algo_name, task_name)])
+                results[(algo_name, task_name)] = np.vstack(results[(algo_name, task_name)])
 
     # Unique algos and tasks
     algo_names, task_names = zip(*[*results.keys()])
@@ -277,4 +281,8 @@ if __name__ == "__main__":
                 std = np.std(results[(algo_name, task_name)], axis=0)
                 std_errors[algo_name] = standard_error(std, sample_size, 0.95)
 
-        task_plot2(xs, mus, std_errors, task_name, Path.cwd() / "plots" / task_name.split('-')[0].lower())
+        task_plot2(xs, mus, std_errors, task_name, Path.cwd() / "plots" / '-'.join(algo_names) / task_name.split('-')[0].lower())
+
+
+if __name__ == "__main__":
+    main()

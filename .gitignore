@@ -250,3 +250,4 @@ $RECYCLE.BIN/
 # Prevent experiment results to be commited
 results/
 *.swp
+plots/
