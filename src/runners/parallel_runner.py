@@ -143,7 +143,7 @@ class ParallelRunner:
                     # Remaining data for this current timestep
                     post_transition_data["reward"].append((data["reward"],))
 
-                    episode_returns[idx] += data["reward"]
+                    episode_returns[idx] += sum(data["reward"])
                     episode_lengths[idx] += 1
                     if not test_mode:
                         self.env_steps_this_run += 1

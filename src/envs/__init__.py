@@ -93,6 +93,7 @@ class _GymmaWrapper(MultiAgentEnv):
         )
 
         self._seed = kwargs["seed"]
+        self._joint_rewards = kwargs.get('joint_rewards', True)
         self._env.seed(self._seed)
 
     def step(self, actions):
@@ -109,7 +110,11 @@ class _GymmaWrapper(MultiAgentEnv):
             for o in self._obs
         ]
 
-        return float(sum(reward)), all(done), {}
+        if self._joint_rewards:
+            joint_rewards = float(sum(reward))
+        else:
+            joint_rewards = reward
+        return joint_rewards, all(done), {}
 
     def get_obs(self):
         """ Returns all agent observations in a list """
@@ -144,6 +149,12 @@ class _GymmaWrapper(MultiAgentEnv):
     def get_state_size(self):
         """ Returns the shape of the state"""
         return self.n_agents * flatdim(self.longest_observation_space)
+
+    def get_reward_size(self):
+        if self._joint_rewards:
+            return 1
+        else:
+            return self.n_agents
 
     def get_avail_actions(self):
         avail_actions = []
@@ -191,6 +202,15 @@ class _GymmaWrapper(MultiAgentEnv):
 
     def get_stats(self):
         return {}
+
+    def get_env_info(self):
+        env_info = super(_GymmaWrapper, self).get_env_info()
+        if hasattr(self, 'get_reward_size'):
+            env_info['n_rewards'] = self.get_reward_size()
+        else:
+            env_info['n_rewards'] = 1
+        return env_info
+
 
 
 REGISTRY["gymma"] = partial(env_fn, env=_GymmaWrapper)
