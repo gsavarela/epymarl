@@ -3,18 +3,12 @@
 action_selector: "soft_policies"
 mask_before_softmax: True
 
-# TODO: UNCOMMENT THIS
-# runner: "parallel"
+runner: "parallel"
 
-# buffer_size: 10
-# batch_size_run: 10
-# batch_size: 10
+buffer_size: 10
+batch_size_run: 10
+batch_size: 10
 
-runner: "episode"
-
-buffer_size: 1
-batch_size_run: 1
-batch_size: 1
 
 env_args:
   state_last_action: False # critic adds last action internally
