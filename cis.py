@@ -24,7 +24,7 @@ from pathlib import Path
 from utils import standard_error
 import numpy as np
 
-BASE_PATH = Path('results/sacred/ia2c/')
+BASE_PATH = Path('results/sacred/maa2c_ns/')
 for base_path in BASE_PATH.glob('lbforaging*'):
     test_returns = []
     sample_size = 0

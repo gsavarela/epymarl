@@ -123,7 +123,7 @@ def task_plot(
     """
     fig = plt.figure()
     fig.set_size_inches(FIGURE_X, FIGURE_Y)
-    normalize_y_axis = ('Foraging' in suptitle)
+    normalize_y_axis = "Foraging" in suptitle
 
     if algoname.startswith("IA2C"):
         marker, color = "x", "C1"
@@ -133,6 +133,12 @@ def task_plot(
         marker, color = "p", "C5"
     elif algoname.startswith("MAPPO"):
         marker, color = "h", "C6"
+    elif algoname.startswith("SGLA2C"):
+        marker, color = "p", "C9"
+    elif algoname.startswith("DSTA2C"):
+        marker, color = "*", "C10"
+    elif algoname.startswith("INDA2C"):
+        marker, color = ">", "C11"
     else:
         marker, color = "^", "C0"
 
@@ -188,8 +194,8 @@ def task_plot2(
     """
     fig = plt.figure()
     fig.set_size_inches(FIGURE_X, FIGURE_Y)
-    normalize_y_axis = ('Foraging' in suptitle)
-    minor_x_ticks = ('rware' in suptitle)
+    normalize_y_axis = "Foraging" in suptitle
+    minor_x_ticks = "rware" in suptitle
 
     for algoname in timesteps:
 
@@ -201,6 +207,12 @@ def task_plot2(
             marker, color = "p", "C5"
         elif algoname.startswith("MAPPO"):
             marker, color = "h", "C7"
+        elif algoname.startswith("SGLA2C"):
+            marker, color = "p", "C3"
+        elif algoname.startswith("DSTA2C"):
+            marker, color = "*", "C4"
+        elif algoname.startswith("INDA2C"):
+            marker, color = ">", "C6"
         else:
             marker, color = "^", "C0"
         X = timesteps[algoname]
@@ -229,20 +241,33 @@ def task_plot2(
 def main():
     """Plots many models for the same task"""
     BASE_PATH = Path("results/sacred/")
-    # algos_paths = BASE_PATH.glob("*a2c")  # Only look for ia2c or maa2c
-    algos_paths = BASE_PATH.glob("sgla2c")  # Only look for ia2c or maa2c
-    # algos_paths = BASE_PATH.glob("maa2c_ns")  # Only look for ia2c or maa2c
-    # algos_paths = BASE_PATH.glob("maa2c")  # Only look for ia2c or maa2c
-    # algos_paths = BASE_PATH.glob("*ppo")  # Only look for ia2c or maa2c
-    # algos_paths = BASE_PATH.glob("ippo")  # Only look for ia2c or maa2c
+    # algos_paths = BASE_PATH.glob("*a2c")  # Pattern matching ia2c and maa2c
+    # algos_paths = BASE_PATH.glob("maa2c_ns")  # Only look for maa2c_ns
+    # Match many algorithms
+    algos_paths = []
+    for pattern in ("maa2c", "sgla2c", "dsta2c"):
+        algos_paths += [*BASE_PATH.glob(pattern)]
+
+    def task_matcher(x):
+        _paths = []
+        for _pattern in (
+            "Foraging-8x8-2p-2f-coop*",
+            "Foraging-10x10-3p-3f*",
+            "Foraging-15x15-3p-5f*",
+            "Foraging-15x15-4p-3f*",
+        ):
+            _paths += [*x.glob(f"lbforaging:{_pattern}")]
+        return _paths
+
     steps = defaultdict(list)
     results = defaultdict(list)
     for algo_path in algos_paths:
         algo_name = algo_path.stem.upper()
+        # Matches every lbforaging task.
         # for task_path in algo_path.glob("lbforaging*"):
-        for task_path in algo_path.glob("lbforaging*"):
+        for task_path in task_matcher(algo_path):
 
-            task_name = task_path.stem.split(':')[-1].split('-v')[0]
+            task_name = task_path.stem.split(":")[-1].split("-v")[0]
             sample_size = 0
 
             for path in task_path.rglob("metrics.json"):
@@ -261,7 +286,9 @@ def main():
 
             if sample_size > 0:
                 steps[(algo_name, task_name)] = np.vstack(steps[(algo_name, task_name)])
-                results[(algo_name, task_name)] = np.vstack(results[(algo_name, task_name)])
+                results[(algo_name, task_name)] = np.vstack(
+                    results[(algo_name, task_name)]
+                )
 
     # Unique algos and tasks
     algo_names, task_names = zip(*[*results.keys()])
@@ -281,7 +308,16 @@ def main():
                 std = np.std(results[(algo_name, task_name)], axis=0)
                 std_errors[algo_name] = standard_error(std, sample_size, 0.95)
 
-        task_plot2(xs, mus, std_errors, task_name, Path.cwd() / "plots" / '-'.join(algo_names) / task_name.split('-')[0].lower())
+        task_plot2(
+            xs,
+            mus,
+            std_errors,
+            task_name,
+            Path.cwd()
+            / "plots"
+            / "-".join(algo_names)
+            / task_name.split("-")[0].upper(),
+        )
 
 
 if __name__ == "__main__":

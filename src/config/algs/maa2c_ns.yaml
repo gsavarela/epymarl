@@ -1,4 +1,4 @@
-# --- MAA2C specific parameters ---
+# --- MAA2C_NS specific parameters ---
 
 action_selector: "soft_policies"
 mask_before_softmax: True
