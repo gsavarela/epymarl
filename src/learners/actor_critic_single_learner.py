@@ -58,7 +58,8 @@ class ActorCriticSingleLearner:
         # unsqueeze over the last dim
         # mask = mask.repeat(1, 1, self.n_agents)
         critic_mask = mask.clone()
-
+        advantages, critic_train_stats = self.train_critic_sequential(self.critic, self.target_critic, batch, rewards,
+                                                                      critic_mask)
         mac_out = []
         self.mac.init_hidden(batch.batch_size)
         for t in range(batch.max_seq_length - 1):
@@ -67,8 +68,6 @@ class ActorCriticSingleLearner:
         mac_out = th.stack(mac_out, dim=1)  # Concat over time
 
         pi = mac_out
-        advantages, critic_train_stats = self.train_critic_sequential(self.critic, self.target_critic, batch, rewards,
-                                                                      critic_mask)
         actions = self.mac.encode(actions[:, :-1])
         advantages = advantages.detach()
         # Calculate policy grad with mask

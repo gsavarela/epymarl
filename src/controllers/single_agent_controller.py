@@ -17,7 +17,10 @@ class SAC:
 
     * Delegates actor functions to the agent
 
-    * Requires: RNNAgent CentralVCritic ActorCriticSingleLeaner
+    * Requires:
+        RNNAgent
+        CentralVCritic
+        ActorCriticSingleLeaner
 
     Attributes:
     ----------
@@ -29,6 +32,11 @@ class SAC:
 
     Methods:
     --------
+    decode(joint_actions) -> torch.LongTensor
+        Transforms joint actions into player actions
+
+    encode(choosen_actions) -> torch.LongTensor
+        Transforms joint actions into player actions
     select_actions(self, ep_batch, t_ep, t_env, bs, test_mode): torch.LongTensor
         Selects an action for each instance in the ep_batch
 
@@ -72,16 +80,16 @@ class SAC:
         _args.n_agents = 1
         return _args
 
-    def decode(self, chosen_actions):
+    def decode(self, joint_actions):
         """Transforms joint actions into player actions"""
-        return F.embedding(chosen_actions, self._decode_map)
+        return F.embedding(joint_actions, self._decode_map)
 
-    def encode(self, actions):
+    def encode(self, player_actions):
         """Transforms player actions to joint action"""
-        ashape = actions.shape[:2] + (1,)
+        ashape = player_actions.shape[:2] + (1,)
         with th.no_grad():
             _pow = self._encode_map.repeat(ashape).unsqueeze(3)
-            _actions = th.sum(actions * _pow, dim=2).type(th.int64)
+            _actions = th.sum(player_actions * _pow, dim=2).type(th.int64)
         return _actions
 
 

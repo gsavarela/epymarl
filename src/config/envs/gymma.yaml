@@ -4,6 +4,7 @@ env_args:
   key: null
   time_limit: 50
   pretrained_wrapper: null
+  joint_rewards: False
 
 test_greedy: True
 test_nepisode: 100

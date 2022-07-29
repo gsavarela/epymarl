@@ -2,7 +2,7 @@ import copy
 from components.episode_buffer import EpisodeBatch
 import torch as th
 from torch.optim import Adam
-from modules.critics import REGISTRY as critic_resigtry
+from modules.critics import REGISTRY as critic_registry
 from components.standarize_stream import RunningMeanStd
 
 
@@ -19,11 +19,13 @@ class ActorCriticDecentralizedLearner:
             Adam(params=_params, lr=args.lr) for _params in self.agent_params
         ]
 
-        self.critic = critic_resigtry[args.critic_type](scheme, args)
+        self.critic = critic_registry[args.critic_type](scheme, args)
         self.target_critic = copy.deepcopy(self.critic)
 
-        self.critic_params = list(self.critic.parameters())
-        self.critic_optimiser = Adam(params=self.critic_params, lr=args.lr)
+        self.critic_params = [_c.parameters() for _c in self.critic.critics]
+        self.critic_optimisers = [
+            Adam(params=_params, lr=args.lr) for _params in self.critic_params
+        ]
 
         self.last_target_update_step = 0
         self.critic_training_steps = 0
@@ -33,7 +35,11 @@ class ActorCriticDecentralizedLearner:
         if self.args.standardise_returns:
             self.ret_ms = RunningMeanStd(shape=(self.n_agents,), device=device)
         if self.args.standardise_rewards:
-            self.rew_ms = RunningMeanStd(shape=(1,), device=device)
+            joint_rewards = self.args.env_args.get("joint_rewards", True)
+            if joint_rewards:
+                self.rew_ms = RunningMeanStd(shape=(1,), device=device)
+            else:
+                self.rew_ms = RunningMeanStd(shape=(self.n_agents,), device=device)
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
         # Get the relevant quantities
@@ -63,13 +69,11 @@ class ActorCriticDecentralizedLearner:
             self.critic, self.target_critic, batch, rewards, critic_mask
         )
 
-
-
         self.mac.init_hidden(batch.batch_size)
         pg_loss_acum = th.tensor(0.0)
         grad_norm_acum = th.tensor(0.0)
         joint_pi = []
-        
+
         for _i, _opt, _params, _actions, _advantages, _mask in zip(
             range(self.n_agents),
             self.agent_optimisers,
@@ -89,7 +93,6 @@ class ActorCriticDecentralizedLearner:
 
             _pi = mac_out
 
-            # _actions = actions[:, :-1]
             # Calculate policy grad with mask
             _mask2 = _mask.tile((1, 1, self.n_actions))
 
@@ -99,12 +102,8 @@ class ActorCriticDecentralizedLearner:
             _log_pi_taken = th.log(_pi_taken + 1e-10)
 
             _entropy = -th.sum(_pi * th.log(_pi + 1e-10), dim=-1)
-            # pg_loss = -((advantages * log_pi_taken + self.args.entropy_coef * entropy) * mask).sum() / mask.sum()
-            # pg_losses = th.tensor_split(-((advantages * log_pi_taken + self.args.entropy_coef * entropy) * mask), self.n_agents, dim=-1)
-            # masks = th.tensor_split(mask, self.n_agents, dim=-1)
 
             # alternative
-            # pg_losses = -((advantages * log_pi_taken + self.args.entropy_coef * entropy) * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))
             _pg_loss = (
                 -(
                     (_advantages * _log_pi_taken + self.args.entropy_coef * _entropy)
@@ -157,7 +156,8 @@ class ActorCriticDecentralizedLearner:
             self.logger.log_stat("agent_grad_norm", grad_norm_acum, t_env)
             self.logger.log_stat(
                 "pi_max",
-                (th.stack(joint_pi, dim=2).max(dim=-1)[0] * mask).sum().item() / mask.sum().item(),
+                (th.stack(joint_pi, dim=2).max(dim=-1)[0] * mask).sum().item()
+                / mask.sum().item(),
                 t_env,
             )
             self.log_stats_t = t_env
@@ -165,8 +165,8 @@ class ActorCriticDecentralizedLearner:
     def train_critic_sequential(self, critic, target_critic, batch, rewards, mask):
         # Optimise critic
         with th.no_grad():
-            target_vals = target_critic(batch)
-            target_vals = target_vals.squeeze(3)
+            target_vals = th.cat([target_critic(batch, _i) for _i in range(self.n_agents)], dim=2)
+            # target_vals = [target_critic(batch, _i) for _i in range(self.n_agents)]
 
         if self.args.standardise_returns:
             target_vals = target_vals * th.sqrt(self.ret_ms.var) + self.ret_ms.mean
@@ -189,20 +189,45 @@ class ActorCriticDecentralizedLearner:
             "q_taken_mean": [],
         }
 
-        v = critic(batch)[:, :-1].squeeze(3)
-        td_error = target_returns.detach() - v
-        masked_td_error = td_error * mask
-        loss = (masked_td_error**2).sum() / mask.sum()
+        t_max = batch.max_seq_length - 1
+        total_loss = th.tensor(0.0)
+        total_grad_norm = th.tensor(0.0)
+        masked_td_errors = []
+        vs = []
 
-        self.critic_optimiser.zero_grad()
-        loss.backward()
-        grad_norm = th.nn.utils.clip_grad_norm_(
-            self.critic_params, self.args.grad_norm_clip
-        )
-        self.critic_optimiser.step()
+        for _i, _opt, _params, _target, _mask in zip(
+            range(self.n_agents),
+            self.critic_optimisers,
+            self.critic_params,
+            th.tensor_split(target_returns, self.n_agents, dim=2),
+            th.tensor_split(mask, self.n_agents, dim=2)
+        ):
 
-        running_log["critic_loss"].append(loss.item())
-        running_log["critic_grad_norm"].append(grad_norm.item())
+            _v = critic(batch, _i)
+            # FIXME: Remove this t_max
+            _td_error = _target.detach() - _v[:, :t_max]
+            _masked_td_error = _td_error * _mask
+            _loss = (_masked_td_error**2).sum() / mask.sum()
+
+            _opt.zero_grad()
+            _loss.backward()
+            _grad_norm = th.nn.utils.clip_grad_norm_(
+                _params, self.args.grad_norm_clip
+            )
+            _opt.step()
+
+            with th.no_grad():
+                total_loss += _loss
+                total_grad_norm += _grad_norm
+                masked_td_errors.append(_masked_td_error)
+                vs.append(_v[:, :t_max])
+
+        with th.no_grad():
+            masked_td_error = th.cat(masked_td_errors, dim=2)
+            v = th.cat(vs, dim=2)
+
+        running_log["critic_loss"].append(total_loss.item())
+        running_log["critic_grad_norm"].append(total_grad_norm.item())
         mask_elems = mask.sum().item()
         running_log["td_error_abs"].append(
             (masked_td_error.abs().sum().item() / mask_elems)
@@ -257,8 +282,13 @@ class ActorCriticDecentralizedLearner:
     def save_models(self, path):
         self.mac.save_models(path)
         th.save(self.critic.state_dict(), "{}/critic.th".format(path))
-        th.save([_opt.state_dict() for _opt in self.agent_optimisers], "{}/agent_opt.th".format(path))
-        th.save(self.critic_optimiser.state_dict(), "{}/critic_opt.th".format(path))
+        th.save(
+            [_opt.state_dict() for _opt in self.agent_optimisers],
+            "{}/agent_opt.th".format(path),
+        )
+        th.save(
+            [_opt.state_dict() for _opt in self.critic_optimisers],
+            "{}/critic_opt.th".format(path))
 
     def load_models(self, path):
         self.mac.load_models(path)
@@ -269,16 +299,16 @@ class ActorCriticDecentralizedLearner:
         )
         # Not quite right but I don't want to save target networks
         self.target_critic.load_state_dict(self.critic.state_dict())
-        optimizers_states =  th.load(
+        actor_optimizers = th.load(
             "{}/agent_opt.th".format(path),
             map_location=lambda storage, loc: storage,
         )
-        for _opt, _states in zip(self.agent_optimisers, optimizers_states): 
+        for _opt, _states in zip(self.agent_optimisers, actor_optimizers):
             _opt.load_state_dict(_states)
 
-        self.critic_optimiser.load_state_dict(
-            th.load(
-                "{}/critic_opt.th".format(path),
-                map_location=lambda storage, loc: storage,
-            )
+        critic_optimizers = th.load(
+            "{}/critic_opt.th".format(path),
+            map_location=lambda storage, loc: storage,
         )
+        for _opt, _states in zip(self.critic_optimisers, critic_optimizers):
+            _opt.load_state_dict(_states)

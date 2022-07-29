@@ -1,36 +1,22 @@
 import torch as th
 import torch.nn as nn
 from modules.critics.mlp import MLP
+from modules.critics.ac_ns import ACCriticNS
 
 
-class ACCriticNS(nn.Module):
-    def __init__(self, scheme, args):
-        super(ACCriticNS, self).__init__()
+class ACCriticDecentralized(ACCriticNS):
 
-        self.args = args
-        self.n_actions = args.n_actions
-        self.n_agents = args.n_agents
-
-        input_shape = self._get_input_shape(scheme)
-        self.output_type = "v"
-
-        # Set up network layers
-        self.critics = [MLP(input_shape, args.hidden_dim, 1) for _ in range(self.n_agents)]
-
-    def forward(self, batch, t=None):
-        inputs, bs, max_t = self._build_inputs(batch, t=t)
-        qs = []
-        for i in range(self.n_agents):
-            q = self.critics[i](inputs[:, :, i])
-            qs.append(q.view(bs, max_t, 1, -1))
-        q = th.cat(qs, dim=2)
+    def forward(self, batch, i, t=None):
+        inputs, bs, max_t = self._build_inputs(batch, i, t=t)
+        q = self.critics[i](inputs)
+        q.view(bs, max_t, 1)
         return q
 
-    def _build_inputs(self, batch, t=None):
+    def _build_inputs(self, batch, i, t=None):
         bs = batch.batch_size
         max_t = batch.max_seq_length if t is None else 1
         ts = slice(None) if t is None else slice(t, t+1)
-        inputs = batch["obs"][:, ts]
+        inputs = batch["obs"][:, ts, i]
         return inputs, bs, max_t
 
     def _get_input_shape(self, scheme):
