@@ -94,6 +94,7 @@ class _GymmaWrapper(MultiAgentEnv):
 
         self._seed = kwargs["seed"]
         self._joint_rewards = kwargs.get('joint_rewards', True)
+        self._shared_rewards = kwargs.get('shared_rewards', True)
         self._env.seed(self._seed)
 
     def step(self, actions):
@@ -111,10 +112,10 @@ class _GymmaWrapper(MultiAgentEnv):
         ]
 
         if self._joint_rewards:
-            joint_rewards = float(sum(reward))
-        else:
-            joint_rewards = reward
-        return joint_rewards, all(done), {}
+            reward = float(sum(reward))
+        if self._shared_rewards:
+            reward = [float(np.mean(reward))] * self.n_agents
+        return reward, all(done), {}
 
     def get_obs(self):
         """ Returns all agent observations in a list """
