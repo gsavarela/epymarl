@@ -10,6 +10,7 @@ batch_size: 10
 env_args:
   state_last_action: False # critic adds last action internally
   joint_rewards: False
+  shared_rewards: False
 
 
 # update the target network every {} training steps
