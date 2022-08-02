@@ -123,7 +123,9 @@ class SAC:
                     _z = th.cartesian_prod(*_y)
 
                     _u = th.tensor_split(_z, self.n_players, dim=1)
-                    _v = th.mul(*_u).squeeze(-1)
+                    _v = _u[0].squeeze(-1)
+                    for _w in _u[1:]:
+                        _v = th.mul(_v, _w.squeeze(-1))
                     mask.append(_v)
                 mask = th.stack(mask, dim=0)
 
