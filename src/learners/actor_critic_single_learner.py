@@ -159,7 +159,12 @@ class ActorCriticSingleLearner:
                     nstep_return_t += self.args.gamma ** _step * rewards[:, t] * mask[:, t]
                     nstep_return_t += self.args.gamma ** (_step + 1) * values[:, t+1]
                 else:
-                    nstep_return_t += self.args.gamma ** _step * rewards[:, t] * mask[:, t]
+                    try:
+                        nstep_return_t += self.args.gamma ** _step * rewards[:, t] * mask[:, t]
+                    except Exception:
+                        print('Exception')
+                        print('nstep_return_t += self.args.gamma ** _step * rewards[:, t] * mask[:, t]')
+                        import ipdb; ipdb.set_trace()
             nstep_values[:, t_start, :] = nstep_return_t
         return nstep_values
 

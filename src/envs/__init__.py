@@ -111,10 +111,10 @@ class _GymmaWrapper(MultiAgentEnv):
             for o in self._obs
         ]
 
-        if self._joint_rewards:
-            reward = float(sum(reward))
         if self._shared_rewards:
             reward = [float(np.mean(reward))] * self.n_agents
+        if self._joint_rewards:
+            reward = [float(sum(reward))]
         return reward, all(done), {}
 
     def get_obs(self):

@@ -46,7 +46,8 @@ class SAC:
     init_hidden(self, batch_size: int): None
         Initialize hidden state for the agent
 
-    """ 
+    """
+
     def __init__(self, scheme, groups, args):
         self.n_agents = 1
         self.args = deepcopy(args)
@@ -62,9 +63,9 @@ class SAC:
         assert (
             args.action_selector == "soft_policies"
         ), "SAC:action_selectior must be `soft_policies`"
-        assert (
-            args.mask_before_softmax == False
-        ), "SAC:mask_before_softmax not implemented"
+        # assert (
+        #     args.mask_before_softmax == False
+        # ), "SAC:mask_before_softmax not implemented"
         assert (
             args.critic_type == "cv_critic"
         ), "SAC:SingleAgentController requires cv_critic"
@@ -76,7 +77,7 @@ class SAC:
     @property
     def joint_args(self):
         _args = deepcopy(self.args)
-        _args.n_actions = _args.n_actions ** _args.n_agents
+        _args.n_actions = _args.n_actions**_args.n_agents
         _args.n_agents = 1
         return _args
 
@@ -91,7 +92,6 @@ class SAC:
             _pow = self._encode_map.repeat(ashape).unsqueeze(3)
             _actions = th.sum(player_actions * _pow, dim=2).type(th.int64)
         return _actions
-
 
     def select_actions(self, ep_batch, t_ep, t_env, bs=slice(None), test_mode=False):
         # Only select actions for the selected batch elements in bs
@@ -113,9 +113,21 @@ class SAC:
         # Softmax the agent outputs if they're policy logits
         if self.agent_output_type == "pi_logits":
 
-            if getattr(self.args, "mask_before_softmax", True):
+            if getattr(self.args, "mask_before_softmax", True) and not th.all(avail_actions):
                 # Make the logits for unavailable actions very negative to minimise their affect on the softmax
-                reshaped_avail_actions = avail_actions.reshape(
+
+                mask = []
+                for b in range(ep_batch.batch_size):  # bac
+                    _x = th.tensor_split(avail_actions[b], self.n_players, dim=0)  # ac
+                    _y = [_xx.squeeze(0) for _xx in _x]  # [c] * a
+                    _z = th.cartesian_prod(*_y)
+
+                    _u = th.tensor_split(_z, self.n_players, dim=1)
+                    _v = th.mul(*_u).squeeze(-1)
+                    mask.append(_v)
+                mask = th.stack(mask, dim=0)
+
+                reshaped_avail_actions = mask.reshape(
                     ep_batch.batch_size * self.n_agents, -1
                 )
                 agent_outs[reshaped_avail_actions == 0] = -1e10
@@ -155,10 +167,10 @@ class SAC:
 
         Attention: The most significant player is the zero-player
         """
-        
+
         self._encode_map = th.pow(
             th.ones(self.n_players) * self.args.n_actions,
-            th.arange(self.n_players - 1, -1, -1)
+            th.arange(self.n_players - 1, -1, -1),
         ).view(1, 1, -1)
 
     def _build_decode_map(self):
