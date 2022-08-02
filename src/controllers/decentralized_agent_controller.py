@@ -42,7 +42,7 @@ class DAC:
 
     def forward(self, ep_batch, t, i=None, test_mode=False):
 
-        avail = ep_batch["avail_actions"][:, :, i]
+        avail = ep_batch["avail_actions"][:, t, i]
         inputs = self._build_inputs(ep_batch, t, i)
         agent_outs, self.hidden_states[i] = self.agent.agents[i](
             inputs, self.hidden_states[i]
@@ -56,7 +56,6 @@ class DAC:
                 reshaped_avail_actions = avail.reshape(ep_batch.batch_size, -1)
                 agent_outs[reshaped_avail_actions == 0] = -1e10
             agent_outs = th.nn.functional.softmax(agent_outs, dim=-1)
-            # outs.append(agent_outs)
 
         # May need to squeeze
         return agent_outs

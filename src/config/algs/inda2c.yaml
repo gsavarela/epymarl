@@ -1,6 +1,6 @@
 # --- INDA2C specific parameters ---
 action_selector: "soft_policies"
-mask_before_softmax: False
+mask_before_softmax: True
 
 runner: "parallel"
 buffer_size: 10
