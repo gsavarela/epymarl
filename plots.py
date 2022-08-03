@@ -12,6 +12,7 @@ from pathlib import Path
 import re
 import string
 from collections import defaultdict
+from typing import List
 
 from utils import standard_error
 import numpy as np
@@ -237,25 +238,110 @@ def task_plot2(
     plt.show()
     plt.close(fig)
 
+def task_plot3(
+    algoname: str,
+    timesteps: Dict,
+    returns: Dict,
+    std_errors: Dict,
+    suptitle: str,
+    save_directory_path: Path = None,
+) -> None:
+    """Plots Figure 11 from [1] taking into account observability
 
-def main():
-    """Plots many models for the same task"""
+    Episodic returns of all algorithms with parameter sharing in all environments
+    showing the mean and the 95% confidence interval over five different seeds.
+
+    Parameters
+    ----------
+    algoname: str
+        E.g, INDA2C 
+    timesteps: Dict[Array]
+        Key is the task and value is the number of timesteps.
+    returns:  Dict[Array]
+        Key is the task and value is the return collected during training, e.g, rewards.
+    std_errors: Dict[Array]
+        Key is the task and value is the confidence interval.
+    suptitle: str,
+        The superior title
+    ylabel: str
+        The name of the metric.
+    save_directory_path: Path = None
+        Saves the reward plot on a pre-defined path.
+
+    """
+    fig = plt.figure()
+    fig.set_size_inches(FIGURE_X, FIGURE_Y)
+    normalize_y_axis = "Foraging" in suptitle
+    minor_x_ticks = "rware" in suptitle
+
+    for taskname in timesteps:
+
+        ispartial = '-2s-' in taskname
+        label = f'{algoname}{"-PO" if ispartial else ""}' 
+        if algoname.startswith("IA2C"):
+            marker, color = "x", "C1"
+        elif algoname.startswith("IPPO"):
+            marker, color = "|", "C2"
+        elif algoname.startswith("MAA2C"):
+            marker, color = "p", "C5"
+        elif algoname.startswith("MAPPO"):
+            marker, color = "h", "C7"
+        elif algoname.startswith("SGLA2C"):
+            marker, color = "p", "C3"
+        elif algoname.startswith("DSTA2C"):
+            marker, color = "*", "C4"
+        elif algoname.startswith("INDA2C"):
+            if ispartial:
+                marker, color = ">", "C6"
+            else:
+                marker, color = "|", "C2"
+        else:
+            marker, color = "^", "C0"
+        X = timesteps[taskname]
+        Y = returns[taskname]
+        err = std_errors[taskname]
+        plt.plot(X, Y, label=label, marker=marker, linestyle="-", c=color)
+        plt.fill_between(X, Y - err, Y + err, facecolor=color, alpha=0.25)
+
+    plt.xlabel("Environment Timesteps")
+    plt.ylabel("Episodic Return")
+    plt.legend(loc=4)
+    if normalize_y_axis:
+        plt.ylim(bottom=0, top=1.1)
+    plt.suptitle(suptitle)
+    if minor_x_ticks:
+        x_ticks = [x for x in X if (x - 5_000) % 5_000_000 == 0]
+        plt.xticks(ticks=x_ticks)
+
+    plt.grid(which="major", axis="both")
+    _savefig(suptitle, save_directory_path)
+    plt.show()
+    plt.close(fig)
+
+
+def main2():
+    """Plots aggregating models by  task"""
     BASE_PATH = Path("results/sacred/")
     # algos_paths = BASE_PATH.glob("*a2c")  # Pattern matching ia2c and maa2c
     # algos_paths = BASE_PATH.glob("maa2c_ns")  # Only look for maa2c_ns
     # Match many algorithms
     algos_paths = []
-    for pattern in ("maa2c", "sgla2c", "dsta2c"):
+    # for pattern in ("maa2c", "sgla2c", "dsta2c"):
+    for pattern in ("inda2c",):
         algos_paths += [*BASE_PATH.glob(pattern)]
 
     def task_matcher(x):
         _paths = []
+
         for _pattern in (
-            "Foraging-8x8-2p-2f-coop*",
-            "Foraging-10x10-3p-3f*",
-            "Foraging-15x15-3p-5f*",
-            "Foraging-15x15-4p-3f*",
+            "Foraging-*8x8-2p-2f-coop*",
+            "Foraging-*10x10-3p-3f*",
+            "Foraging-*15x15-3p-5f*",
+            "Foraging-*15x15-4p-3f*",
         ):
+            # for _pattern in (
+            #     "Foraging-15x15-4p-3f*",
+            # ):
             _paths += [*x.glob(f"lbforaging:{_pattern}")]
         return _paths
 
@@ -312,7 +398,7 @@ def main():
             xs,
             mus,
             std_errors,
-            task_name,
+            algo_name,
             Path.cwd()
             / "plots"
             / "-".join(algo_names)
@@ -320,5 +406,98 @@ def main():
         )
 
 
+def main3(
+    algoname: str = "inda2c",
+    size: int = 8,
+    players: int = 2,
+    food: int = 2,
+    coop: bool = True,
+):
+    """Plots aggregating models by task pattern
+
+    Use to compare partial observable settings and fully
+    observable settings.
+    """
+    BASE_PATH = Path("results/sacred/")
+    # algos_paths = BASE_PATH.glob("*a2c")  # Pattern matching ia2c and maa2c
+    # algos_paths = BASE_PATH.glob("maa2c_ns")  # Only look for maa2c_ns
+    # Match many algorithms
+    algos_paths = []
+    # for pattern in ("maa2c", "sgla2c", "dsta2c"):
+    algos_paths += [*BASE_PATH.glob(algoname)]
+    _coop = '-coop' if coop else ''
+    title = f'Foraging {size}x{size}-{players}p-{food}f{_coop}'
+
+    def task_pattern_builder(x):
+        _paths = []
+        _pattern = f'Foraging-*{size}x{size}-{players}p-{food}f{_coop}'
+        _paths += [*x.glob(f"lbforaging:{_pattern}*")]
+        return _paths
+
+    steps = defaultdict(list)
+    results = defaultdict(list)
+    for algo_path in algos_paths:
+        # Matches every lbforaging task.
+        # for task_path in algo_path.glob("lbforaging*"):
+        for task_path in task_pattern_builder(algo_path):
+
+            task_name = task_path.stem.split(":")[-1].split("-v")[0]
+            sample_size = 0
+
+            for path in task_path.rglob("metrics.json"):
+                with path.open("r") as f:
+                    data = json.load(f)
+
+                if "test_return_mean" in data:
+                    _steps = data["test_return_mean"]["steps"]
+                    _values = data["test_return_mean"]["values"]
+                    print(f"source: {task_name} n_points:{len(_values)}")
+
+                    # Get at most the 41 first evaluations
+                    steps[task_name].append(_steps[:41])
+                    results[task_name].append(_values[:41])
+                    sample_size += 1
+
+            if sample_size > 0:
+                steps[task_name] = np.vstack(steps[task_name])
+                results[task_name] = np.vstack(
+                    results[task_name]
+                )
+
+    # Unique algos and tasks
+    task_names = sorted([*results.keys()])
+
+    # Makes a plot per task
+    xs = defaultdict(list)
+    mus = defaultdict(list)
+    std_errors = defaultdict(list)
+    for task_name in task_names:
+        # Computes average returns
+        xs[task_name] = np.mean(steps[task_name], axis=0)
+        mus[task_name] = np.mean(results[task_name], axis=0)
+        std = np.std(results[task_name], axis=0)
+        std_errors[task_name] = standard_error(std, sample_size, 0.95)
+
+    task_plot3(
+        algoname.upper(),
+        xs,
+        mus,
+        std_errors,
+        title,
+        Path.cwd()
+        / "plots"
+        / algoname
+        / title.split()[0].upper(),
+    )
+
+
 if __name__ == "__main__":
-    main()
+    # main2()
+    main3(algoname="inda2c", size=8, players=2, food=2, coop=True)
+    main3(algoname="inda2c", size=10, players=3, food=3, coop=False)
+    main3(algoname="inda2c", size=15, players=3, food=5, coop=False)
+    main3(algoname="inda2c", size=15, players=4, food=5, coop=False)
+    main3(algoname="inda2c", size=15, players=4, food=3, coop=False)
+    main3(algoname="inda2c", size=15, players=4, food=5, coop=False)
+
+
