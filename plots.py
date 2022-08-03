@@ -319,6 +319,81 @@ def task_plot3(
     plt.close(fig)
 
 
+def task_plot4(
+    timesteps: Dict,
+    returns: Dict,
+    std_errors: Dict,
+    suptitle: str,
+    save_directory_path: Path = None,
+) -> None:
+    """Plots Figure 11 from [1] taking into account observability
+
+    Episodic returns of all algorithms with parameter sharing in all environments
+    showing the mean and the 95% confidence interval over five different seeds.
+
+    Parameters
+    ----------
+    timesteps: Dict[Array]
+        Key is the task and value is the number of timesteps.
+    returns:  Dict[Array]
+        Key is the task and value is the return collected during training, e.g, rewards.
+    std_errors: Dict[Array]
+        Key is the task and value is the confidence interval.
+    suptitle: str,
+        The superior title
+    ylabel: str
+        The name of the metric.
+    save_directory_path: Path = None
+        Saves the reward plot on a pre-defined path.
+
+    """
+    fig = plt.figure()
+    fig.set_size_inches(FIGURE_X, FIGURE_Y)
+    import ipdb; ipdb.set_trace()
+    normalize_y_axis = "Foraging" in suptitle
+    minor_x_ticks = "rware" in suptitle
+
+    
+
+    for algoname in timesteps:
+
+        if algoname.startswith("IA2C"):
+            marker, color = "x", "C1"
+        elif algoname.startswith("IPPO"):
+            marker, color = "|", "C2"
+        elif algoname.startswith("MAA2C"):
+            marker, color = "p", "C5"
+        elif algoname.startswith("MAPPO"):
+            marker, color = "h", "C7"
+        elif algoname.startswith("SGLA2C"):
+            marker, color = "p", "C3"
+        elif algoname.startswith("DSTA2C"):
+            marker, color = "*", "C4"
+        elif algoname.startswith("INDA2C"):
+                marker, color = ">", "C6"
+        else:
+            marker, color = "^", "C0"
+        X = timesteps[algoname]
+        Y = returns[algoname]
+        err = std_errors[algoname]
+        plt.plot(X, Y, label=algoname, marker=marker, linestyle="-", c=color)
+        plt.fill_between(X, Y - err, Y + err, facecolor=color, alpha=0.25)
+
+    plt.xlabel("Environment Timesteps")
+    plt.ylabel("Episodic Return")
+    plt.legend(loc=4)
+    if normalize_y_axis:
+        plt.ylim(bottom=0, top=1.1)
+    plt.suptitle(suptitle)
+    if minor_x_ticks:
+        x_ticks = [x for x in X if (x - 5_000) % 5_000_000 == 0]
+        plt.xticks(ticks=x_ticks)
+
+    plt.grid(which="major", axis="both")
+    _savefig(suptitle, save_directory_path)
+    plt.show()
+    plt.close(fig)
+
 def main2():
     """Plots aggregating models by  task"""
     BASE_PATH = Path("results/sacred/")
@@ -491,13 +566,120 @@ def main3(
     )
 
 
+def main4(
+    algonames: List[str] = ["sgla2c", "dsta2c", "inda2c"],
+    size: int = 8,
+    players: int = 2,
+    food: int = 2,
+    coop: bool = True,
+):
+    """Plots multi-models using per model task pattern
+
+    Requires every time series to have the same number of points
+    * inda2c: Use partial observable setting.
+    * sgla2c: Adjust timestep scale.
+    """
+    BASE_PATH = Path("results/sacred/")
+    # algos_paths = BASE_PATH.glob("*a2c")  # Pattern matching ia2c and maa2c
+    # algos_paths = BASE_PATH.glob("maa2c_ns")  # Only look for maa2c_ns
+    # Match many algorithms
+    algos_paths = []
+    for algoname in algonames:
+        algos_paths += [*BASE_PATH.glob(algoname)]
+    _coop = '-coop' if coop else ''
+    title = f'Foraging {size}x{size}-{players}p-{food}f{_coop}'
+
+    def task_pattern_builder(x):
+        _paths = []
+        _partial = '-2s' if 'inda2c' in x.as_posix() else ''
+        _pattern = f'Foraging{_partial}-{size}x{size}-{players}p-{food}f{_coop}'
+        _paths += [*x.glob(f"lbforaging:{_pattern}*")]
+        return _paths
+
+    steps = defaultdict(list)
+    results = defaultdict(list)
+    taskname = title.lower()
+    req_ntest = 41  # Required number of tests 
+    for algo_path in algos_paths:
+        algoname = algo_path.stem.upper()
+        # Matches every lbforaging task.
+        for task_path in task_pattern_builder(algo_path):
+
+            sample_size = 0
+            for path in task_path.rglob("metrics.json"):
+                with path.open("r") as f:
+                    data = json.load(f)
+
+                if "test_return_mean" in data:
+                    _steps = data["test_return_mean"]["steps"]
+                    _values = data["test_return_mean"]["values"]
+                    print(f"algo: {algoname}\tsource: {taskname}\tn_points:{len(_values)}")
+
+                    # Get at most the 41 first evaluations
+                    steps[algoname].append(_steps[:req_ntest])
+                    results[algoname].append(_values[:req_ntest])
+                    sample_size += 1
+
+            if sample_size > 0:
+                steps[algoname] = np.vstack(steps[algoname])
+                results[algoname] = np.vstack(
+                    results[algoname]
+                )
+
+            n_seeds, n_steps = steps[algoname].shape
+            if n_steps < req_ntest:
+
+                print(f'Warning: {algoname} has less points ({n_steps}) than required({req_ntest}). \n' +
+                       'Completing series with last observation')
+                # If there is not the required number of tests
+                prev_step = steps[algoname][:, -2][:, None]
+                for i in range(n_steps, req_ntest):
+                    step_size = steps[algoname][:, -1][:, None] - prev_step
+                    steps[algoname] = np.append(steps[algoname], steps[algoname][:, -1][:, None] + step_size, axis=1)
+                    results[algoname] = np.append(results[algoname], results[algoname][:, -1][:, None], axis=1)
+                    prev_step = steps[algoname][-1]
+                    
+
+
+    if 'sgla2c' in algonames and len(algonames) > 1:
+        # Rescale for sgla2c
+        other_algoname = [*filter(lambda x: x != 'sgla2c', algonames)][0].upper()
+        steps['SGLA2C'] = np.copy(steps[other_algoname])
+        import ipdb; ipdb.set_trace()
+
+    # Makes a plot per task
+    xs = defaultdict(list)
+    mus = defaultdict(list)
+    std_errors = defaultdict(list)
+    for algoname in algonames:
+        # Computes average returns
+        algoname = algoname.upper()
+        xs[algoname] = np.mean(steps[algoname], axis=0)
+        mus[algoname] = np.mean(results[algoname], axis=0)
+        std = np.std(results[algoname], axis=0)
+        std_errors[algoname] = standard_error(std, sample_size, 0.95)
+
+
+    task_plot4(
+        xs,
+        mus,
+        std_errors,
+        title,
+        Path.cwd()
+        / "plots"
+        / "-".join(algonames)
+        / title.split()[0].upper(),
+    )
 if __name__ == "__main__":
     # main2()
-    main3(algoname="inda2c", size=8, players=2, food=2, coop=True)
-    main3(algoname="inda2c", size=10, players=3, food=3, coop=False)
-    main3(algoname="inda2c", size=15, players=3, food=5, coop=False)
-    main3(algoname="inda2c", size=15, players=4, food=5, coop=False)
-    main3(algoname="inda2c", size=15, players=4, food=3, coop=False)
-    main3(algoname="inda2c", size=15, players=4, food=5, coop=False)
+    # main3(algoname="inda2c", size=8, players=2, food=2, coop=True)
+    # main3(algoname="inda2c", size=10, players=3, food=3, coop=False)
+    # main3(algoname="inda2c", size=15, players=3, food=5, coop=False)
+    # main3(algoname="inda2c", size=15, players=4, food=5, coop=False)
+    # main3(algoname="inda2c", size=15, players=4, food=3, coop=False)
+    # main3(algoname="inda2c", size=15, players=4, food=5, coop=False)
+    algonames = ["sgla2c", "dsta2c", "inda2c"]
+    main4(algonames=algonames, size=15, players=4, food=3, coop=False)
+    main4(algonames=algonames, size=15, players=4, food=5, coop=False)
 
 
