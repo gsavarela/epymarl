@@ -349,7 +349,6 @@ def task_plot4(
     """
     fig = plt.figure()
     fig.set_size_inches(FIGURE_X, FIGURE_Y)
-    import ipdb; ipdb.set_trace()
     normalize_y_axis = "Foraging" in suptitle
     minor_x_ticks = "rware" in suptitle
 
@@ -402,21 +401,22 @@ def main2():
     # Match many algorithms
     algos_paths = []
     # for pattern in ("maa2c", "sgla2c", "dsta2c"):
-    for pattern in ("inda2c",):
+    # for pattern in ("inda2c",):
+    for pattern in ("maa2c",):
         algos_paths += [*BASE_PATH.glob(pattern)]
 
     def task_matcher(x):
         _paths = []
 
+        # for _pattern in (
+        #     "Foraging-*8x8-2p-2f-coop*",
+        #     "Foraging-*10x10-3p-3f*",
+        #     "Foraging-*15x15-3p-5f*",
+        #     "Foraging-*15x15-4p-3f*",
+        # ):
         for _pattern in (
-            "Foraging-*8x8-2p-2f-coop*",
-            "Foraging-*10x10-3p-3f*",
-            "Foraging-*15x15-3p-5f*",
-            "Foraging-*15x15-4p-3f*",
+            "Foraging-15x15-4p-5f*",
         ):
-            # for _pattern in (
-            #     "Foraging-15x15-4p-3f*",
-            # ):
             _paths += [*x.glob(f"lbforaging:{_pattern}")]
         return _paths
 
@@ -473,7 +473,7 @@ def main2():
             xs,
             mus,
             std_errors,
-            algo_name,
+            task_name,
             Path.cwd()
             / "plots"
             / "-".join(algo_names)
@@ -671,15 +671,15 @@ def main4(
         / title.split()[0].upper(),
     )
 if __name__ == "__main__":
-    # main2()
+    main2()
     # main3(algoname="inda2c", size=8, players=2, food=2, coop=True)
     # main3(algoname="inda2c", size=10, players=3, food=3, coop=False)
     # main3(algoname="inda2c", size=15, players=3, food=5, coop=False)
     # main3(algoname="inda2c", size=15, players=4, food=5, coop=False)
     # main3(algoname="inda2c", size=15, players=4, food=3, coop=False)
     # main3(algoname="inda2c", size=15, players=4, food=5, coop=False)
-    algonames = ["sgla2c", "dsta2c", "inda2c"]
-    main4(algonames=algonames, size=15, players=4, food=3, coop=False)
-    main4(algonames=algonames, size=15, players=4, food=5, coop=False)
+    # algonames = ["sgla2c", "dsta2c", "inda2c"]
+    # main4(algonames=algonames, size=15, players=4, food=3, coop=False)
+    # main4(algonames=algonames, size=15, players=4, food=5, coop=False)
 
 
