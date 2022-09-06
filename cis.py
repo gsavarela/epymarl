@@ -8,7 +8,7 @@
 
  Average returns: We also report the average returns achieved throughout all
  evaluations during training. Due to this metric being computed over all
- evaluations executed during training, it considers learning speed besides 
+ evaluations executed during training, it considers learning speed besides
  final achieved returns.
 
 
@@ -25,7 +25,8 @@ from utils import standard_error
 import numpy as np
 
 # BASE_PATH = Path('results/sacred/maa2c_ns/')
-BASE_PATH = Path("results/sacred/maa2c/")
+# BASE_PATH = Path("results/sacred/maa2c/")
+BASE_PATH = Path("results/sacred/sgla2c/")
 ktop  = 5
 for base_path in BASE_PATH.glob("lbforaging*"):
     test_returns = []

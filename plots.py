@@ -17,6 +17,8 @@ from typing import List
 from utils import standard_error
 import numpy as np
 import matplotlib.pyplot as plt
+# legends for multiple x-axis
+import matplotlib.lines as mlines
 
 Array = np.ndarray
 FIGURE_X = 6.0
@@ -325,6 +327,7 @@ def task_plot4(
     std_errors: Dict,
     suptitle: str,
     save_directory_path: Path = None,
+    dual_x_axis: bool = False
 ) -> None:
     """Plots Figure 11 from [1] taking into account observability
 
@@ -349,10 +352,13 @@ def task_plot4(
     """
     fig = plt.figure()
     fig.set_size_inches(FIGURE_X, FIGURE_Y)
+    ax1 = fig.add_subplot(111)
+    ax2 = ax1.twiny()
+    lines = []
+    algonames = []
+
     normalize_y_axis = "Foraging" in suptitle
     minor_x_ticks = "rware" in suptitle
-
-    
 
     for algoname in timesteps:
 
@@ -369,26 +375,47 @@ def task_plot4(
         elif algoname.startswith("DSTA2C"):
             marker, color = "*", "C4"
         elif algoname.startswith("INDA2C"):
-                marker, color = ">", "C6"
+            marker, color = ">", "C6"
         else:
             marker, color = "^", "C0"
+        kwargs = {
+            'label': algoname,
+            'marker': marker,
+            'linestyle': '-',
+            'c': color
+        }
+
+        
+        ax = ax2 if dual_x_axis and algoname.startswith("SGLA2C") else ax1
         X = timesteps[algoname]
         Y = returns[algoname]
         err = std_errors[algoname]
-        plt.plot(X, Y, label=algoname, marker=marker, linestyle="-", c=color)
-        plt.fill_between(X, Y - err, Y + err, facecolor=color, alpha=0.25)
+        
+        # ax.plot(X, Y, label=algoname, marker=marker, linestyle="-", c=color)
+        ax.plot(X, Y, **kwargs)
+        ax.fill_between(X, Y - err, Y + err, facecolor=color, alpha=0.25)
+        # for dual_x_axis we need to use a proxy artist to explicitly paint
+        lines.append(mlines.Line2D([], [], **kwargs))
+        algonames.append(algoname)
 
-    plt.xlabel("Environment Timesteps")
+
+    ax1.set_xlabel("Environment Timesteps")
     plt.ylabel("Episodic Return")
-    plt.legend(loc=4)
+    ax1.legend(lines, algonames, loc=4)
+    # handles, labels = ax1.get_legend_handles_labels()
+    # import ipdb; ipdb.set_trace()
     if normalize_y_axis:
         plt.ylim(bottom=0, top=1.1)
     plt.suptitle(suptitle)
     if minor_x_ticks:
         x_ticks = [x for x in X if (x - 5_000) % 5_000_000 == 0]
-        plt.xticks(ticks=x_ticks)
+        ax1.set_xticks(ticks=x_ticks)
 
-    plt.grid(which="major", axis="both")
+    if dual_x_axis and 'SGLA2C' in timesteps:
+        ax2.set_xlabel("SGLA2C Timesteps")
+        ax2.tick_params(axis='x', colors='C3')
+        ax2.title.set_color('red')
+    ax1.grid(which="major", axis="y")
     _savefig(suptitle, save_directory_path)
     plt.show()
     plt.close(fig)
@@ -402,20 +429,18 @@ def main2():
     algos_paths = []
     # for pattern in ("maa2c", "sgla2c", "dsta2c"):
     # for pattern in ("inda2c",):
-    for pattern in ("maa2c",):
+    for pattern in ("sgla2c",):
         algos_paths += [*BASE_PATH.glob(pattern)]
 
     def task_matcher(x):
         _paths = []
 
-        # for _pattern in (
-        #     "Foraging-*8x8-2p-2f-coop*",
-        #     "Foraging-*10x10-3p-3f*",
-        #     "Foraging-*15x15-3p-5f*",
-        #     "Foraging-*15x15-4p-3f*",
-        # ):
         for _pattern in (
-            "Foraging-15x15-4p-5f*",
+            # "Foraging-*8x8-2p-2f-coop*",
+            # "Foraging-*10x10-3p-3f*",
+            # "Foraging-*15x15-3p-5f*",
+            # "Foraging-*15x15-4p-3f*",
+            "Foraging-*15x15-4p-5f*",
         ):
             _paths += [*x.glob(f"lbforaging:{_pattern}")]
         return _paths
@@ -571,7 +596,8 @@ def main4(
     size: int = 8,
     players: int = 2,
     food: int = 2,
-    coop: bool = True,
+    coop: bool = False,
+    dual_x_axis: bool = False
 ):
     """Plots multi-models using per model task pattern
 
@@ -580,8 +606,6 @@ def main4(
     * sgla2c: Adjust timestep scale.
     """
     BASE_PATH = Path("results/sacred/")
-    # algos_paths = BASE_PATH.glob("*a2c")  # Pattern matching ia2c and maa2c
-    # algos_paths = BASE_PATH.glob("maa2c_ns")  # Only look for maa2c_ns
     # Match many algorithms
     algos_paths = []
     for algoname in algonames:
@@ -603,6 +627,7 @@ def main4(
     for algo_path in algos_paths:
         algoname = algo_path.stem.upper()
         # Matches every lbforaging task.
+        print(algoname, task_pattern_builder(algo_path))
         for task_path in task_pattern_builder(algo_path):
 
             sample_size = 0
@@ -639,14 +664,6 @@ def main4(
                     results[algoname] = np.append(results[algoname], results[algoname][:, -1][:, None], axis=1)
                     prev_step = steps[algoname][-1]
                     
-
-
-    if 'sgla2c' in algonames and len(algonames) > 1:
-        # Rescale for sgla2c
-        other_algoname = [*filter(lambda x: x != 'sgla2c', algonames)][0].upper()
-        steps['SGLA2C'] = np.copy(steps[other_algoname])
-        import ipdb; ipdb.set_trace()
-
     # Makes a plot per task
     xs = defaultdict(list)
     mus = defaultdict(list)
@@ -669,9 +686,14 @@ def main4(
         / "plots"
         / "-".join(algonames)
         / title.split()[0].upper(),
+        dual_x_axis=dual_x_axis
     )
 if __name__ == "__main__":
-    main2()
+    main4(size=8, players=2, food=2, coop=True, dual_x_axis=True)
+    main4(size=10, players=3, food=3, dual_x_axis=True)
+    main4(size=15, players=3, food=5, dual_x_axis=True)
+    main4(size=15, players=4, food=3, dual_x_axis=True)
+    main4(size=15, players=4, food=5, dual_x_axis=True)
     # main3(algoname="inda2c", size=8, players=2, food=2, coop=True)
     # main3(algoname="inda2c", size=10, players=3, food=3, coop=False)
     # main3(algoname="inda2c", size=15, players=3, food=5, coop=False)
