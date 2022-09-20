@@ -403,7 +403,6 @@ def task_plot4(
     plt.ylabel("Episodic Return")
     ax1.legend(lines, algonames, loc=4)
     # handles, labels = ax1.get_legend_handles_labels()
-    # import ipdb; ipdb.set_trace()
     if normalize_y_axis:
         plt.ylim(bottom=0, top=1.1)
     plt.suptitle(suptitle)
