@@ -1,9 +1,12 @@
+from collections import defaultdict
 import copy
-from components.episode_buffer import EpisodeBatch
+
 import torch as th
 from torch.optim import Adam
-from modules.critics import REGISTRY as critic_registry
+
+from components.episode_buffer import EpisodeBatch
 from components.standarize_stream import RunningMeanStd
+from modules.critics import REGISTRY as critic_registry
 
 
 class ActorCriticDecentralizedLearner:
@@ -65,6 +68,7 @@ class ActorCriticDecentralizedLearner:
 
         critic_mask = mask.clone()
 
+        # This processes each player sequentially.
         advantages, critic_train_stats = self.train_critic_sequential(
             self.critic, self.target_critic, batch, rewards, critic_mask
         )
@@ -146,6 +150,11 @@ class ActorCriticDecentralizedLearner:
                 self.logger.log_stat(
                     key, sum(critic_train_stats[key]) / ts_logged, t_env
                 )
+            # debugging critic
+            for key in filter(lambda x: 'v_taken_' in x, critic_train_stats.keys()):
+                self.logger.log_stat(
+                    key, sum(critic_train_stats[key]) / ts_logged, t_env
+                )
 
             self.logger.log_stat(
                 "advantage_mean",
@@ -181,14 +190,15 @@ class ActorCriticDecentralizedLearner:
                 self.ret_ms.var
             )
 
-        running_log = {
-            "critic_loss": [],
-            "critic_grad_norm": [],
-            "td_error_abs": [],
-            "target_mean": [],
-            "q_taken_mean": [],
-        }
-
+        # running_log = {
+        #     "critic_loss": [],
+        #     "critic_grad_norm": [],
+        #     "td_error_abs": [],
+        #     "target_mean": [],
+        #     "q_taken_mean": [],
+        #     "v_taken_mean_player":[],
+        # }
+        running_log = defaultdict(list)
         t_max = batch.max_seq_length - 1
         total_loss = th.tensor(0.0)
         total_grad_norm = th.tensor(0.0)
@@ -225,7 +235,6 @@ class ActorCriticDecentralizedLearner:
         with th.no_grad():
             masked_td_error = th.cat(masked_td_errors, dim=2)
             v = th.cat(vs, dim=2)
-
         running_log["critic_loss"].append(total_loss.item())
         running_log["critic_grad_norm"].append(total_grad_norm.item())
         mask_elems = mask.sum().item()
@@ -233,6 +242,15 @@ class ActorCriticDecentralizedLearner:
             (masked_td_error.abs().sum().item() / mask_elems)
         )
         running_log["q_taken_mean"].append((v * mask).sum().item() / mask_elems)
+
+        # consolidates episode segregating by batch and player
+        v_taken_mean_player = ((v * mask).sum(dim=1) / mask.sum(dim=1)).numpy().round(6)
+        batch_size, n_players = v_taken_mean_player.shape
+        for _bsz in range(batch_size):
+            for _npl in range(n_players):
+                key = f"v_taken_batch_{_bsz}_{_npl}"
+                running_log[key].append(float(v_taken_mean_player[_bsz, _npl]))
+
         running_log["target_mean"].append(
             (target_returns * mask).sum().item() / mask_elems
         )
