@@ -1,15 +1,20 @@
 from collections import defaultdict
 import copy
+from operator import itemgetter
 
+import numpy as np
 import torch as th
 from torch.optim import Adam
+
 
 from components.episode_buffer import EpisodeBatch
 from components.standarize_stream import RunningMeanStd
 from modules.critics import REGISTRY as critic_registry
 
+from components.consensus import consensus_matrices
 
-class ActorCriticDecentralizedLearner:
+
+class ActorCriticNetworkedLearner:
     def __init__(self, mac, scheme, logger, args):
         self.args = args
         self.n_agents = args.n_agents
@@ -43,6 +48,18 @@ class ActorCriticDecentralizedLearner:
                 self.rew_ms = RunningMeanStd(shape=(1,), device=device)
             else:
                 self.rew_ms = RunningMeanStd(shape=(self.n_agents,), device=device)
+
+        # n_edges per agents guarantees that the adjacency matrix is a clique
+        edges_dict = {  
+            2: 1,
+            3: 2,
+            4: 4,
+            5: 7
+        }
+        def fn(x):
+            return th.from_numpy(x.astype(np.float32))
+
+        self.cwms = [*map(fn, consensus_matrices(self.n_agents, edges_dict[self.n_agents]))]
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
         # Get the relevant quantities
@@ -156,6 +173,7 @@ class ActorCriticDecentralizedLearner:
                     key, sum(critic_train_stats[key]) / ts_logged, t_env
                 )
 
+            # debugging consensus
             self.logger.log_stat(
                 "advantage_mean",
                 (advantages * mask).sum().item() / mask.sum().item(),
@@ -202,7 +220,7 @@ class ActorCriticDecentralizedLearner:
             self.critic_optimisers,
             self.critic_params,
             th.tensor_split(target_returns, self.n_agents, dim=2),
-            th.tensor_split(mask, self.n_agents, dim=2)
+            th.tensor_split(mask, self.n_agents, dim=2),
         ):
 
             _v = critic(batch, _i)
@@ -235,7 +253,6 @@ class ActorCriticDecentralizedLearner:
         )
         running_log["q_taken_mean"].append((v * mask).sum().item() / mask_elems)
 
-
         # consolidates episode segregating by player
         v_taken_mean_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
         for _i in range(self.n_agents):
@@ -245,6 +262,50 @@ class ActorCriticDecentralizedLearner:
         running_log["target_mean"].append(
             (target_returns * mask).sum().item() / mask_elems
         )
+
+        # Consensus step
+        # Choose a random matrix that guarantees a clique
+        idx = np.random.randint(0, high=len(self.cwms))
+        cwm = self.cwms[idx]
+
+        def fn(x):
+            return dict([*x.named_parameters()])
+
+        with th.no_grad():
+            # Each critic has many fully connected layers each of which with
+            # weight and bias tensors
+            params = [*map(fn, self.critic.critics)]
+            keys = {_k for _keys in map(lambda x: x.keys(), params) for _k in _keys}
+            for _key in keys:
+                # [n_agents, features_in, features_out]
+                weights = th.stack([*map(itemgetter(_key), params)], dim=0)
+                # try:
+                if 'weight' in _key:
+                    weights = th.einsum('nm, mij-> nij', cwm, weights)
+                elif 'bias' in _key:
+                    weights = th.einsum('nm, mi-> ni', cwm, weights)
+                else:
+                    raise ValueError(f'Unkwon parameter type {_key}')
+                # except RuntimeError:
+                #     import ipdb; ipdb.set_trace()
+
+            # debugging compute v_final_player (after consensus)
+            vs = []
+            for _i in range(self.n_agents):
+                vs.append(critic(batch, _i)[:, :t_max])
+            v = th.cat(vs, dim=2)
+
+            # consolidates episode segregating by player
+            v_final_mean_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
+            for _i in range(self.n_agents):
+                key = f"v_final_mean_player_{_i}"
+                running_log[key].append(float(v_final_mean_player[_i]))
+
+            for _i in range(self.n_agents):
+                for _j in range(self.n_agents):
+                    key = f'cwm_{_i}_{_j}'
+                    running_log[key].append(cwm[_i, _j])
+
         return masked_td_error, running_log
 
     def nstep_returns(self, rewards, mask, values, nsteps):
