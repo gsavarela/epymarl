@@ -257,6 +257,11 @@ class ActorCriticDecentralizedLearner:
         return masked_td_error, running_log
 
     def nstep_returns(self, rewards, mask, values, nsteps):
+        # nstep is a hyperparameter that regulates the number of look aheads
+        # example 1: nsteps = 5, t_start = 0
+        # R^5_0 = r_0 + (gamma*r_1) + (gamma**2*r_2) + (gamma**3*r_3) + (gamma**4*r_4) + (gamma**5*v_5)
+        # example 2: nsteps = 5, t_start = 1
+        # R^5_1 = r_1 + (gamma*r_2) + (gamma**2*r_3) + (gamma**3*r_4) + (gamma**4*r_5) + (gamma**5*v_6)
         nstep_values = th.zeros_like(values[:, :-1])
         for t_start in range(rewards.size(1)):
             nstep_return_t = th.zeros_like(values[:, 0])
