@@ -1,6 +1,3 @@
-import torch as th
-import torch.nn as nn
-from modules.critics.mlp import MLP
 from modules.critics.ac_ns import ACCriticNS
 
 
