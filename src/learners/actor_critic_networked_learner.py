@@ -271,6 +271,7 @@ class ActorCriticNetworkedLearner:
         def fn(x):
             return dict([*x.named_parameters()])
 
+        consensus_parameters = {}
         with th.no_grad():
             # Each critic has many fully connected layers each of which with
             # weight and bias tensors
@@ -278,16 +279,23 @@ class ActorCriticNetworkedLearner:
             keys = {_k for _keys in map(lambda x: x.keys(), params) for _k in _keys}
             for _key in keys:
                 # [n_agents, features_in, features_out]
-                weights = th.stack([*map(itemgetter(_key), params)], dim=0)
+                _weights = th.stack([*map(itemgetter(_key), params)], dim=0)
                 # try:
                 if 'weight' in _key:
-                    weights = th.einsum('nm, mij-> nij', cwm, weights)
+                    _weights = th.einsum('nm, mij-> nij', cwm, _weights)
                 elif 'bias' in _key:
-                    weights = th.einsum('nm, mi-> ni', cwm, weights)
+                    _weights = th.einsum('nm, mi-> ni', cwm, _weights)
                 else:
                     raise ValueError(f'Unkwon parameter type {_key}')
-                # except RuntimeError:
-                #     import ipdb; ipdb.set_trace()
+
+                consensus_parameters[_key] = [
+                    _s.squeeze(0) for _s in th.tensor_split(_weights, sections=self.n_agents, dim=0)
+                ]
+
+            # update paramters after consensus
+            for _i, _critic in enumerate(self.critic.critics):
+                for _key, _value in _critic.named_parameters():
+                    _value.data = th.nn.parameter.Parameter(consensus_parameters[_key][_i])
 
             # debugging compute v_final_player (after consensus)
             vs = []
