@@ -11,6 +11,7 @@ from typing import Dict
 from pathlib import Path
 import re
 import string
+from operator import itemgetter
 from collections import defaultdict
 from typing import List
 
@@ -241,7 +242,6 @@ def task_plot2(
     plt.close(fig)
 
 def task_plot3(
-    algoname: str,
     timesteps: Dict,
     returns: Dict,
     std_errors: Dict,
@@ -255,8 +255,6 @@ def task_plot3(
 
     Parameters
     ----------
-    algoname: str
-        E.g, INDA2C 
     timesteps: Dict[Array]
         Key is the task and value is the number of timesteps.
     returns:  Dict[Array]
@@ -276,8 +274,9 @@ def task_plot3(
     normalize_y_axis = "Foraging" in suptitle
     minor_x_ticks = "rware" in suptitle
 
-    for taskname in timesteps:
+    for algo_task_name in timesteps:
 
+        algoname, taskname = algo_task_name
         ispartial = '-2s-' in taskname
         label = f'{algoname}{"-PO" if ispartial else ""}' 
         if algoname.startswith("IA2C"):
@@ -299,9 +298,9 @@ def task_plot3(
                 marker, color = "|", "C2"
         else:
             marker, color = "^", "C0"
-        X = timesteps[taskname]
-        Y = returns[taskname]
-        err = std_errors[taskname]
+        X = timesteps[algo_task_name]
+        Y = returns[algo_task_name]
+        err = std_errors[algo_task_name]
         plt.plot(X, Y, label=label, marker=marker, linestyle="-", c=color)
         plt.fill_between(X, Y - err, Y + err, facecolor=color, alpha=0.25)
 
@@ -506,7 +505,7 @@ def main2():
 
 
 def main3(
-    algoname: str = "inda2c",
+    algonames: str = ["inda2c"],
     size: int = 8,
     players: int = 2,
     food: int = 2,
@@ -522,25 +521,27 @@ def main3(
     # algos_paths = BASE_PATH.glob("maa2c_ns")  # Only look for maa2c_ns
     # Match many algorithms
     algos_paths = []
-    # for pattern in ("maa2c", "sgla2c", "dsta2c"):
-    algos_paths += [*BASE_PATH.glob(algoname)]
+    for algoname in algonames:
+        algos_paths += [*BASE_PATH.glob(algoname)]
     _coop = '-coop' if coop else ''
     title = f'Foraging {size}x{size}-{players}p-{food}f{_coop}'
 
     def task_pattern_builder(x):
         _paths = []
         _pattern = f'Foraging-*{size}x{size}-{players}p-{food}f{_coop}'
-        _paths += [*x.glob(f"lbforaging:{_pattern}*")]
+        _paths += [*x.glob(f"lbforaging:{_pattern}-v2")]
         return _paths
 
     steps = defaultdict(list)
     results = defaultdict(list)
     for algo_path in algos_paths:
         # Matches every lbforaging task.
-        # for task_path in algo_path.glob("lbforaging*"):
+        algoname = algo_path.stem.upper()
+        print(algoname, task_pattern_builder(algo_path))
         for task_path in task_pattern_builder(algo_path):
 
             task_name = task_path.stem.split(":")[-1].split("-v")[0]
+            key = (algoname, task_name)
             sample_size = 0
 
             for path in task_path.rglob("metrics.json"):
@@ -550,42 +551,43 @@ def main3(
                 if "test_return_mean" in data:
                     _steps = data["test_return_mean"]["steps"]
                     _values = data["test_return_mean"]["values"]
-                    print(f"source: {task_name} n_points:{len(_values)}")
+                    print(f"algoname: {algoname} source: {task_name} n_points:{len(_values)}")
 
                     # Get at most the 41 first evaluations
-                    steps[task_name].append(_steps[:41])
-                    results[task_name].append(_values[:41])
+                    steps[key].append(_steps[:41])
+                    results[key].append(_values[:41])
                     sample_size += 1
 
             if sample_size > 0:
-                steps[task_name] = np.vstack(steps[task_name])
-                results[task_name] = np.vstack(
-                    results[task_name]
+                steps[key] = np.vstack(steps[key])
+                results[key] = np.vstack(
+                    results[key]
                 )
 
     # Unique algos and tasks
-    task_names = sorted([*results.keys()])
+    algo_task_names = sorted(sorted([*results.keys()], key=itemgetter(1)), key=itemgetter(0))
 
     # Makes a plot per task
     xs = defaultdict(list)
     mus = defaultdict(list)
     std_errors = defaultdict(list)
-    for task_name in task_names:
+    for algo_task_name in algo_task_names:
         # Computes average returns
-        xs[task_name] = np.mean(steps[task_name], axis=0)
-        mus[task_name] = np.mean(results[task_name], axis=0)
-        std = np.std(results[task_name], axis=0)
-        std_errors[task_name] = standard_error(std, sample_size, 0.95)
+        xs[algo_task_name] = np.mean(steps[algo_task_name], axis=0)
+        mus[algo_task_name] = np.mean(results[algo_task_name], axis=0)
+        std = np.std(results[algo_task_name], axis=0)
+        std_errors[algo_task_name] = standard_error(std, sample_size, 0.95)
 
+    algonames, _ = zip(*algo_task_names)
+    algonames = sorted(set(algonames))
     task_plot3(
-        algoname.upper(),
         xs,
         mus,
         std_errors,
         title,
         Path.cwd()
         / "plots"
-        / algoname
+        / "-".join(algonames)
         / title.split()[0].upper(),
     )
 
@@ -688,16 +690,16 @@ def main4(
         dual_x_axis=dual_x_axis
     )
 if __name__ == "__main__":
-    main4(size=8, players=2, food=2, coop=True, dual_x_axis=True)
-    main4(size=10, players=3, food=3, dual_x_axis=True)
-    main4(size=15, players=3, food=5, dual_x_axis=True)
-    main4(size=15, players=4, food=3, dual_x_axis=True)
-    main4(size=15, players=4, food=5, dual_x_axis=True)
+    # main4(size=8, players=2, food=2, coop=True, dual_x_axis=True)
+    # main4(size=10, players=3, food=3, dual_x_axis=True)
+    # main4(size=15, players=3, food=5, dual_x_axis=True)
+    # main4(size=15, players=4, food=3, dual_x_axis=True)
+    # main4(size=15, players=4, food=5, dual_x_axis=True)
     # main3(algoname="inda2c", size=8, players=2, food=2, coop=True)
     # main3(algoname="inda2c", size=10, players=3, food=3, coop=False)
-    # main3(algoname="inda2c", size=15, players=3, food=5, coop=False)
-    # main3(algoname="inda2c", size=15, players=4, food=5, coop=False)
-    # main3(algoname="inda2c", size=15, players=4, food=3, coop=False)
+    main3(algonames=["inda2c", "ntwa2c", "dsta2c"], size=15, players=3, food=5, coop=False)
+    main3(algonames=["inda2c", "ntwa2c", "dsta2c"], size=15, players=4, food=3, coop=False)
+    main3(algonames=["inda2c", "ntwa2c", "dsta2c"], size=15, players=4, food=5, coop=False)
     # main3(algoname="inda2c", size=15, players=4, food=5, coop=False)
     # algonames = ["sgla2c", "dsta2c", "inda2c"]
     # main4(algonames=algonames, size=15, players=4, food=3, coop=False)
