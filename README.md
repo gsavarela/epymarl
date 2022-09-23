@@ -193,7 +193,7 @@ Developed models.
         <th colspan=2>INDA2C</th>
         <th colspan=2>NTWA2C</th>
         <th colspan=2>DSTA2C</th>
-        <th colspan=2>SGLA2C</th>
+        <!-- <<th colspan=2>SGLA2C</th> -->
     </tr>
     <tr>
         <th>Critic</th>
@@ -203,65 +203,8 @@ Developed models.
         <th>Agent 2</th>
         <th>Agent 1</th>
         <th>Agent 2</th>
-        <th>Agent 1</th>
-        <th>Agent 2</th>
-    </tr>
-    <tr>
-        <td>[State](State)</td>
-        <td>$$\mathcal{X}_1$$</td>
-        <td>$$\mathcal{X}_2$$</td>
-        <td>$$\mathcal{S}$$</td>
-        <td>$$\mathcal{S}$$</td>
-        <td>$$\mathcal{S}$$</td>
-        <td>$$\mathcal{S}$$</td>
-        <td colspan=2>$$\mathcal{S}$$</td>
-    </tr>
-    <tr>
-        <td>Rewards</td>
-        <td>$$r_1(x_1, a)$$</td>
-        <td>$$r_2(x_2, a)$$</td>
-        <td>$$r_1(s, a)$$</td>
-        <td>$$r_2(s, a)$$</td>
-        <td>$$r_1(s, a) + r_2(s, a)$$</td>
-        <td>$$r_1(s, a) + r_2(s, a)$$</td>
-        <td colspan=2>$$r_1(s, a) + r_2(s, a)$$</td>
-    </tr>
-    <tr>
-        <td>loss</td>
-        <td>$$l_1(x_1)$$</td>
-        <td>$$l_2(x_2)$$</td>
-        <td>$$l_1(s)$$</td>
-        <td>$$l_2(s)$$</td>
-        <td>$$l_1(s)$$</td>
-        <td>$$l_2(s)$$</td>
-        <td colspan=2>$$l_1(s) + l_2(s)$$</td>
-    </tr>
-    <tr>
-        <td>comm</td>
-        <th colspan=2>No</th>
-        <th colspan=2>Yes</th>
-        <th colspan=2>No</th>
-        <th colspan=2>No</th>
-    </tr>
-</table>
-<table>
-    <tr>
-        <th></th>
-        <th colspan=2>INDA2C</th>
-        <th colspan=2>NTWA2C</th>
-        <th colspan=2>DSTA2C</th>
-        <th colspan=2>SGLA2C</th>
-    </tr>
-    <tr>
-        <th>Actors</th>
-        <th>Agent 1</th>
-        <th>Agent 2</th>
-        <th>Agent 1</th>
-        <th>Agent 2</th>
-        <th>Agent 1</th>
-        <th>Agent 2</th>
-        <th>Agent 1</th>
-        <th>Agent 2</th>
+        <!-- <th>Agent 1</th> -->
+        <!-- <th>Agent 2</th> -->
     </tr>
     <tr>
         <td>State</td>
@@ -271,7 +214,64 @@ Developed models.
         <td>$$\mathcal{S}$$</td>
         <td>$$\mathcal{S}$$</td>
         <td>$$\mathcal{S}$$</td>
-        <td colspan=2>$$\mathcal{S}$$</td>
+        <!-- <td colspan=2>$$\mathcal{S}$$</td> -->
+    </tr>
+    <tr>
+        <td>Rewards</td>
+        <td>$$r_1(x_1, a)$$</td>
+        <td>$$r_2(x_2, a)$$</td>
+        <td>$$r_1(s, a)$$</td>
+        <td>$$r_2(s, a)$$</td>
+        <td>$$r_1(s, a) + r_2(s, a)$$</td>
+        <td>$$r_1(s, a) + r_2(s, a)$$</td>
+        <!-- <td colspan=2>$$r_1(s, a) + r_2(s, a)$$</td> -->
+    </tr>
+    <tr>
+        <td>Loss</td>
+        <td>$$\mathcal{L}_{w_1}(s)$$</td>
+        <td>$$\mathcal{L}_{w_2}(s)$$</td>
+        <td>$$\mathcal{L}_{w_1}(s)$$</td>
+        <td>$$\mathcal{L}_{w_2}(s)$$</td>
+        <td>$$\mathcal{L}_{w_1}(s)$$</td>
+        <td>$$\mathcal{L}_{w_2}(s)$$</td>
+        <!-- <td colspan=2>$$\mathcal{L}_w(s)$$</td> -->
+    </tr>
+    <tr>
+        <td>comm</td>
+        <th colspan=2>No</th>
+        <th colspan=2>Yes</th>
+        <th colspan=2>No</th>
+        <!-- <th colspan=2>No</th> -->
+    </tr>
+</table>
+<table>
+    <tr>
+        <th></th>
+        <th colspan=2>INDA2C</th>
+        <th colspan=2>NTWA2C</th>
+        <th colspan=2>DSTA2C</th>
+        <!-- <th colspan=2>SGLA2C</th> -->
+    </tr>
+    <tr>
+        <th>Actors</th>
+        <th>Agent 1</th>
+        <th>Agent 2</th>
+        <th>Agent 1</th>
+        <th>Agent 2</th>
+        <th>Agent 1</th>
+        <th>Agent 2</th>
+        <!-- <th>Agent 1</th> -->
+        <!-- <th>Agent 2</th> -->
+    </tr>
+    <tr>
+        <td>State</td>
+        <td>$$\mathcal{X}_1$$</td>
+        <td>$$\mathcal{X}_2$$</td>
+        <td>$$\mathcal{S}$$</td>
+        <td>$$\mathcal{S}$$</td>
+        <td>$$\mathcal{S}$$</td>
+        <td>$$\mathcal{S}$$</td>
+        <!-- <td colspan=2>$$\mathcal{S}$$</td>
     </tr>
     <tr>
          <td>Actions</td>
@@ -281,19 +281,28 @@ Developed models.
          <td>$$\mathcal{A}_2 $$</td>
          <td>$$\mathcal{A}_1 $$</td>
          <td>$$\mathcal{A}_2 $$</td>
-        <td colspan=2>$$\mathcal{A}$$</td>
+        <!-- <td colspan=2>$$\mathcal{A}$$</td> -->
     </tr>
     <tr>
-        <td>loss</td>
-        <td>$$l_1(x_1)$$</td>
-        <td>$$l_2(x_2)$$</td>
-        <td>$$l_1(s)$$</td>
-        <td>$$l_2(s)$$</td>
-        <td>$$l_1(s)$$</td>
-        <td>$$l_2(s)$$</td>
-        <td colspan=2>$$l_1(s) + l_2(s)$$</td>
+        <td>Loss</td>
+        <td>$$\mathcal{L}_{\theta_1}(s, a_1)$$</td>
+        <td>$$\mathcal{L}_{\theta_2}(s, a_2)$$</td>
+        <td>$$\mathcal{L}_{\theta_1}(s, a_1)$$</td>
+        <td>$$\mathcal{L}_{\theta_2}(s, a_2)$$</td>
+        <td>$$\mathcal{L}_{\theta_1}(s, a_1)$$</td>
+        <td>$$\mathcal{L}_{\theta_2}(s, a_2)$$</td>
+        <!-- <td colspan=2>$$\mathcal{L}_\theta(s)$$</td> -->
+    </tr>
+    <tr>
+        <td>comm</td>
+        <th colspan=2>No</th>
+        <th colspan=2>No</th>
+        <th colspan=2>No</th>
+        <!-- <th colspan=2>No</th> -->
     </tr>
 </table>
+
+
 
 
 
