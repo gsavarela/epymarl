@@ -1,6 +1,6 @@
 #!/bin/bash
 envs=(10x10-2p-2f-coop-v2 15x15-2p-2f-coop-v2 10x10-3p-3f-coop-v2)
-models=(inda2c dsta2c ntwa2c)
+models=(ntwa2c inda2c dsta2c)
 
 for e in "${envs[@]}"
 do
@@ -12,5 +12,6 @@ do
         echo "Running with $m and lbforaging:Foraging-$e"
         sleep 2s
     done
+    wait
   done
 done
