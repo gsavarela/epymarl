@@ -53,7 +53,7 @@ class ActorCriticNetworkedLearner:
         edges_dict = {  
             2: 1,
             3: 2,
-            4: 2,
+            4: 1,
             5: 7
         }
         def fn(x):
