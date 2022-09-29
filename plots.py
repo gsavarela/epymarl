@@ -418,6 +418,85 @@ def task_plot4(
     plt.show()
     plt.close(fig)
 
+def ablation_plot(
+    timesteps: Dict,
+    returns: Dict,
+    std_errors: Dict,
+    suptitle: str,
+    save_directory_path: Path = None,
+) -> None:
+    """Plots a comparison between parameters
+
+    Parameters
+    ----------
+    timesteps: Dict[Array]
+        Key is the task and value is the number of timesteps.
+    returns:  Dict[Array]
+        Key is the task and value is the return collected during training, e.g, rewards.
+    std_errors: Dict[Array]
+        Key is the task and value is the confidence interval.
+    suptitle: str,
+        The superior title
+    ylabel: str
+        The name of the metric.
+    save_directory_path: Path = None
+        Saves the reward plot on a pre-defined path.
+
+    Reference:
+    ---------
+    https://matplotlib.org/stable/gallery/lines_bars_and_markers/linestyles.html
+    """
+    fig = plt.figure()
+    fig.set_size_inches(FIGURE_X, FIGURE_Y)
+    ax = fig.add_subplot(111)
+    lines = []
+    categorynames = []
+
+    normalize_y_axis = "Foraging" in suptitle
+    categorynames = filter(lambda x: x in ('6', '3', '0'), sorted(timesteps.keys(), reverse=True))
+    for categoryname in categorynames:
+        if categoryname in ('6',):
+            linestyle, color = 'solid', 'C1'
+        elif categoryname in ('5',):
+            linestyle, color = (0, (3, 10, 1, 10, 1, 10)), 'C2' # loosely dashdotted 
+        elif categoryname in ('4',):
+            linestyle, color = (0, (3, 1, 1, 1, 1, 1)),  'C5' # densily dashdotted
+        elif categoryname in ('3',):
+            linestyle, color = 'dashdot', 'C7'
+        elif categoryname in ('2',):
+            linestyle, color = (5, (10, 3)), 'C3' # long dash with offset
+        elif categoryname in ('1',):
+            linestyle, color = (0, (5, 5)), 'C4' # dashed
+        elif categoryname in ('0',):
+            linestyle, color = 'dotted', 'C6'
+        else:
+            linestyle, color = (0, (1, 10)), 'C0' # loosely dotted
+        
+        X = timesteps[categoryname]
+        Y = returns[categoryname]
+        err = std_errors[categoryname]
+        
+        ax.plot(X, Y, label=categoryname, linestyle=linestyle, c=color)
+        ax.fill_between(X, Y - err, Y + err, facecolor=color, alpha=0.25)
+        # for dual_x_axis we need to use a proxy artist to explicitly paint
+        # lines.append(mlines.Line2D([], []))
+        # categorynames.append(categoryname)
+
+
+    ax.set_xlabel("Environment Timesteps")
+    plt.ylabel("Episodic Return")
+    # ax.legend(lines, categorynames, loc=4)
+    ax.legend( loc=4)
+    # handles, labels = ax1.get_legend_handles_labels()
+    if normalize_y_axis:
+        plt.ylim(bottom=0, top=1.1)
+    plt.suptitle(suptitle)
+
+    ax.grid(which="major", axis="y")
+    _savefig(suptitle, save_directory_path)
+    plt.show()
+    plt.close(fig)
+
 def main2():
     """Plots aggregating models by  task"""
     BASE_PATH = Path("results/sacred/")
@@ -502,7 +581,6 @@ def main2():
             / "-".join(algo_names)
             / task_name.split("-")[0].upper(),
         )
-
 
 def main3(
     algonames: str = ["inda2c"],
@@ -689,7 +767,110 @@ def main4(
         / title.split()[0].upper(),
         dual_x_axis=dual_x_axis
     )
+
+def ablation(
+    algoname: str = 'ntwa2c',
+    size: int = 15,
+    players: int = 4,
+    food: int = 5,
+    coop: bool = False,
+    dual_x_axis: bool = False
+):
+    """Plots ablation for a particular scenario.
+
+    Uses parent folder as category for comparison.
+    """
+    BASE_PATH = Path(f"results/sacred/{algoname}/ablation")
+
+    # Match many algorithms
+    _coop = '-coop' if coop else ''
+    title = f'Foraging {size}x{size}-{players}p-{food}f{_coop}'
+
+    def task_pattern_builder(x):
+        _paths = []
+        _partial = '-2s' if 'inda2c' in x.as_posix() else ''
+        _pattern = f'Foraging{_partial}-{size}x{size}-{players}p-{food}f{_coop}'
+        _paths += [*x.rglob(f"lbforaging:{_pattern}*")]
+        return _paths
+
+    steps = defaultdict(list)
+    results = defaultdict(list)
+    taskname = title.lower()
+    req_ntest = 41  # Required number of tests 
+
+    ablations = sorted(task_pattern_builder(BASE_PATH), key=lambda x: x.parent.stem)
+    # Matches every lbforaging task.
+    print(algoname, task_pattern_builder(BASE_PATH))
+    categorynames = []
+    for task_path in ablations:
+        categoryname = task_path.parent.stem
+        sample_size = 0
+        for path in task_path.rglob("metrics.json"):
+            with path.open("r") as f:
+                data = json.load(f)
+
+            if "test_return_mean" in data:
+                _steps = data["test_return_mean"]["steps"]
+                _values = data["test_return_mean"]["values"]
+                print(f"algo: {algoname}\tsource: {categoryname}\tn_points:{len(_values)}")
+
+                # Get at most the 41 first evaluations
+                steps[categoryname].append(_steps[:req_ntest])
+                results[categoryname].append(_values[:req_ntest])
+                sample_size += 1
+
+        if sample_size > 0:
+            steps[categoryname] = np.vstack(steps[categoryname])
+            results[categoryname] = np.vstack(
+                results[categoryname]
+            )
+
+        n_seeds, n_steps = steps[categoryname].shape
+        if n_steps < req_ntest:
+            print(f'Warning: {categoryname} has less points ({n_steps}) than required({req_ntest}). \n' +
+                   'Completing series with last observation')
+            # If there is not the required number of tests
+            prev_step = steps[categoryname][:, -2][:, None]
+            for i in range(n_steps, req_ntest):
+                step_size = steps[categoryname][:, -1][:, None] - prev_step
+                steps[categoryname] = np.append(steps[categoryname], steps[categoryname][:, -1][:, None] + step_size, axis=1)
+                results[categoryname] = np.append(results[categoryname], results[categoryname][:, -1][:, None], axis=1)
+                prev_step = steps[categoryname][-1]
+        categorynames.append(categoryname)
+
+    import ipdb; ipdb.set_trace()
+    # Makes a plot per task
+    xs = defaultdict(list)
+    mus = defaultdict(list)
+    std_errors = defaultdict(list)
+    for categoryname in categorynames:
+        # Computes average returns
+        categoryname = categoryname.upper()
+        xs[categoryname] = np.mean(steps[categoryname], axis=0)
+        mus[categoryname] = np.mean(results[categoryname], axis=0)
+        std = np.std(results[categoryname], axis=0)
+        std_errors[categoryname] = standard_error(std, sample_size, 0.95)
+    
+    
+    ablation_plot(
+        xs,
+        mus,
+        std_errors,
+        title,
+        Path.cwd()
+        / "plots"
+        / "-".join(categorynames)
+        / title.split()[0].upper(),
+    )
+
 if __name__ == "__main__":
+    ablation(
+        algoname='ntwa2c',
+        size=15,
+        players=4,
+        food=5,
+        coop=False,
+        dual_x_axis=False)
     # main4(size=8, players=2, food=2, coop=True, dual_x_axis=True)
     # main4(size=10, players=3, food=3, dual_x_axis=True)
     # main4(size=15, players=3, food=5, dual_x_axis=True)
@@ -697,12 +878,10 @@ if __name__ == "__main__":
     # main4(size=15, players=4, food=5, dual_x_axis=True)
     # main3(algoname="inda2c", size=8, players=2, food=2, coop=True)
     # main3(algoname="inda2c", size=10, players=3, food=3, coop=False)
-    main3(algonames=["inda2c", "ntwa2c", "dsta2c"], size=15, players=3, food=5, coop=False)
-    main3(algonames=["inda2c", "ntwa2c", "dsta2c"], size=15, players=4, food=3, coop=False)
-    main3(algonames=["inda2c", "ntwa2c", "dsta2c"], size=15, players=4, food=5, coop=False)
+    # main3(algonames=["inda2c", "ntwa2c", "dsta2c"], size=15, players=3, food=5, coop=False)
+    # main3(algonames=["inda2c", "ntwa2c", "dsta2c"], size=15, players=4, food=3, coop=False)
+    # main3(algonames=["inda2c", "ntwa2c", "dsta2c"], size=15, players=4, food=5, coop=False)
     # main3(algoname="inda2c", size=15, players=4, food=5, coop=False)
     # algonames = ["sgla2c", "dsta2c", "inda2c"]
     # main4(algonames=algonames, size=15, players=4, food=3, coop=False)
     # main4(algonames=algonames, size=15, players=4, food=5, coop=False)
-
-
