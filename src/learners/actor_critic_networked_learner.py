@@ -53,7 +53,7 @@ class ActorCriticNetworkedLearner:
         edges_dict = {  
             2: 1,
             3: 2,
-            4: 6,
+            4: 3,
             5: 7
         }
         def fn(x):
@@ -69,6 +69,7 @@ class ActorCriticNetworkedLearner:
         mask = batch["filled"][:, :-1].float()
         mask[:, 1:] = mask[:, 1:] * (1 - terminated[:, :-1])
 
+        import ipdb; ipdb.set_trace()
         if self.args.standardise_rewards:
             self.rew_ms.update(rewards)
             rewards = (rewards - self.rew_ms.mean) / th.sqrt(self.rew_ms.var)
@@ -155,6 +156,9 @@ class ActorCriticNetworkedLearner:
         elif self.args.target_update_interval_or_tau <= 1.0:
             self._update_targets_soft(self.args.target_update_interval_or_tau)
 
+        # After all updates perform critic update.
+        self.consensus_step(batch, critic_mask, critic_train_stats)
+
         if t_env - self.log_stats_t >= self.args.learner_log_interval:
             ts_logged = len(critic_train_stats["critic_loss"])
             for key in [
@@ -193,7 +197,6 @@ class ActorCriticNetworkedLearner:
         # Optimise critic
         with th.no_grad():
             target_vals = th.cat([target_critic(batch, _i) for _i in range(self.n_agents)], dim=2)
-            # target_vals = [target_critic(batch, _i) for _i in range(self.n_agents)]
 
         if self.args.standardise_returns:
             target_vals = target_vals * th.sqrt(self.ret_ms.var) + self.ret_ms.mean
@@ -263,8 +266,14 @@ class ActorCriticNetworkedLearner:
             (target_returns * mask).sum().item() / mask_elems
         )
 
+        return masked_td_error, running_log
+
+    def consensus_step(self, batch, mask, running_log):
+
+        t_max = batch.max_seq_length - 1
+
         # Consensus step
-        # Choose a random matrix that guarantees a clique
+        # Choose a random matrix that has a given number of edges
         idx = np.random.randint(0, high=len(self.cwms))
         cwm = self.cwms[idx]
 
@@ -280,7 +289,7 @@ class ActorCriticNetworkedLearner:
             for _key in keys:
                 # [n_agents, features_in, features_out]
                 _weights = th.stack([*map(itemgetter(_key), params)], dim=0)
-                # try:
+
                 if 'weight' in _key:
                     _weights = th.einsum('nm, mij-> nij', cwm, _weights)
                 elif 'bias' in _key:
@@ -300,7 +309,7 @@ class ActorCriticNetworkedLearner:
             # debugging compute v_final_player (after consensus)
             vs = []
             for _i in range(self.n_agents):
-                vs.append(critic(batch, _i)[:, :t_max])
+                vs.append(self.critic(batch, _i)[:, :t_max])
             v = th.cat(vs, dim=2)
 
             # consolidates episode segregating by player
@@ -314,7 +323,6 @@ class ActorCriticNetworkedLearner:
                     key = f'cwm_{_i}_{_j}'
                     running_log[key].append(cwm[_i, _j])
 
-        return masked_td_error, running_log
 
     def nstep_returns(self, rewards, mask, values, nsteps):
         # nstep is a hyperparameter that regulates the number of look aheads
