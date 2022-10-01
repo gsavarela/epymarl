@@ -49,17 +49,10 @@ class ActorCriticNetworkedLearner:
             else:
                 self.rew_ms = RunningMeanStd(shape=(self.n_agents,), device=device)
 
-        # n_edges per agents guarantees that the adjacency matrix is a clique
-        edges_dict = {  
-            2: 1,
-            3: 2,
-            4: 3,
-            5: 7
-        }
         def fn(x):
             return th.from_numpy(x.astype(np.float32))
 
-        self.cwms = [*map(fn, consensus_matrices(self.n_agents, edges_dict[self.n_agents]))]
+        self.cwms = [*map(fn, consensus_matrices(self.n_agents, self.args.networked_edges[self.n_agents]))]
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
         # Get the relevant quantities
