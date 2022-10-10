@@ -588,11 +588,15 @@ def main3(
     players: int = 2,
     food: int = 2,
     coop: bool = True,
+    po: bool = False
 ):
     """Plots aggregating models by task pattern
 
     Use to compare partial observable settings and fully
     observable settings.
+
+    po: bool = False
+    Force partial observability
     """
     BASE_PATH = Path("results/sacred/")
     # algos_paths = BASE_PATH.glob("*a2c")  # Pattern matching ia2c and maa2c
@@ -606,7 +610,9 @@ def main3(
 
     def task_pattern_builder(x):
         _paths = []
-        _pattern = f'Foraging-*{size}x{size}-{players}p-{food}f{_coop}'
+        partial = '2s-'if po else '*'
+
+        _pattern = f'Foraging-{partial}{size}x{size}-{players}p-{food}f{_coop}'
         _paths += [*x.glob(f"lbforaging:{_pattern}-v2")]
         return _paths
 
@@ -780,7 +786,7 @@ def ablation(
 
     Uses parent folder as category for comparison.
     """
-    BASE_PATH = Path(f"results/sacred/{algoname}/ablation")
+    BASE_PATH = Path(f"results/sacred/{algoname}/ablation-target")
 
     # Match many algorithms
     _coop = '-coop' if coop else ''
@@ -838,7 +844,6 @@ def ablation(
                 prev_step = steps[categoryname][-1]
         categorynames.append(categoryname)
 
-    import ipdb; ipdb.set_trace()
     # Makes a plot per task
     xs = defaultdict(list)
     mus = defaultdict(list)
@@ -864,13 +869,18 @@ def ablation(
     )
 
 if __name__ == "__main__":
-    ablation(
-        algoname='ntwa2c',
-        size=15,
-        players=4,
-        food=5,
-        coop=False,
-        dual_x_axis=False)
+    # ablation(
+    #     algoname='ntwa2c',
+    #     size=15,
+    #     players=4,
+    #     food=5,
+    #     coop=False,
+    #     dual_x_axis=False)
+
+    main3(algonames=["inda2c", "ntwa2c"], size=10, players=2, food=2, coop=True, po=False)
+    # main3(algonames=["inda2c","ntwa2c"], size=15, players=3, food=3, coop=False, po=True)
+    # main3(algonames=["inda2c", "ntwa2c"], size=10, players=2, food=3, coop=True, po=False)
+    # main3(algonames=["inda2c"], size=15, players=3, food=3, coop=False, po=True)
     # main4(size=8, players=2, food=2, coop=True, dual_x_axis=True)
     # main4(size=10, players=3, food=3, dual_x_axis=True)
     # main4(size=15, players=3, food=5, dual_x_axis=True)
