@@ -598,13 +598,16 @@ def main3(
     po: bool = False
     Force partial observability
     """
-    BASE_PATH = Path("results/sacred/")
+    # BASE_PATH = Path("results/sacred/")
+    BASE_PATH = Path("results/sacred/inda2c/baseline_critic")
+    # baseline_critic/lbforaging:Foraging-10x10-2p-2f-coop-v2
     # algos_paths = BASE_PATH.glob("*a2c")  # Pattern matching ia2c and maa2c
     # algos_paths = BASE_PATH.glob("maa2c_ns")  # Only look for maa2c_ns
     # Match many algorithms
-    algos_paths = []
-    for algoname in algonames:
-        algos_paths += [*BASE_PATH.glob(algoname)]
+    algos_paths = [BASE_PATH]
+    # for algoname in algonames:
+    #     algos_paths += [*BASE_PATH.glob(algoname)]
+    # algos_paths = []
     _coop = '-coop' if coop else ''
     title = f'Foraging {size}x{size}-{players}p-{food}f{_coop}'
 
@@ -877,7 +880,8 @@ if __name__ == "__main__":
     #     coop=False,
     #     dual_x_axis=False)
 
-    main3(algonames=["inda2c", "ntwa2c"], size=10, players=2, food=2, coop=True, po=False)
+    # main3(algonames=["inda2c", "ntwa2c"], size=10, players=2, food=2, coop=True, po=False)
+    main3(algonames=["inda2c"], size=10, players=2, food=2, coop=True, po=False)
     # main3(algonames=["inda2c","ntwa2c"], size=15, players=3, food=3, coop=False, po=True)
     # main3(algonames=["inda2c", "ntwa2c"], size=10, players=2, food=3, coop=True, po=False)
     # main3(algonames=["inda2c"], size=15, players=3, food=3, coop=False, po=True)
