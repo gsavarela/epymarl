@@ -80,19 +80,23 @@ def plots(weights: Dict, biases: Dict, info: Dict) -> None:
 
     title = f"{info['task']}"
     labels = [f'player {y}' for y in range(pl)]
-    for z in ('weights', 'bias'):
+    for z in ('weight', 'bias'):
+        data = weights if z == 'weight' else biases
         for x in range(cr):
             for y in range(pl):
-                key = f'weight_{x}_{y}_{wid}'
-                Y[x, y] = weights[key]['values']
+                key = f'{z}_{x}_{y}'
+                key += f'_{wid}' if z == 'weight' else '_0'
+                Y[x, y] = data[key]['values']
+        timestep = data[key]['steps']     # its the same for all samples.
+         
         
         ylabel = z.title()
-        if z == 'weights':
+        if z == 'weight':
             ylabel += f'[{wid}]'
         print(Y, Y.mean(axis=1))
         plt.plot(X, Y, label=labels)
         plt.plot(X, Y.mean(axis=1), linestyle='dashed', label='target')
-        plt.xlabel(f"Consensus Rounds (step: {info['step']})")
+        plt.xlabel(f"Consensus Rounds (step: {timestep})")
         plt.ylabel(ylabel)
         plt.legend(loc=4)
         plt.suptitle(title)
