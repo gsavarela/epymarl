@@ -136,6 +136,9 @@ class ActorCriticNetworkedLearner:
                 grad_norm_acum += _grad_norm.detach()
                 joint_pi.append(_pi.detach())
 
+        # After all updates perform critic update.
+        self.consensus_step(batch, critic_mask, critic_train_stats)
+        
         self.critic_training_steps += 1
         if (
             self.args.target_update_interval_or_tau > 1
@@ -147,9 +150,6 @@ class ActorCriticNetworkedLearner:
             self.last_target_update_step = self.critic_training_steps
         elif self.args.target_update_interval_or_tau <= 1.0:
             self._update_targets_soft(self.args.target_update_interval_or_tau)
-
-        # After all updates perform critic update.
-        self.consensus_step(batch, critic_mask, critic_train_stats)
 
         if t_env - self.log_stats_t >= self.args.learner_log_interval:
 
