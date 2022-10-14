@@ -138,6 +138,7 @@ class ActorCriticNetworkedLearner:
 
         # After all updates perform critic update.
         self.consensus_step(batch, critic_mask, critic_train_stats)
+        # consensus_parameters = self.consensus_step(batch, critic_mask, critic_train_stats)
         
         self.critic_training_steps += 1
         if (
@@ -276,7 +277,22 @@ class ActorCriticNetworkedLearner:
 
         consensus_parameters = {}
         consensus_parameters_logs = {}
+
         with th.no_grad():
+
+            # debugging compute v_final_player (after consensus)
+            # the parameters are arbitrarely close but the state evaluations are not!
+            vs = []
+            for _i in range(self.n_agents):
+                vs.append(self.critic(batch, _i)[:, :t_max])
+            v = th.cat(vs, dim=2)
+
+            # consolidates episode segregating by player
+            v_final_mean_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
+            for _i in range(self.n_agents):
+                key = f"v_final_mean_player_{0}_{_i}"
+                running_log[key].append(float(v_final_mean_player[_i]))
+
             # Each critic has many fully connected layers each of which with
             # weight and bias tensors
             params = [*map(fn, self.critic.critics)]
@@ -307,6 +323,24 @@ class ActorCriticNetworkedLearner:
                     consensus_parameters[_key] = [_w]
                     consensus_parameters_logs[_key + f'_{k + 1}'] = [_w]
 
+                # update parameters after consensus
+                for _i, _critic in enumerate(self.critic.critics):
+                    for _key, _value in _critic.named_parameters():
+                        _value.data = th.nn.parameter.Parameter(consensus_parameters[_key][0][_i, :])
+
+                # debugging compute v_final_player (after consensus)
+                # the parameters are arbitrarely close but the state evaluations are not!
+                vs = []
+                for _i in range(self.n_agents):
+                    vs.append(self.critic(batch, _i)[:, :t_max])
+                v = th.cat(vs, dim=2)
+                # consolidates episode segregating by player
+                v_final_mean_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
+                for _i in range(self.n_agents):
+                    key = f"v_final_mean_player_{k + 1}_{_i}"
+                    running_log[key].append(float(v_final_mean_player[_i]))
+
+
             consensus_parameters = {_key: [
                 _s.squeeze(0) for _s in th.tensor_split(_weights[0], sections=self.n_agents, dim=0)
             ] for _key, _weights in consensus_parameters.items()}
@@ -314,23 +348,6 @@ class ActorCriticNetworkedLearner:
             consensus_parameters_logs = {_key: [
                 _s.squeeze(0) for _s in th.tensor_split(_weights[0], sections=self.n_agents, dim=0)
             ] for _key, _weights in consensus_parameters_logs.items()}
-
-            # update parameters after consensus
-            for _i, _critic in enumerate(self.critic.critics):
-                for _key, _value in _critic.named_parameters():
-                    _value.data = th.nn.parameter.Parameter(consensus_parameters[_key][_i])
-
-            # debugging compute v_final_player (after consensus)
-            vs = []
-            for _i in range(self.n_agents):
-                vs.append(self.critic(batch, _i)[:, :t_max])
-            v = th.cat(vs, dim=2)
-
-            # consolidates episode segregating by player
-            v_final_mean_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
-            for _i in range(self.n_agents):
-                key = f"v_final_mean_player_{_i}"
-                running_log[key].append(float(v_final_mean_player[_i]))
 
             # debugging log report consensus matrices.
             for _k in range(self.consensus_rounds):
@@ -358,6 +375,8 @@ class ActorCriticNetworkedLearner:
                         for _n in n:
                             _key = f'{_k}_{_i}_{_n}'
                             running_log[_key].append(float(_wi[_n]))
+
+            return consensus_parameters
 
     def nstep_returns(self, rewards, mask, values, nsteps):
         # nstep is a hyperparameter that regulates the number of look aheads
