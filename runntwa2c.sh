@@ -1,6 +1,5 @@
 #!/bin/bash
-
-envs=(15x15-4p-5f-v2)
+envs=(10x10-2p-2f-coop-v2 2s-10x10-3p-3f-v2 15x15-3p-5f-v2)
 
 for e in "${envs[@]}"
 do
