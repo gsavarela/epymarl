@@ -16,3 +16,12 @@ class ACCriticBaseline(ACCriticDecentralized):
 
         # Set up network layers
         self.critics = [nn.Linear(input_shape, 1) for _ in range(self.n_agents)]
+
+    # For lbforaging all agents see the same state regardless
+    # Usually current agent has the view shifted.
+    def forward(self, batch, i, t=None):
+        import ipdb; ipdb.set_trace()
+        inputs, bs, max_t = self._build_inputs(batch, 0, t=t)
+        q = self.critics[i](inputs)
+        q.view(bs, max_t, 1)
+        return q
