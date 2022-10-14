@@ -588,7 +588,8 @@ def main3(
     players: int = 2,
     food: int = 2,
     coop: bool = True,
-    po: bool = False
+    po: bool = False,
+    baseline_critic: bool = False
 ):
     """Plots aggregating models by task pattern
 
@@ -598,18 +599,23 @@ def main3(
     po: bool = False
     Force partial observability
     """
-    # BASE_PATH = Path("results/sacred/")
-    BASE_PATH = Path("results/sacred/inda2c/baseline_critic")
+    BASE_PATH = Path("results/sacred/")
+    # BASE_PATH = Path("results/sacred/inda2c/baseline_critic")
     # baseline_critic/lbforaging:Foraging-10x10-2p-2f-coop-v2
     # algos_paths = BASE_PATH.glob("*a2c")  # Pattern matching ia2c and maa2c
     # algos_paths = BASE_PATH.glob("maa2c_ns")  # Only look for maa2c_ns
     # Match many algorithms
-    algos_paths = [BASE_PATH]
-    # for algoname in algonames:
-    #     algos_paths += [*BASE_PATH.glob(algoname)]
+    algos_paths = []
+    for algoname in algonames:
+        algos_paths += [*BASE_PATH.glob(algoname)]
+
+    if baseline_critic:
+        algos_paths = [algo_path / 'baseline_critic_tau200' for algo_path in algos_paths]
     # algos_paths = []
     _coop = '-coop' if coop else ''
     title = f'Foraging {size}x{size}-{players}p-{food}f{_coop}'
+    if baseline_critic:
+        title += f' (Linear Critic)'
 
     def task_pattern_builder(x):
         _paths = []
@@ -623,7 +629,10 @@ def main3(
     results = defaultdict(list)
     for algo_path in algos_paths:
         # Matches every lbforaging task.
-        algoname = algo_path.stem.upper()
+        if baseline_critic:
+            algoname = algo_path.parent.stem.upper()
+        else:
+            algoname = algo_path.stem.upper()
         print(algoname, task_pattern_builder(algo_path))
         for task_path in task_pattern_builder(algo_path):
 
@@ -881,7 +890,9 @@ if __name__ == "__main__":
     #     dual_x_axis=False)
 
     # main3(algonames=["inda2c", "ntwa2c"], size=10, players=2, food=2, coop=True, po=False)
-    main3(algonames=["inda2c"], size=10, players=2, food=2, coop=True, po=False)
+    main3(algonames=["ntwa2c"], size=10, players=2, food=2, coop=True, po=False, baseline_critic=True)
+    # main3(algonames=["inda2c", "ntwa2c"], size=10, players=3, food=3, coop=False, po=True, baseline_critic=True)
+    # main3(algonames=["inda2c", "ntwa2c"], size=15, players=3, food=5, coop=False, po=False, baseline_critic=True)
     # main3(algonames=["inda2c","ntwa2c"], size=15, players=3, food=3, coop=False, po=True)
     # main3(algonames=["inda2c", "ntwa2c"], size=10, players=2, food=3, coop=True, po=False)
     # main3(algonames=["inda2c"], size=15, players=3, food=3, coop=False, po=True)
