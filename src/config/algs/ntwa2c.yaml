@@ -15,7 +15,7 @@ env_args:
 
 
 # update the target network every {} training steps
-target_update_interval_or_tau: 1
+target_update_interval_or_tau: 0.01
 
 lr: 0.0005
 
