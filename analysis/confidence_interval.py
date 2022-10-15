@@ -24,9 +24,8 @@ from pathlib import Path
 from utils import standard_error
 import numpy as np
 
-# BASE_PATH = Path('results/sacred/maa2c_ns/')
-# BASE_PATH = Path("results/sacred/maa2c/")
-BASE_PATH = Path("results/sacred/sgla2c/")
+# BASE_PATH = Path("results/sacred/ntwa2c/baseline_critic")
+BASE_PATH = Path("results/sacred/inda2c/baseline_critic")
 ktop  = 5
 for base_path in BASE_PATH.glob("lbforaging*"):
     test_returns = []

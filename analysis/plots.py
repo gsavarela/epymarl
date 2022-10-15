@@ -610,7 +610,7 @@ def main3(
         algos_paths += [*BASE_PATH.glob(algoname)]
 
     if baseline_critic:
-        algos_paths = [algo_path / 'baseline_critic_tau200' for algo_path in algos_paths]
+        algos_paths = [algo_path / 'baseline_critic' for algo_path in algos_paths]
     # algos_paths = []
     _coop = '-coop' if coop else ''
     title = f'Foraging {size}x{size}-{players}p-{food}f{_coop}'
@@ -890,9 +890,9 @@ if __name__ == "__main__":
     #     dual_x_axis=False)
 
     # main3(algonames=["inda2c", "ntwa2c"], size=10, players=2, food=2, coop=True, po=False)
-    main3(algonames=["ntwa2c"], size=10, players=2, food=2, coop=True, po=False, baseline_critic=True)
-    # main3(algonames=["inda2c", "ntwa2c"], size=10, players=3, food=3, coop=False, po=True, baseline_critic=True)
-    # main3(algonames=["inda2c", "ntwa2c"], size=15, players=3, food=5, coop=False, po=False, baseline_critic=True)
+    main3(algonames=["inda2c", "ntwa2c"], size=10, players=2, food=2, coop=True, po=False, baseline_critic=True)
+    main3(algonames=["inda2c", "ntwa2c"], size=10, players=3, food=3, coop=False, po=True, baseline_critic=True)
+    main3(algonames=["inda2c", "ntwa2c"], size=15, players=3, food=5, coop=False, po=False, baseline_critic=True)
     # main3(algonames=["inda2c","ntwa2c"], size=15, players=3, food=3, coop=False, po=True)
     # main3(algonames=["inda2c", "ntwa2c"], size=10, players=2, food=3, coop=True, po=False)
     # main3(algonames=["inda2c"], size=15, players=3, food=3, coop=False, po=True)
