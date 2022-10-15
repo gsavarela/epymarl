@@ -7,7 +7,7 @@ for e in "${envs[@]}"
 do
     for i in {1..5}
     do
-        python src/main.py --config=maa2c_baseline--env-config=gymma with env_args.key="lbforaging:Foraging-$e" &
+        python src/main.py --config=maa2c_baseline --env-config=gymma with env_args.key="lbforaging:Foraging-$e" &
         echo "Running with maa2c_baseline and lbforaging:Foraging-$e"
         sleep 2s
     done
