@@ -32,7 +32,7 @@ standardise_rewards: True
 standardise_returns: False
 use_rnn: True
 q_nstep: 5 # 1 corresponds to normal r + gammaV
-critic_type: "ac_critic_baseline"
+critic_type: "ac_critic_dec"
 networked: True
 networked_edges:
     2: 1

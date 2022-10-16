@@ -359,8 +359,16 @@ class ActorCriticNetworkedLearner:
 
             # debugging log report consensus weights.
             # saving all weights takes way too long.
-            for _k, _w in consensus_parameters_logs.items():
-                is_weight = 'weight' in _k      # weights are row tensors [1, N]
+            def keep(x):
+                # linear function approximation, or, deep learning
+                return (
+                    (x[0] == 'weight' or x[0] == 'bias')  or     
+                    (x[0] == 'fc1.weight_0' or x[0] == 'fc1.bias_0')
+                )
+
+            for _k, _w in filter(keep, consensus_parameters_logs.items()):
+                is_weight = 'weight' in _k      # linear: weights are row tensors [1, N]
+                is_deep = 'fc1' in _k
                 for _i in range(self.n_agents):
                     _wi = _w[_i]
                     if is_weight:
@@ -371,10 +379,13 @@ class ActorCriticNetworkedLearner:
                         running_log[_key].append(float(_wi))
                     else:
                         # samples weights
-                        n = (0, 3, 7) if is_weight else range(n)
+                        n = (0, 3, 7) if is_weight or is_deep else range(n)
                         for _n in n:
                             _key = f'{_k}_{_i}_{_n}'
-                            running_log[_key].append(float(_wi[_n]))
+                            if not is_weight or not is_deep:
+                                running_log[_key].append(float(_wi[_n]))
+                            else:
+                                running_log[_key].append(float(_wi[_n, 0]))
 
             return consensus_parameters
 
