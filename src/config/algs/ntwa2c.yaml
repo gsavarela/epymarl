@@ -26,7 +26,7 @@ obs_individual_obs: False
 mac: "dac"
 agent: "rnn_ns"
 agent_output_type: "pi_logits"
-learner: "actor_critic_networked_learner"
+learner: "actor_critic_networked_learner2"
 entropy_coef: 0.01
 standardise_rewards: True
 standardise_returns: False
