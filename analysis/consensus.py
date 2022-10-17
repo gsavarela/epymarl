@@ -52,7 +52,8 @@ def get_opt() -> Tuple[Path, Dict, Dict]:
         weight = np.random.choice((0, 3, 7))
     elif weight not in (0, 3, 7):
         raise ValueError('Weight must be in (0, 3, 7)')
-    pattern = re.compile(f'weight_\d+_\d+_{weight}')
+    pattern = re.compile(f'.*weight_\d+_\d+_{weight}')
+
 
 
     def fw(x):      # filter weight
@@ -60,15 +61,21 @@ def get_opt() -> Tuple[Path, Dict, Dict]:
     def mwb(x):      # map weight or bias step
         return (x[0], {kx: vx[step] for kx, vx in x[1].items()})
     weights = dict(map(mwb, filter(fw, metrics.items())))
-    
 
     def fb(x):      # filter bias
         return 'bias' in x[0]
     biases = dict(map(mwb, filter(fb, metrics.items())))
-    info = {'weight': weight, 'task': task, 'step': step}
-    return weights, biases, info
 
-def plots(weights: Dict, biases: Dict, info: Dict) -> None:
+    def fv(x):      # filter values
+        return 'v_final_mean_' in x[0]
+    values = dict(map(mwb, filter(fv, metrics.items())))
+
+    info = {'weight': weight, 'task': task, 'step': step}
+    return weights, biases, values, info
+
+# TODO: place data within info dict
+def plots(weights: Dict, biases: Dict, values: Dict, info: Dict) -> None:
+    """Plots consensus rounds """
     fig = plt.figure()
     fig.set_size_inches(FIGURE_X, FIGURE_Y)
     cr = info['consensus_rounds'] + 1
@@ -80,12 +87,24 @@ def plots(weights: Dict, biases: Dict, info: Dict) -> None:
 
     title = f"{info['task']}"
     labels = [f'player {y}' for y in range(pl)]
-    for z in ('weight', 'bias'):
-        data = weights if z == 'weight' else biases
+    # for z in ('weight', 'bias', 'v_final_mean_player'):
+    for z in ('v_final_mean_player',):
+        if z == 'weight':
+            data = weights
+        elif  z == 'bias':
+            data = biases
+        elif z == 'v_final_mean_player':
+            data = values
+        else:
+            raise ValueError(f'Unknown data type')
+
         for x in range(cr):
             for y in range(pl):
                 key = f'{z}_{x}_{y}'
-                key += f'_{wid}' if z == 'weight' else '_0'
+                if z == 'weight':
+                    key += f'_{wid}'
+                elif z == 'bias':
+                    key +='_0'
                 Y[x, y] = data[key]['values']
         timestep = data[key]['steps']     # its the same for all samples.
          
@@ -104,20 +123,23 @@ def plots(weights: Dict, biases: Dict, info: Dict) -> None:
 
 
 def main():
-    weights, biases, info = get_opt()
+    weights, biases, values, info = get_opt()
 
     # determines the number of consensus rounds
     # pattern = re.compile('weight_(\d+)_\d+_\d+')
     def mtchr(x):      # map consensus rounds
         return int(re.search(CONSENSUS_PATTERN, x).group(1))
-    info['consensus_rounds'] = max(map(mtchr, list(weights.keys())))
+    # info['consensus_rounds'] = max(map(mtchr, list(weights.keys())))
+
+    info['consensus_rounds'] = 5
 
     # determines the number of players
     # pattern = re.compile('weight_\d+_(\d+)_\d+')
     def mtchr(x):      # map number of players
         return int(re.search(PLAYERS_PATTERN, x).group(1))
-    info['num_players'] = max(map(mtchr, list(weights.keys())))
-    plots(weights, biases, info)
+    # info['num_players'] = max(map(mtchr, list(weights.keys())))
+    info['num_players'] = 3 - 1
+    plots(weights, biases, values, info)
 
 if __name__ == '__main__':
     main()
