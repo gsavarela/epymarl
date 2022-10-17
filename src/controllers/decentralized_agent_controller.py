@@ -34,12 +34,15 @@ class DAC:
             self.forward(ep_batch, t_ep, i, test_mode=test_mode)
             for i in range(self.n_agents)
         ]
-        chosen_actions = [
-            self.action_selector.select_action(
-                out[bs], avl[bs], t_env, test_mode=test_mode
-            )
-            for out, avl in zip(agent_outputs, avail_actions)
-        ]
+        try:
+            chosen_actions = [
+                self.action_selector.select_action(
+                    out[bs], avl[bs], t_env, test_mode=test_mode
+                )
+                for out, avl in zip(agent_outputs, avail_actions)
+            ]
+        except Exception:
+            import ipdb; ipdb.set_trace()
         return th.cat([_a.unsqueeze(1) for _a in chosen_actions], dim=1)
 
     def forward(self, ep_batch, t, i=None, test_mode=False):

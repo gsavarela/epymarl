@@ -87,8 +87,7 @@ def plots(weights: Dict, biases: Dict, values: Dict, info: Dict) -> None:
 
     title = f"{info['task']}"
     labels = [f'player {y}' for y in range(pl)]
-    # for z in ('weight', 'bias', 'v_final_mean_player'):
-    for z in ('v_final_mean_player',):
+    for z in ('weight', 'bias', 'v_final_mean_player'):
         if z == 'weight':
             data = weights
         elif  z == 'bias':
@@ -129,16 +128,13 @@ def main():
     # pattern = re.compile('weight_(\d+)_\d+_\d+')
     def mtchr(x):      # map consensus rounds
         return int(re.search(CONSENSUS_PATTERN, x).group(1))
-    # info['consensus_rounds'] = max(map(mtchr, list(weights.keys())))
-
-    info['consensus_rounds'] = 5
+    info['consensus_rounds'] = max(map(mtchr, list(weights.keys())))
 
     # determines the number of players
     # pattern = re.compile('weight_\d+_(\d+)_\d+')
     def mtchr(x):      # map number of players
         return int(re.search(PLAYERS_PATTERN, x).group(1))
-    # info['num_players'] = max(map(mtchr, list(weights.keys())))
-    info['num_players'] = 3 - 1
+    info['num_players'] = max(map(mtchr, list(weights.keys())))
     plots(weights, biases, values, info)
 
 if __name__ == '__main__':
