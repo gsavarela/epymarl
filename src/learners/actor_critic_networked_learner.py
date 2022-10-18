@@ -84,11 +84,12 @@ class ActorCriticNetworkedLearner:
             self.critic, self.target_critic, batch, rewards, critic_mask
         )
 
-        self.mac.init_hidden(batch.batch_size)
         pg_loss_acum = th.tensor(0.0)
         grad_norm_acum = th.tensor(0.0)
         joint_pi = []
 
+        # initialize hidden states before new batch arrives.
+        self.mac.init_hidden(batch.batch_size)
         for _i, _opt, _params, _actions, _advantages, _mask in zip(
             range(self.n_agents),
             self.agent_optimisers,
@@ -101,6 +102,7 @@ class ActorCriticNetworkedLearner:
             _actions.squeeze_(dim=2)
             _advantages.squeeze_(dim=2)
             mac_out = []
+
             for t in range(batch.max_seq_length - 1):
                 agent_outs = self.mac.forward(batch, t=t, i=_i)
                 mac_out.append(agent_outs)

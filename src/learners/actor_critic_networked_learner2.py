@@ -76,7 +76,6 @@ class ActorCriticNetworkedLearner2:
             return
 
         mask = mask.repeat(1, 1, self.n_agents)
-
         critic_mask = mask.clone()
 
         # This processes each player sequentially.
@@ -88,11 +87,12 @@ class ActorCriticNetworkedLearner2:
             self.critic, target_vals, batch, rewards, critic_mask
         )
 
-        self.mac.init_hidden(batch.batch_size)
         pg_loss_acum = th.tensor(0.0)
         grad_norm_acum = th.tensor(0.0)
         joint_pi = []
 
+        # initialize hidden states
+        self.mac.init_hidden(batch.batch_size)
         for _i, _opt, _params, _actions, _advantages, _mask in zip(
             range(self.n_agents),
             self.agent_optimisers,
