@@ -51,8 +51,10 @@ class ActorCriticNetworkedLearner3:
 
         def fn(x):
             return th.from_numpy(x.astype(np.float32))
-
-        self.cwms += [*map(fn, consensus_matrices(self.n_agents, self.args.networked_edges[self.n_agents]))]
+        max_edges = self.args.networked_edges[self.n_agents]
+        self.cwms = []
+        for edges in (max_edges - 1, max_edges):
+            self.cwms += [*map(fn, consensus_matrices(self.n_agents, edges))]
         self.consensus_rounds = self.args.networked_rounds if hasattr(self.args, 'networked_rounds') else 1
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
