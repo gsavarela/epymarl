@@ -8,6 +8,7 @@ from .actor_critic_single_learner import ActorCriticSingleLearner
 from .actor_critic_decentralized_learner import ActorCriticDecentralizedLearner
 from .actor_critic_networked_learner import ActorCriticNetworkedLearner
 from .actor_critic_networked_learner2 import ActorCriticNetworkedLearner2
+from .actor_critic_networked_learner3 import ActorCriticNetworkedLearner3
 
 REGISTRY = {}
 
@@ -21,4 +22,5 @@ REGISTRY["actor_critic_single_learner"] = ActorCriticSingleLearner
 REGISTRY["actor_critic_decentralized_learner"] = ActorCriticDecentralizedLearner
 REGISTRY["actor_critic_networked_learner"] = ActorCriticNetworkedLearner
 REGISTRY["actor_critic_networked_learner2"] = ActorCriticNetworkedLearner2
+REGISTRY["actor_critic_networked_learner3"] = ActorCriticNetworkedLearner3
 
