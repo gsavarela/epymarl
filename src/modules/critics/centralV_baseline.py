@@ -22,6 +22,9 @@ class CentralVCriticBaseline(nn.Module):
         self.standardize_observations = \
                 ('lbforaging' in self.args.env_args['key'])
 
+        self.partially_o = \
+                ('lbforaging' in self.args.env_args['key'])
+
     def forward(self, batch, t=None):
         # originally inputs: [bs, t_max, n_players, input_shape]
         inputs, bs, max_t = self._build_inputs(batch, t=t)
@@ -42,8 +45,7 @@ class CentralVCriticBaseline(nn.Module):
         # inputs = batch["state"][:, ts].clone()     # batch, time_max, num players, observation_size
         inputs = batch["obs"][:, ts, 0].clone()     # batch, time_max, num players, observation_size
 
-        # CentralVCriticBaseline has its observations using the union
-        # of observations.
+        # TODO: Complete fruits
         if self.standardize_observations:
             # Current agent on the first position
             # aligns inputs and complete observations
