@@ -20,8 +20,9 @@ class ACCriticBaseline(ACCriticDecentralized):
 
         # For consensus to work we standardize the triplets
         # agents observations are different
-        self.standardize_observations = \
-                ('lbforaging' in self.args.env_args['key'])
+        # self.standardize_observations = \
+        #         ('lbforaging' in self.args.env_args['key'])
+        self.standardize_observations = False
 
     # For lbforaging all agents see the same state regardless
     # Usually current agent has the view shifted.
