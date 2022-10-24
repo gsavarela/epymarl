@@ -155,7 +155,7 @@ class ActorCriticNetworkedLearner2:
         ):
 
             _v = self.critic(batch, _i)
-            _td_error = _v[:, :t_max] - target_vals
+            _td_error = _v[:, :t_max] - _target
             _masked_td_error = _td_error * _mask
             _loss = (_masked_td_error**2).sum() / mask.sum()
 
