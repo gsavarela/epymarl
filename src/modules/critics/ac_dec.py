@@ -9,11 +9,13 @@ class ACCriticDecentralized(ACCriticNS):
 
         # For consensus to work we standardize the triplets
         # agents observations are different
-        self.standardize_observations = \
-                ('lbforaging' in self.args.env_args['key'])
+        # self.standardize_observations = \
+        #         ('lbforaging' in self.args.env_args['key'])
+        self.standardize_observations = False
 
-    def forward(self, batch, i, t=None):
-        inputs, bs, max_t = self._build_inputs(batch, i, t=t)
+    def forward(self, batch, i, t=None, j=None):
+        j = i if j is None else j
+        inputs, bs, max_t = self._build_inputs(batch, j, t=t)
         q = self.critics[i](inputs)
         q.view(bs, max_t, 1)
         return q
