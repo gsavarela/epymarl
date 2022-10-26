@@ -26,13 +26,13 @@ obs_individual_obs: False
 mac: "dac"
 agent: "rnn_ns"
 agent_output_type: "pi_logits"
-learner: "actor_critic_regressor_learner"
+learner: "actor_critic_networked_learner2"
 entropy_coef: 0.01
 standardise_rewards: True
 standardise_returns: False
 use_rnn: True
 q_nstep: 5 # 1 corresponds to normal r + gammaV
-critic_type: "ac_critic_dec"
+critic_type: "ac_critic_baseline"
 networked: True
 networked_edges:
     2: 1
