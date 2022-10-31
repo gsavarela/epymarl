@@ -78,7 +78,7 @@ class ActorCriticRegressorLearner:
         mask = mask.repeat(1, 1, self.n_agents)
         critic_mask = mask.clone()
 
-        advantages, critic_train_stats, target_vals = self.train_critic_sequential(
+        advantages, critic_train_stats = self.train_critic_sequential(
             self.critic, self.target_critic, batch, rewards, critic_mask
         )
 
@@ -142,6 +142,16 @@ class ActorCriticRegressorLearner:
         total_loss = th.tensor(0.0)
         total_grad_norm = th.tensor(0.0)
 
+        # Makes a forward pass with the latest values
+        with th.no_grad():
+            consensus_values = []
+            for _i in range(self.n_agents):
+                consensus_values.append(self.critic(batch, _i))
+
+            consensus_values = th.stack(consensus_values, -1).squeeze(dim=2)
+            consensus_values = th.mean(consensus_values, dim=-1, keepdims=True)
+            consensus_values  = consensus_values.repeat(1, 1, self.n_agents)
+        
         for _i, _opt, _params, _mask in zip(
             range(self.n_agents),
             self.critic_optimisers,
@@ -155,11 +165,11 @@ class ActorCriticRegressorLearner:
                 _vis.append(self.critic(batch, _i, j=_j))
             _v = th.stack(_vis, dim=-1).squeeze(dim=2)
 
-            _td_error = _v[:, :t_max] - target_vals[:, :t_max]
+            _td_error = _v[:, :t_max] - consensus_values[:, :t_max]
             _masked_td_error = _td_error * _mask
             _loss = (_masked_td_error**2).sum() / mask.sum()
-
             _opt.zero_grad()
+
             _loss.backward()
             _grad_norm = th.nn.utils.clip_grad_norm_(
                 _params, self.args.grad_norm_clip
@@ -229,7 +239,7 @@ class ActorCriticRegressorLearner:
         # This processes each player sequentially.
         # Optimise critic
         with th.no_grad():
-            target_vals = th.cat([self.target_critic(batch, _i) for _i in range(self.n_agents)], dim=2)
+            target_vals = th.cat([target_critic(batch, _i) for _i in range(self.n_agents)], dim=2)
 
         if self.args.standardise_returns:
             target_vals = target_vals * th.sqrt(self.ret_ms.var) + self.ret_ms.mean
@@ -299,7 +309,7 @@ class ActorCriticRegressorLearner:
             (target_returns * mask).sum().item() / mask_elems
         )
 
-        return masked_td_error, running_log, target_vals
+        return masked_td_error, running_log
 
     # def consensus_step(self, batch, mask, running_log):
     #     """Consensus step over targets."""
