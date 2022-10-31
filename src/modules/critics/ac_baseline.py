@@ -26,8 +26,9 @@ class ACCriticBaseline(ACCriticDecentralized):
 
     # For lbforaging all agents see the same state regardless
     # Usually current agent has the view shifted.
-    def forward(self, batch, i, t=None):
-        inputs, bs, max_t = self._build_inputs(batch, i, t=t)
+    def forward(self, batch, i, t=None, j=None):
+        j = i if j is None else j
+        inputs, bs, max_t = self._build_inputs(batch, j, t=t)
 
         q = self.critics[i](inputs)
         q.view(bs, max_t, 1)
