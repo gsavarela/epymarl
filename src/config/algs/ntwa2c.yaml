@@ -2,7 +2,6 @@
 action_selector: "soft_policies"
 mask_before_softmax: True
 
-
 runner: "parallel"
 buffer_size: 10
 batch_size_run: 10
@@ -32,7 +31,7 @@ standardise_rewards: True
 standardise_returns: False
 use_rnn: True
 q_nstep: 5 # 1 corresponds to normal r + gammaV
-critic_type: "ac_dec"
+critic_type: "ac_critic_dec"
 networked: True
 networked_edges:
     2: 1
