@@ -53,7 +53,7 @@ class ActorCriticRegressorLearner:
             return th.from_numpy(x.astype(np.float32))
 
         # self.cwms = [*map(fn, consensus_matrices(self.n_agents, self.args.networked_edges[self.n_agents]))]
-        # self.consensus_rounds = self.args.networked_rounds if hasattr(self.args, 'networked_rounds') else 1
+        self.regression_rounds = self.args.networked_rounds if hasattr(self.args, 'networked_rounds') else 1
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
         # Get the relevant quantities
@@ -115,8 +115,6 @@ class ActorCriticRegressorLearner:
             _log_pi_taken = th.log(_pi_taken + 1e-10)
 
             _entropy = -th.sum(_pi * th.log(_pi + 1e-10), dim=-1)
-
-            # alternative
             _pg_loss = (
                 -(
                     (_advantages * _log_pi_taken + self.args.entropy_coef * _entropy)
@@ -138,50 +136,50 @@ class ActorCriticRegressorLearner:
         # After all updates perform critic update.
         # target_vals = self.consensus_step(batch, critic_mask, critic_train_stats)
 
-        t_max = batch.max_seq_length - 1
-        total_loss = th.tensor(0.0)
-        total_grad_norm = th.tensor(0.0)
+        # t_max = batch.max_seq_length - 1
+        # total_loss = th.tensor(0.0)
+        # total_grad_norm = th.tensor(0.0)
 
-        # Makes a forward pass with the latest values
-        with th.no_grad():
-            consensus_values = []
-            for _i in range(self.n_agents):
-                consensus_values.append(self.critic(batch, _i))
-
-            consensus_values = th.stack(consensus_values, -1).squeeze(dim=2)
-            consensus_values = th.mean(consensus_values, dim=-1, keepdims=True)
-            consensus_values  = consensus_values.repeat(1, 1, self.n_agents)
-        
-        for _i, _opt, _params, _mask in zip(
-            range(self.n_agents),
-            self.critic_optimisers,
-            self.critic_params,
-            th.tensor_split(mask, self.n_agents, dim=2),
-        ):
-
-            # Builds the regression target.
-            _vis = []
-            for _j in range(self.n_agents):
-                _vis.append(self.critic(batch, _i, j=_j))
-            _v = th.stack(_vis, dim=-1).squeeze(dim=2)
-
-            _td_error = _v[:, :t_max] - consensus_values[:, :t_max]
-            _masked_td_error = _td_error * _mask
-            _loss = (_masked_td_error**2).sum() / mask.sum()
-            _opt.zero_grad()
-
-            _loss.backward()
-            _grad_norm = th.nn.utils.clip_grad_norm_(
-                _params, self.args.grad_norm_clip
-            )
-            _opt.step()
-
-            with th.no_grad():
-                total_loss += _loss
-                total_grad_norm += _grad_norm
-
-        critic_train_stats["critic_loss_mse"].append(total_loss.item())
-        critic_train_stats["critic_grad_norm_mse"].append(total_grad_norm.item())
+        # # Makes a forward pass with the latest values
+        # with th.no_grad():
+        #     regression_consensus_values = []
+        #     for _i in range(self.n_agents):
+        #         regression_consensus_values.append(self.critic(batch, _i))
+        #
+        #     regression_consensus_values = th.stack(regression_consensus_values, -1).squeeze(dim=2)
+        #     regression_consensus_values = th.mean(regression_consensus_values, dim=-1, keepdims=True)
+        #     regression_consensus_values = regression_consensus_values.repeat(1, 1, self.n_agents)
+        # 
+        # for _i, _opt, _params, _mask in zip(
+        #     range(self.n_agents),
+        #     self.critic_optimisers,
+        #     self.critic_params,
+        #     th.tensor_split(mask, self.n_agents, dim=2),
+        # ):
+        #
+        #     # Builds the regression target.
+        #     _vis = []
+        #     for _j in range(self.n_agents):
+        #         _vis.append(self.critic(batch, _i, j=_j))
+        #     _v = th.stack(_vis, dim=-1).squeeze(dim=2)
+        #
+        #     _td_error = _v[:, :t_max] - regression_consensus_values[:, :t_max]
+        #     _masked_td_error = _td_error * _mask
+        #     _loss = (_masked_td_error**2).sum() / mask.sum()
+        #     _opt.zero_grad()
+        #
+        #     _loss.backward()
+        #     _grad_norm = th.nn.utils.clip_grad_norm_(
+        #         _params, self.args.grad_norm_clip
+        #     )
+        #     _opt.step()
+        #
+        #     with th.no_grad():
+        #         total_loss += _loss
+        #         total_grad_norm += _grad_norm
+        #
+        # critic_train_stats["critic_loss_mse"].append(total_loss.item())
+        # critic_train_stats["critic_grad_norm_mse"].append(total_grad_norm.item())
         self.critic_training_steps += 1
         if (
             self.args.target_update_interval_or_tau > 1
@@ -234,6 +232,76 @@ class ActorCriticRegressorLearner:
                 t_env,
             )
             self.log_stats_t = t_env
+
+    def regression_step(self, batch, mask, running_log):
+
+        t_max = batch.max_seq_length - 1
+        import ipdb; ipdb.set_trace()
+        for _k in range(self.regression_rounds):
+
+            total_loss = th.tensor(0.0)
+            total_grad_norm = th.tensor(0.0)
+
+            # Makes a forward pass from the values.
+            with th.no_grad():
+                regression_consensus_values = []
+                for _i in range(self.n_agents):
+                    regression_consensus_values.append(self.critic(batch, _i))
+
+                # Average parameters (globally)
+                regression_consensus_values = th.stack(regression_consensus_values, -1).squeeze(dim=2)
+                regression_consensus_values = th.mean(regression_consensus_values, dim=-1, keepdims=True)
+                regression_consensus_values = regression_consensus_values.repeat(1, 1, self.n_agents)
+            
+            # Trains the networks locally to reach global values.
+            for _i, _opt, _params, _mask in zip(
+                range(self.n_agents),
+                self.critic_optimisers,
+                self.critic_params,
+                th.tensor_split(mask, self.n_agents, dim=2),
+            ):
+
+                # Builds the regression target.
+                _vis = []
+                for _j in range(self.n_agents):
+                    _vis.append(self.critic(batch, _i, j=_j))
+                _v = th.stack(_vis, dim=-1).squeeze(dim=2)
+
+                _td_error = _v[:, :t_max] - regression_consensus_values[:, :t_max]
+                _masked_td_error = _td_error * _mask
+                _loss = (_masked_td_error**2).sum() / mask.sum()
+                _opt.zero_grad()
+
+                _loss.backward()
+                _grad_norm = th.nn.utils.clip_grad_norm_(
+                    _params, self.args.grad_norm_clip
+                )
+                _opt.step()
+
+                with th.no_grad():
+                    total_loss += _loss
+                    total_grad_norm += _grad_norm
+            # Logs
+            with th.no_grad():
+                vs = []
+                for _i in range(self.n_agents):
+                    vs.append(self.critic(batch, _i)[:, :t_max])
+                v = th.cat(vs, dim=2)
+
+                # why sum(dim=(0, 1))
+                v_mean_batch_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
+                for _i in range(self.n_agents):
+                    key = f"v_mean_batch_player_{k + 1}_{_i}"
+                    running_log[key].append(float(v_mean_batch_player[_i]))
+
+                v_batch = regression_consensus_values[:, :t_max, 0] * mask[:, :, 0]
+                v_mean_batch_target = (v_batch.sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
+                key = f"v_mean_batch_target_{k + 1}"
+                running_log[key].append(float(v_mean_batch_target))
+
+                running_log[f"critic_loss_mse_step_{k + 1}"].append(total_loss.item())
+                running_log[f"critic_grad_norm_mse_step_{k + 1}"].append(total_grad_norm.item())
+            
 
     def train_critic_sequential(self, critic, target_critic, batch, rewards, mask):
         # This processes each player sequentially.
