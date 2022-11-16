@@ -187,6 +187,13 @@ class ActorCriticRegressorLearner:
     def regression_step(self, batch, mask, running_log):
 
         t_max = batch.max_seq_length - 1
+
+        # Makes a forward pass from the values.
+        with th.no_grad():
+            for _i in range(self.n_agents):
+                key = f"v_mean_batch_player_{0}_{_i}"
+                running_log[key].append(float(self.critic(batch, _i).numpy().mean().round(6)))
+
         for _k in range(self.regression_rounds):
 
             total_loss = th.tensor(0.0)
