@@ -5,13 +5,15 @@ from modules.critics.ac_ns import ACCriticNS
 
 class ACCriticDecentralized(ACCriticNS):
     def __init__(self, scheme, args):
-        super().__init__(scheme, args)
 
         # For consensus to work we standardize the triplets
         # agents observations are different
         # self.standardize_observations = \
         #         ('lbforaging' in self.args.env_args['key'])
         self.standardize_observations = False
+
+        super().__init__(scheme, args)
+
 
     def forward(self, batch, i, t=None, j=None):
         j = i if j is None else j
@@ -41,7 +43,11 @@ class ACCriticDecentralized(ACCriticNS):
         bs = batch.batch_size
         max_t = batch.max_seq_length if t is None else 1
         ts = slice(None) if t is None else slice(t, t+1)
-        inputs = batch["obs"][:, ts, i].clone()
+
+        if self._full_observability():
+            inputs = batch["state"][:, ts].clone()
+        else:
+            inputs = batch["obs"][:, ts, i].clone()
 
         # TODO: Complete fruits
         if self.standardize_observations and i > 0:
@@ -57,7 +63,10 @@ class ACCriticDecentralized(ACCriticNS):
 
     def _get_input_shape(self, scheme):
         # observations
-        input_shape = scheme["obs"]["vshape"]
+        if self._full_observability():
+            input_shape = scheme["state"]["vshape"]
+        else:
+            input_shape = scheme["obs"]["vshape"]
         return input_shape
 
 
@@ -75,3 +84,7 @@ class ACCriticDecentralized(ACCriticNS):
             wo += 3
             ro += 3
         return inputs
+
+    def _full_observability(self):
+        return hasattr(self.args, 'networked') and self.args.networked \
+            and self.args.networked_full_observability

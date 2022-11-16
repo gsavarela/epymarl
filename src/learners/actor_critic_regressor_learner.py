@@ -201,7 +201,10 @@ class ActorCriticRegressorLearner:
                 # Average parameters (globally)
                 regression_consensus_values = th.stack(regression_consensus_values, -1).squeeze(dim=2)
                 regression_consensus_values = th.mean(regression_consensus_values, dim=-1, keepdims=True)
-                regression_consensus_values = regression_consensus_values.repeat(1, 1, self.n_agents)
+
+                if not self._full_observability():
+                    regression_consensus_values = regression_consensus_values.repeat(1, 1, self.n_agents)
+
             # Trains the networks locally to reach global values.
             for _i, _opt, _params, _mask in zip(
                 range(self.n_agents),
@@ -211,14 +214,21 @@ class ActorCriticRegressorLearner:
             ):
 
                 # Builds the regression target.
-                _vis = []
-                for _j in range(self.n_agents):
-                    _vis.append(self.critic(batch, _i, j=_j))
-                _v = th.stack(_vis, dim=-1).squeeze(dim=2)
+                if self._full_observability():
+                    _v = self.critic(batch, _i)
+                else:
+                    _vis = []
+                    for _j in range(self.n_agents):
+                        _vis.append(self.critic(batch, _i, j=_j))
+                    _v = th.stack(_vis, dim=-1).squeeze(dim=2)
 
                 _td_error = _v[:, :t_max] - regression_consensus_values[:, :t_max]
                 _masked_td_error = _td_error * _mask
-                _loss = (_masked_td_error**2).sum() / mask.sum()
+
+                if self._full_observability():
+                    _loss = (_masked_td_error**2).sum() / _mask.sum()
+                else:
+                    _loss = (_masked_td_error**2).sum() / mask.sum()
                 _opt.zero_grad()
 
                 _loss.backward()
@@ -405,3 +415,7 @@ class ActorCriticRegressorLearner:
         )
         for _opt, _states in zip(self.critic_optimisers, critic_optimizers):
             _opt.load_state_dict(_states)
+
+    def _full_observability(self):
+        return hasattr(self.args, 'networked') and self.args.networked \
+            and self.args.networked_full_observability
