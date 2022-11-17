@@ -203,7 +203,7 @@ class ActorCriticRegressorLearner:
             with th.no_grad():
                 regression_consensus_values = []
                 for _i in range(self.n_agents):
-                    regression_consensus_values.append(self.critic(batch, _i))
+                    regression_consensus_values.append(self.target_critic(batch, _i))
 
                 # Average parameters (globally)
                 regression_consensus_values = th.stack(regression_consensus_values, -1).squeeze(dim=2)
