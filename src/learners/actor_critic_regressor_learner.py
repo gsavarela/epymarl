@@ -12,7 +12,7 @@ from components.standarize_stream import RunningMeanStd
 from modules.critics import REGISTRY as critic_registry
 
 # from components.consensus import consensus_matrices
-
+th.autograd.set_detect_anomaly(True)
 
 class ActorCriticRegressorLearner:
     def __init__(self, mac, scheme, logger, args):
@@ -30,9 +30,10 @@ class ActorCriticRegressorLearner:
         self.critic = critic_registry[args.critic_type](scheme, args)
         self.target_critic = copy.deepcopy(self.critic)
 
-        self.critic_params = [_c.parameters() for _c in self.critic.critics]
+        # self.critic_params = [_c.parameters() for _c in self.critic.critics]
+        self.critic_params = [dict(_c.named_parameters()) for _c in self.critic.critics]
         self.critic_optimisers = [
-            Adam(params=_params, lr=args.lr) for _params in self.critic_params
+            Adam(params=_params.values(), lr=args.lr) for _params in self.critic_params
         ]
 
         self.last_target_update_step = 0
@@ -127,6 +128,7 @@ class ActorCriticRegressorLearner:
             _opt.zero_grad()
             _pg_loss.backward()
             _grad_norm = th.nn.utils.clip_grad_norm_(_params, self.args.grad_norm_clip)
+
             _opt.step()
             with th.no_grad():
                 pg_loss_acum += _pg_loss.detach()
@@ -190,27 +192,28 @@ class ActorCriticRegressorLearner:
 
         # Makes a forward pass from the values.
         with th.no_grad():
+            vs = []
+            for _i in range(self.n_agents):
+                vs.append(self.critic(batch, _i)[:, :t_max])
+            v = th.cat(vs, dim=2)
+            v[mask==0] = 0
+
+            v_mean_batch_player = (v.sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
             for _i in range(self.n_agents):
                 key = f"v_mean_batch_player_{0}_{_i}"
-                running_log[key].append(float(self.critic(batch, _i).numpy().mean().round(6)))
+                running_log[key].append(float(v_mean_batch_player[_i]))
+
+            # regression_target
+            regression_consensus_values = (v.sum(dim=-1, keepdims=True) / mask.sum(dim=-1, keepdims=True)).detach()
+            if not self._full_observability():
+                regression_consensus_values = regression_consensus_values.repeat(1, 1, self.n_agents)
+        running_log["v_mean_batch_target_0"].append(float(v_mean_batch_player.mean()))
+
 
         for _k in range(self.regression_rounds):
 
             total_loss = th.tensor(0.0)
             total_grad_norm = th.tensor(0.0)
-
-            # Makes a forward pass from the values.
-            with th.no_grad():
-                regression_consensus_values = []
-                for _i in range(self.n_agents):
-                    regression_consensus_values.append(self.target_critic(batch, _i))
-
-                # Average parameters (globally)
-                regression_consensus_values = th.stack(regression_consensus_values, -1).squeeze(dim=2)
-                regression_consensus_values = th.mean(regression_consensus_values, dim=-1, keepdims=True)
-
-                if not self._full_observability():
-                    regression_consensus_values = regression_consensus_values.repeat(1, 1, self.n_agents)
 
             # Trains the networks locally to reach global values.
             for _i, _opt, _params, _mask in zip(
@@ -230,17 +233,16 @@ class ActorCriticRegressorLearner:
                     _v = th.stack(_vis, dim=-1).squeeze(dim=2)
 
                 _td_error = _v[:, :t_max] - regression_consensus_values[:, :t_max]
-                _masked_td_error = _td_error * _mask
+                _td_error[mask == 0] = 0
 
                 if self._full_observability():
-                    _loss = (_masked_td_error**2).sum() / _mask.sum()
+                    _loss = (_td_error**2).sum() / _mask.sum()
                 else:
-                    _loss = (_masked_td_error**2).sum() / mask.sum()
+                    _loss = (_td_error**2).sum() / mask.sum()
                 _opt.zero_grad()
-
                 _loss.backward()
                 _grad_norm = th.nn.utils.clip_grad_norm_(
-                    _params, self.args.grad_norm_clip
+                    list(_params.values()), self.args.grad_norm_clip
                 )
                 _opt.step()
 
@@ -310,7 +312,7 @@ class ActorCriticRegressorLearner:
             _opt.zero_grad()
             _loss.backward()
             _grad_norm = th.nn.utils.clip_grad_norm_(
-                _params, self.args.grad_norm_clip
+                list(_params.values()), self.args.grad_norm_clip
             )
             _opt.step()
 
