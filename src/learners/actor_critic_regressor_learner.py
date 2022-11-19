@@ -12,8 +12,6 @@ from components.standarize_stream import RunningMeanStd
 from modules.critics import REGISTRY as critic_registry
 
 # from components.consensus import consensus_matrices
-th.autograd.set_detect_anomaly(True)
-
 class ActorCriticRegressorLearner:
     def __init__(self, mac, scheme, logger, args):
         self.args = args
@@ -256,13 +254,25 @@ class ActorCriticRegressorLearner:
                     vs.append(self.critic(batch, _i)[:, :t_max])
                 v = th.cat(vs, dim=2)
 
-                v_mean_batch_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
+                if self._full_observability():
+                    v[_mask==0] = 0
+                    v_mean_batch_player = ((v * _mask).sum(dim=(0, 1)) / _mask.sum(dim=(0, 1))).numpy().round(6)
+                else:
+                    v[mask==0] = 0
+                    v_mean_batch_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
+
                 for _i in range(self.n_agents):
                     key = f"v_mean_batch_player_{_k + 1}_{_i}"
                     running_log[key].append(float(v_mean_batch_player[_i]))
 
-                v_batch = regression_consensus_values[:, :t_max, 0] * mask[:, :, 0]
-                v_mean_batch_target = (v_batch.sum() / mask.sum()).numpy().round(6)
+                v_batch = regression_consensus_values[:, :t_max]
+                if self._full_observability():
+                    v_batch[_mask==0] = 0
+                    v_mean_batch_target = (v_batch.sum() / _mask.sum()).numpy().round(6)
+                else:
+                    v_batch[mask==0] = 0
+                    v_mean_batch_target = (v_batch.sum() / mask.sum()).numpy().round(6)
+
                 key = f"v_mean_batch_target_{_k + 1}"
                 running_log[key].append(float(v_mean_batch_target))
 
