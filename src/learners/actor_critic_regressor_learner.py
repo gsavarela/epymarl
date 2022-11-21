@@ -1,4 +1,5 @@
 from collections import defaultdict
+from collections import defaultdict
 import copy
 from operator import itemgetter
 
@@ -11,7 +12,6 @@ from components.episode_buffer import EpisodeBatch
 from components.standarize_stream import RunningMeanStd
 from modules.critics import REGISTRY as critic_registry
 
-# from components.consensus import consensus_matrices
 class ActorCriticRegressorLearner:
     def __init__(self, mac, scheme, logger, args):
         self.args = args
@@ -20,18 +20,18 @@ class ActorCriticRegressorLearner:
         self.logger = logger
 
         self.mac = mac
-        self.agent_params = [a.parameters() for a in mac.agent.agents]
+        # self.agent_params = [a.parameters() for a in mac.agent.agents]
+        self.agent_params = [dict(_a.named_parameters()) for _a in mac.agent.agents]
         self.agent_optimisers = [
-            Adam(params=_params, lr=args.lr) for _params in self.agent_params
+            Adam(params=list(_params.values()), lr=args.lr) for _params in self.agent_params
         ]
 
         self.critic = critic_registry[args.critic_type](scheme, args)
         self.target_critic = copy.deepcopy(self.critic)
 
-        # self.critic_params = [_c.parameters() for _c in self.critic.critics]
         self.critic_params = [dict(_c.named_parameters()) for _c in self.critic.critics]
         self.critic_optimisers = [
-            Adam(params=_params.values(), lr=args.lr) for _params in self.critic_params
+            Adam(params=list(_params.values()), lr=args.lr) for _params in self.critic_params
         ]
 
         self.last_target_update_step = 0
@@ -51,7 +51,6 @@ class ActorCriticRegressorLearner:
         def fn(x):
             return th.from_numpy(x.astype(np.float32))
 
-        # self.cwms = [*map(fn, consensus_matrices(self.n_agents, self.args.networked_edges[self.n_agents]))]
         self.regression_rounds = self.args.networked_rounds if hasattr(self.args, 'networked_rounds') else 1
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
@@ -125,8 +124,9 @@ class ActorCriticRegressorLearner:
             # Optimise agents
             _opt.zero_grad()
             _pg_loss.backward()
-            _grad_norm = th.nn.utils.clip_grad_norm_(_params, self.args.grad_norm_clip)
-
+            _grad_norm = th.nn.utils.clip_grad_norm_(
+                list(_params.values()), self.args.grad_norm_clip
+            )
             _opt.step()
             with th.no_grad():
                 pg_loss_acum += _pg_loss.detach()
@@ -202,7 +202,7 @@ class ActorCriticRegressorLearner:
                 running_log[key].append(float(v_mean_batch_player[_i]))
 
             # regression_target
-            regression_consensus_values = (v.sum(dim=-1, keepdims=True) / mask.sum(dim=-1, keepdims=True)).detach()
+            regression_consensus_values = (v.sum(dim=-1, keepdims=True) / th.clamp(mask.sum(dim=-1, keepdims=True), min=1)).detach()
             if not self._full_observability():
                 regression_consensus_values = regression_consensus_values.repeat(1, 1, self.n_agents)
         running_log["v_mean_batch_target_0"].append(float(v_mean_batch_player.mean()))
@@ -268,10 +268,10 @@ class ActorCriticRegressorLearner:
                 v_batch = regression_consensus_values[:, :t_max]
                 if self._full_observability():
                     v_batch[_mask==0] = 0
-                    v_mean_batch_target = (v_batch.sum() / _mask.sum()).numpy().round(6)
+                    v_mean_batch_target = (v_batch.sum() / th.clamp(_mask.sum(), min=1)).numpy().round(6)
                 else:
                     v_batch[mask==0] = 0
-                    v_mean_batch_target = (v_batch.sum() / mask.sum()).numpy().round(6)
+                    v_mean_batch_target = (v_batch.sum() / th.clamp(mask.sum(), min=1)).numpy().round(6)
 
                 key = f"v_mean_batch_target_{_k + 1}"
                 running_log[key].append(float(v_mean_batch_target))
