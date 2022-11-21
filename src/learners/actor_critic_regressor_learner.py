@@ -224,19 +224,20 @@ class ActorCriticRegressorLearner:
                 # Builds the regression target.
                 if self._full_observability():
                     _v = self.critic(batch, _i)
+
+                    _td_error = _v[:, :t_max] - regression_consensus_values[:, :t_max]
+                    _td_error[_mask == 0] = 0
                 else:
                     _vis = []
                     for _j in range(self.n_agents):
                         _vis.append(self.critic(batch, _i, j=_j))
                     _v = th.stack(_vis, dim=-1).squeeze(dim=2)
 
-                _td_error = _v[:, :t_max] - regression_consensus_values[:, :t_max]
-                _td_error[mask == 0] = 0
+                    _td_error = _v[:, :t_max] - regression_consensus_values[:, :t_max]
+                    _td_error[mask == 0] = 0
 
-                if self._full_observability():
-                    _loss = (_td_error**2).sum() / _mask.sum()
-                else:
-                    _loss = (_td_error**2).sum() / mask.sum()
+                _loss = (_td_error**2).sum() / mask.sum()
+
                 _opt.zero_grad()
                 _loss.backward()
                 _grad_norm = th.nn.utils.clip_grad_norm_(
@@ -254,11 +255,10 @@ class ActorCriticRegressorLearner:
                     vs.append(self.critic(batch, _i)[:, :t_max])
                 v = th.cat(vs, dim=2)
 
+                v[mask==0] = 0
                 if self._full_observability():
-                    v[_mask==0] = 0
                     v_mean_batch_player = ((v * _mask).sum(dim=(0, 1)) / _mask.sum(dim=(0, 1))).numpy().round(6)
                 else:
-                    v[mask==0] = 0
                     v_mean_batch_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
 
                 for _i in range(self.n_agents):
