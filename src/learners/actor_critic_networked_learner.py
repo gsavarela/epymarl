@@ -377,22 +377,23 @@ class ActorCriticNetworkedLearner:
             # debugging log report consensus weights.
             # saving all weights takes way too long.
             # place here
-            for _k, _w in consensus_parameters_logs.items():
-                is_weight = 'weight' in _k      # linear: weights are row tensors [1, N]
-                for _i in range(self.n_agents):
-                    _wi = _w[_i]
-                    if is_weight:
-                        _wi.squeeze_(0)
-                    n = len(_wi)    # must be 1D tensor.
-                    if n == 0:
-                        _key = f'{_k}_{_i}'
-                        running_log[_key].append(float(_wi))
-                    else:
-                        # samples weights
-                        n = (0, 3, 7) if is_weight else range(n)
-                        for _n in n:
-                            _key = f'{_k}_{_i}_{_n}'
-                            running_log[_key].append(float(_wi[_n]))
+            if self.args.critic_type == 'ac_critic_baseline':
+                for _k, _w in consensus_parameters_logs.items():
+                    is_weight = 'weight' in _k      # linear: weights are row tensors [1, N]
+                    for _i in range(self.n_agents):
+                        _wi = _w[_i]
+                        if is_weight:
+                            _wi.squeeze_(0)
+                        n = len(_wi)    # must be 1D tensor.
+                        if n == 0:
+                            _key = f'{_k}_{_i}'
+                            running_log[_key].append(float(_wi))
+                        else:
+                            # samples weights
+                            n = (0, 3, 7) if is_weight else range(n)
+                            for _n in n:
+                                _key = f'{_k}_{_i}_{_n}'
+                                running_log[_key].append(float(_wi[_n]))
             return consensus_parameters
 
     def nstep_returns(self, rewards, mask, values, nsteps):
