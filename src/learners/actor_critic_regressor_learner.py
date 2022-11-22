@@ -20,7 +20,6 @@ class ActorCriticRegressorLearner:
         self.logger = logger
 
         self.mac = mac
-        # self.agent_params = [a.parameters() for a in mac.agent.agents]
         self.agent_params = [dict(_a.named_parameters()) for _a in mac.agent.agents]
         self.agent_optimisers = [
             Adam(params=list(_params.values()), lr=args.lr) for _params in self.agent_params
