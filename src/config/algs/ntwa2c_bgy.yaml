@@ -1,0 +1,48 @@
+# --- NTWA2C specific parameters ---
+# Reverts state back to the day that consensus seemed to be working.
+action_selector: "soft_policies"
+mask_before_softmax: True
+
+runner: "episode"
+buffer_size: 1
+batch_size_run: 1
+batch_size: 1
+
+env_args:
+  state_last_action: False # critic adds last action internally
+  joint_rewards: False
+  shared_rewards: False
+
+
+# update the target network every {} training steps
+target_update_interval_or_tau: 0.01
+
+lr: 0.0005
+
+obs_agent_id: False
+obs_last_action: False
+obs_individual_obs: False
+
+mac: "dac"
+agent: "rnn_ns"
+agent_output_type: "pi_logits"
+learner: "actor_critic_networked_learner"
+entropy_coef: 0.01
+standardise_rewards: True
+standardise_returns: False
+use_rnn: True
+q_nstep: 5 # 1 corresponds to normal r + gammaV
+critic_type: "ac_critic_baseline"
+networked: True
+networked_edges:
+    2: 1
+    3: 2
+    4: 3
+    5: 7
+networked_rounds: 10
+networked_full_observability: True
+
+name: "ntwa2c_bgy"
+
+# t_max: 20_050_000
+t_max: 2_506_250
