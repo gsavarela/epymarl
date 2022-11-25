@@ -370,20 +370,6 @@ class ActorCriticNetworkedLearner:
                 vs.append(self.critic(batch, _i)[:, :t_max])
             v = th.cat(vs, dim=2)
 
-            # consolidates episode segregating by player
-            v_final_mean_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
-            for _i in range(self.n_agents):
-                key = f"v_final_mean_player_{_i}"
-                running_log[key].append(float(v_final_mean_player[_i]))
-
-            # debugging log report consensus matrices.
-            for _k in range(self.consensus_rounds):
-                _cwm_k = consensus_metropolis_logs[_k]
-                for _i in range(self.n_agents):
-                    for _j in range(self.n_agents):
-                        key = f'cwm_{_k}_{_i}_{_j}'
-                        running_log[key].append(float(_cwm_k[_i, _j]))
-
             # debugging log report consensus weights.
             # saving all weights takes way too long.
             for _k, _w in consensus_parameters_logs.items():
