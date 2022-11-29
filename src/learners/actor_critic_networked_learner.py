@@ -347,27 +347,12 @@ class ActorCriticNetworkedLearner:
                         key = f"v_mean_batch_player_{k + 1}_{_i}"
                         running_log[key].append(float(v_mean_batch_player[_i]))
 
-            # # FIXME: REDUNDANT?
-            # consensus_parameters = {_key: [
-            #     _s.squeeze(0) for _s in th.tensor_split(_weights[0], sections=self.n_agents, dim=0)
-            # ] for _key, _weights in consensus_parameters.items()}
-
-            # consensus_parameters_logs = {_key: [
-            #     _s.squeeze(0) for _s in th.tensor_split(_weights[0], sections=self.n_agents, dim=0)
-            # ] for _key, _weights in consensus_parameters_logs.items()}
-
-            # # update parameters after consensus
-            # for _i, _critic in enumerate(self.critic.critics):
-            #     for _key, _value in _critic.named_parameters():
-            #         np.testing.assert_almost_equal(_value.data.numpy(), consensus_parameters[_key][_i].numpy())
-            #         _value.data = th.nn.parameter.Parameter(consensus_parameters[_key][_i])
-
             # debugging log report consensus weights.
             # saving all weights takes way too long.
             if t_env - self.log_stats_t >= self.args.learner_log_interval:
                 for _k, _w in self._logfilter(consensus_parameters_logs):
                     for _i in range(self.n_agents):
-                        _wi = _w[_i]
+                        _wi = _w[0][_i]
                         # row tensor -- squeeze.
                         if _wi.shape[0] == 1 and len(_wi.shape) == 2:
                             _wi.squeeze_(0)
