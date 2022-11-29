@@ -1,5 +1,4 @@
 from collections import defaultdict
-from collections import defaultdict
 import copy
 from operator import itemgetter
 
@@ -132,7 +131,7 @@ class ActorCriticRegressorLearner:
                 grad_norm_acum += _grad_norm.detach()
                 joint_pi.append(_pi.detach())
 
-        self.regression_step(batch, mask, critic_train_stats)
+        self.regression_step(batch, mask, critic_train_stats, t_env)
         self.critic_training_steps += 1
         if (
             self.args.target_update_interval_or_tau > 1
@@ -183,7 +182,7 @@ class ActorCriticRegressorLearner:
             )
             self.log_stats_t = t_env
 
-    def regression_step(self, batch, mask, running_log):
+    def regression_step(self, batch, mask, running_log, t_env):
 
         t_max = batch.max_seq_length - 1
 
@@ -247,22 +246,26 @@ class ActorCriticRegressorLearner:
                 with th.no_grad():
                     total_loss += _loss
                     total_grad_norm += _grad_norm
-            # Logs
-            with th.no_grad():
-                vs = []
-                for _i in range(self.n_agents):
-                    vs.append(self.critic(batch, _i)[:, :t_max])
-                v = th.cat(vs, dim=2)
 
-                v[mask==0] = 0
-                if self._full_observability():
-                    v_mean_batch_player = ((v * _mask).sum(dim=(0, 1)) / _mask.sum(dim=(0, 1))).numpy().round(6)
-                else:
-                    v_mean_batch_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
+            # This is the flow statement for logging
+            # Prevents very large logs.
+            if t_env - self.log_stats_t >= self.args.learner_log_interval:
+                # Logs
+                with th.no_grad():
+                    vs = []
+                    for _i in range(self.n_agents):
+                        vs.append(self.critic(batch, _i)[:, :t_max])
+                    v = th.cat(vs, dim=2)
 
-                for _i in range(self.n_agents):
-                    key = f"v_mean_batch_player_{_k + 1}_{_i}"
-                    running_log[key].append(float(v_mean_batch_player[_i]))
+                    v[mask==0] = 0
+                    if self._full_observability():
+                        v_mean_batch_player = ((v * _mask).sum(dim=(0, 1)) / _mask.sum(dim=(0, 1))).numpy().round(6)
+                    else:
+                        v_mean_batch_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
+
+                    for _i in range(self.n_agents):
+                        key = f"v_mean_batch_player_{_k + 1}_{_i}"
+                        running_log[key].append(float(v_mean_batch_player[_i]))
 
                 v_batch = regression_consensus_values[:, :t_max]
                 if self._full_observability():
