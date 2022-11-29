@@ -38,8 +38,8 @@ networked_edges:
     3: 2
     4: 3
     5: 7
-networked_rounds: 10
-networked_full_observability: False
+networked_rounds: 100
+networked_full_observability: True
 
 name: "rega2c_shl"
 

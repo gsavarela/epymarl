@@ -38,7 +38,7 @@ networked_edges:
     3: 2
     4: 3
     5: 7
-networked_rounds: 10
+networked_rounds: 100
 
 name: "ntwa2c_shl"
 
