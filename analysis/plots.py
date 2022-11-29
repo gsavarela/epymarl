@@ -278,7 +278,7 @@ def task_plot3(
 
         algoname, taskname = algo_task_name
         ispartial = '-2s-' in taskname
-        label = f'{algoname}{"-PO" if ispartial else ""}' 
+        label = f'{algoname}{"-PO" if ispartial else ""}'
         if algoname.startswith("IA2C"):
             marker, color = "x", "C1"
         elif algoname.startswith("IPPO"):
@@ -287,7 +287,7 @@ def task_plot3(
             marker, color = "p", "C5"
         elif algoname.startswith("MAPPO"):
             marker, color = "h", "C7"
-        elif algoname.startswith("SGLA2C"):
+        elif algoname.startswith("SGLA2C") or algoname.startswith("REGA2C"):
             marker, color = "p", "C3"
         elif algoname.startswith("DSTA2C"):
             marker, color = "*", "C4"
@@ -297,7 +297,13 @@ def task_plot3(
             else:
                 marker, color = "|", "C2"
         else:
-            marker, color = "^", "C0"
+            if 'CONSENSUS' in algoname:
+                marker, color = "^", "C0"
+            elif 'REGRESSION' in algoname or 'DIFA2C' in algoname:
+                marker, color = "v", "C5"
+            else:
+                marker, color = "^", "C0"
+
         X = timesteps[algo_task_name]
         Y = returns[algo_task_name]
         err = std_errors[algo_task_name]
@@ -610,19 +616,49 @@ def main3(
         algos_paths += [*BASE_PATH.glob(algoname)]
 
     if baseline_critic:
-        algos_paths = [algo_path / 'nonlinear_critic' for algo_path in algos_paths]
+        # /home/gvarela/ilu/epymarl/results/sacred/ntwa2c/nonlinear_critic-absolute_coordinates-algov2
+        # algos_paths = [algo_path / 'nonlinear_critic-absolute_coordinates-algov2' for algo_path in algos_paths]
+        # algos_paths = [algo_path / 'nonlinear_critic-relative_coordinates-algov3' for algo_path in algos_paths]
+        # algos_paths = [algo_path / 'nonlinear_critic-absolute_coordinates-algov3' for algo_path in algos_paths]
+        # algos_paths = [algo_path / 'nonlinear_critic-relative_coordinates-algov2' for algo_path in algos_paths]
+        # algos_paths = [algo_path / 'nonlinear_critic-regression_problem' for algo_path in algos_paths]
+        # algos_paths = [algo_path / 'nonlinear_critic-regression_problem-validation' for algo_path in algos_paths]
+        # algos_paths = [algo_path / 'nonlinear_critic-diffusion_validation' for algo_path in algos_paths]
+        # algos_paths = [algo_path / 'nonlinear_critic-regression_problem-target_updates' for algo_path in algos_paths]
+        # algos_paths = [algo_path / 'nonlinear_critic-regression_problem-hidden_64' for algo_path in algos_paths]
+        # algos_paths = [algo_path / 'nonlinear_critic-regression_problem' for algo_path in algos_paths]
+        # algos_paths = [algo_path / 'nonlinear_critic-full_observability_10steps' for algo_path in algos_paths]
+        # algos_paths = [algo_path / 'nonlinear_critic-regression_problem-10_steps' for algo_path in algos_paths]
+        algos_paths = [algo_path / 'linear_critic-consensus_vs_regression' for algo_path in algos_paths]
+        # algos_paths = [algo_path / 'shallow_critic-top_4' for algo_path in algos_paths]
+        # algos_paths = [algo_path / 'shallow_critic-100_steps' for algo_path in algos_paths]
+        
     # algos_paths = []
     _coop = '-coop' if coop else ''
     title = f'Foraging {size}x{size}-{players}p-{food}f{_coop}'
     if baseline_critic:
-        title += f' (Non-Linear Critic)'
+        # title += f' (AlgoV2-AbsoluteCoordinates)'
+        # title += f' (AlgoV3-RelativeCoordinates)'
+        # title += f' (AlgoV3-AbsoluteCoordinates)'
+        # title += f' (AlgoV2-RelativeCoordinates)'
+        # title += f' (RegressionProblem-Validation)'
+        # title += f' (RegressionProblem)'
+        # title += f' (DiffusionProblem)'
+        # title += f' (RegressionProblem-TargetUpdates)'
+        # title += f' (RegressionProblem-Hidden64)'
+        # title += f' (RegressionProblem-5STEPS)'
+        # title += f' (RegressionProblem-FO_10STEPS)'
+        title += f' (LinearCritic)'
+        # title += f' (ShallowCritic-TOP_4)'
+        # title += f' (ShallowCritic-100_steps)'
 
     def task_pattern_builder(x):
         _paths = []
         partial = '2s-'if po else '*'
 
         _pattern = f'Foraging-{partial}{size}x{size}-{players}p-{food}f{_coop}'
-        _paths += [*x.glob(f"lbforaging:{_pattern}-v2")]
+        # _paths += [*x.glob(f"lbforaging:{_pattern}-v2")]
+        _paths += [*x.glob(f"lbforaging:{_pattern}-v1")]
         return _paths
 
     steps = defaultdict(list)
@@ -891,9 +927,9 @@ if __name__ == "__main__":
     #     dual_x_axis=False)
 
     # main3(algonames=["inda2c", "ntwa2c"], size=10, players=2, food=2, coop=True, po=False)
-    # main3(algonames=["ntwa2c"], size=10, players=2, food=2, coop=True, po=False, baseline_critic=True)
-    main3(algonames=["inda2c","ntwa2c"], size=10, players=3, food=3, coop=False, po=True, baseline_critic=True)
-    main3(algonames=["inda2c","ntwa2c"], size=15, players=3, food=5, coop=False, po=False, baseline_critic=True)
+    # main3(algonames=["inda2c", "rega2c"], size=10, players=2, food=2, coop=True, po=False, baseline_critic=True)
+    # main3(algonames=["inda2c", "rega2c"], size=10, players=3, food=3, coop=False, po=True, baseline_critic=True)
+    main3(algonames=["inda2c", "rega2c_lin", "ntwa2c_lin"], size=15, players=3, food=5, coop=False, po=False, baseline_critic=True)
     # main3(algonames=["inda2c","ntwa2c"], size=15, players=3, food=3, coop=False, po=True)
     # main3(algonames=["inda2c", "ntwa2c"], size=10, players=2, food=3, coop=True, po=False)
     # main3(algonames=["inda2c"], size=15, players=3, food=3, coop=False, po=True)
