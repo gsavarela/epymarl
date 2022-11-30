@@ -289,7 +289,14 @@ class ActorCriticNetworkedLearner:
                 running_log["v_mean_batch_target_0"].append(float(((v * mask).sum() / mask.sum()).item()))
 
                 # consolidates episode segregating by player
+                if not self._full_observability():
+                    vs = []
+                    for _i in range(self.n_agents):
+                        vs.append(self.critic(batch, _i, j=0)[:, :t_max])
+                    v = th.cat(vs, dim=2)
+                    v[mask==0] = 0
                 v_mean_batch_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
+
                 for _i in range(self.n_agents):
                     key = f"v_mean_batch_player_{0}_{_i}"
                     running_log[key].append(float(v_mean_batch_player[_i]))
@@ -329,10 +336,14 @@ class ActorCriticNetworkedLearner:
                     for _key, _value in _critic.named_parameters():
                         _value.data = th.nn.parameter.Parameter(consensus_parameters[_key][0][_i, :])
 
-                if t_env - self.log_stats_t >= self.args.learner_log_interval:  
+                if t_env - self.log_stats_t >= self.args.learner_log_interval:
                     vs = []
+
                     for _i in range(self.n_agents):
-                        vs.append(self.critic(batch, _i)[:, :t_max])
+                        if self._full_observability():
+                            vs.append(self.critic(batch, _i)[:, :t_max])
+                        else:
+                            vs.append(self.critic(batch, _i, j=0)[:, :t_max])
                     v = th.cat(vs, dim=2)
 
                     # Computes the loss for the current iteration.
@@ -457,3 +468,9 @@ class ActorCriticNetworkedLearner:
 
     def _lftr(self, x):
         return 'fc1.' in x[0] or self.args.critic_type == 'ac_critic_baseline'
+
+    def _full_observability(self):
+        return (
+            (hasattr(self.args, 'networked') and self.args.networked) and
+            (hasattr(self.args, 'networked_full_observability') and self.args.networked_full_observability)
+        )
