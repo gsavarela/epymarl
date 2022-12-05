@@ -39,7 +39,7 @@ networked_edges:
     4: 3
     5: 7
 networked_rounds: 100
-networked_full_observability: True
+networked_joint_observations: True
 
 name: "rega2c_shl"
 

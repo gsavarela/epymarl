@@ -472,5 +472,5 @@ class ActorCriticNetworkedLearner:
     def _full_observability(self):
         return (
             (hasattr(self.args, 'networked') and self.args.networked) and
-            (hasattr(self.args, 'networked_full_observability') and self.args.networked_full_observability)
+            (hasattr(self.args, 'networked_joint_observations') and self.args.networked_joint_observations)
         )

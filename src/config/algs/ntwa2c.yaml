@@ -39,7 +39,7 @@ networked_edges:
     4: 6
     5: 7
 networked_rounds: 1
-networked_full_observability: False
+networked_joint_observations: False
 
 
 name: "ntwa2c"
