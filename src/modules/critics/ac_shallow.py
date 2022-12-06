@@ -55,7 +55,7 @@ class ACCriticShallow(nn.Module):
         bs = batch.batch_size
         max_t = batch.max_seq_length if t is None else 1
         ts = slice(None) if t is None else slice(t, t+1)
-        if self._full_observability():
+        if self._joint_observations():
             # batch, time_max, observation_size
             inputs = batch["state"][:, ts].clone()
         else:
@@ -95,12 +95,12 @@ class ACCriticShallow(nn.Module):
             c.cuda()
 
     def _get_input_shape(self, scheme):
-        if self._full_observability():
+        if self._joint_observations():
             input_shape = scheme["state"]["vshape"]
         else:
             input_shape = scheme["obs"]["vshape"]
         return input_shape
 
-    def _full_observability(self):
+    def _joint_observations(self):
         return hasattr(self.args, 'networked') and self.args.networked \
             and self.args.networked_joint_observations

@@ -289,7 +289,7 @@ class ActorCriticNetworkedLearner:
                 running_log["v_mean_batch_target_0"].append(float(((v * mask).sum() / mask.sum()).item()))
 
                 # consolidates episode segregating by player
-                if not self._full_observability():
+                if not self._joint_observations():
                     vs = []
                     for _i in range(self.n_agents):
                         vs.append(self.critic(batch, _i, j=0)[:, :t_max])
@@ -340,7 +340,7 @@ class ActorCriticNetworkedLearner:
                     vs = []
 
                     for _i in range(self.n_agents):
-                        if self._full_observability():
+                        if self._joint_observations():
                             vs.append(self.critic(batch, _i)[:, :t_max])
                         else:
                             vs.append(self.critic(batch, _i, j=0)[:, :t_max])
@@ -469,7 +469,7 @@ class ActorCriticNetworkedLearner:
     def _lftr(self, x):
         return 'fc1.' in x[0] or self.args.critic_type == 'ac_critic_baseline'
 
-    def _full_observability(self):
+    def _joint_observations(self):
         return (
             (hasattr(self.args, 'networked') and self.args.networked) and
             (hasattr(self.args, 'networked_joint_observations') and self.args.networked_joint_observations)

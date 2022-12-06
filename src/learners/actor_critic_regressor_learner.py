@@ -201,7 +201,7 @@ class ActorCriticRegressorLearner:
 
             # regression_target
             regression_consensus_values = (v.sum(dim=-1, keepdims=True) / th.clamp(mask.sum(dim=-1, keepdims=True), min=1)).detach()
-            if not self._full_observability():
+            if not self._joint_observations():
                 regression_consensus_values = regression_consensus_values.repeat(1, 1, self.n_agents)
         running_log["v_mean_batch_target_0"].append(float(v_mean_batch_player.mean()))
 
@@ -220,7 +220,7 @@ class ActorCriticRegressorLearner:
             ):
 
                 # Builds the regression target.
-                if self._full_observability():
+                if self._joint_observations():
                     _v = self.critic(batch, _i)
 
                     _td_error = _v[:, :t_max] - regression_consensus_values[:, :t_max]
@@ -258,7 +258,7 @@ class ActorCriticRegressorLearner:
                     v = th.cat(vs, dim=2)
 
                     v[mask==0] = 0
-                    if self._full_observability():
+                    if self._joint_observations():
                         v_mean_batch_player = ((v * _mask).sum(dim=(0, 1)) / _mask.sum(dim=(0, 1))).numpy().round(6)
                     else:
                         v_mean_batch_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
@@ -268,7 +268,7 @@ class ActorCriticRegressorLearner:
                         running_log[key].append(float(v_mean_batch_player[_i]))
 
                 v_batch = regression_consensus_values[:, :t_max]
-                if self._full_observability():
+                if self._joint_observations():
                     v_batch[_mask==0] = 0
                     v_mean_batch_target = (v_batch.sum() / th.clamp(_mask.sum(), min=1)).numpy().round(6)
                 else:
@@ -437,6 +437,6 @@ class ActorCriticRegressorLearner:
         for _opt, _states in zip(self.critic_optimisers, critic_optimizers):
             _opt.load_state_dict(_states)
 
-    def _full_observability(self):
+    def _joint_observations(self):
         return hasattr(self.args, 'networked') and self.args.networked \
             and self.args.networked_joint_observations
