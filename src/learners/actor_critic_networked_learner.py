@@ -49,11 +49,23 @@ class ActorCriticNetworkedLearner:
             else:
                 self.rew_ms = RunningMeanStd(shape=(self.n_agents,), device=device)
 
+        # consensus evaluations
         def fn(x):
             return th.from_numpy(x.astype(np.float32))
 
-        self.cwms = [*map(fn, consensus_matrices(self.n_agents, self.args.networked_edges[self.n_agents]))]
-        self.consensus_rounds = self.args.networked_rounds if hasattr(self.args, 'networked_rounds') else 1
+        n_edges = self.args.networked_edges[self.n_agents]
+        self.cwms = [*map(fn, consensus_matrices(self.n_agents, n_edges))]
+
+        if not self.args.networked_time_varying:
+            # test if consensus graph is fully connected
+            if  n_edges < (self.n_agents - 1):
+                raise ValueError("For fully_connected graphs n_edges >= (n_agents - 1)")
+
+            idx = np.random.randint(0, high=len(self.cwms))
+            self.cwms = [self.cwms[idx]]
+
+        self.consensus_rounds = self.args.networked_rounds
+        self.consensus_interval = self.args.networked_interval
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
         # Get the relevant quantities
@@ -140,9 +152,11 @@ class ActorCriticNetworkedLearner:
                 grad_norm_acum += _grad_norm.detach()
                 joint_pi.append(_pi.detach())
 
-        # After all updates perform critic update.
-        self.consensus_step(batch, critic_mask, critic_train_stats, t_env)
         self.critic_training_steps += 1
+
+        # After all updates perform consensus round.
+        if self.critic_training_steps % self.consensus_interval == 0:
+            self.consensus_step(batch, critic_mask, critic_train_stats, t_env)
         if (
             self.args.target_update_interval_or_tau > 1
             and (self.critic_training_steps - self.last_target_update_step)
@@ -314,7 +328,10 @@ class ActorCriticNetworkedLearner:
 
             consensus_metropolis_logs = {}
             for k in range(self.consensus_rounds):
-                idx = np.random.randint(0, high=len(self.cwms))
+                if self.args.networked_time_varying:
+                    idx = np.random.randint(0, high=len(self.cwms))
+                else:
+                    idx = 0
                 cwm = self.cwms[idx]
                 consensus_metropolis_logs[k] = cwm.clone()
 
@@ -470,7 +487,4 @@ class ActorCriticNetworkedLearner:
         return 'fc1.' in x[0] or self.args.critic_type == 'ac_critic_baseline'
 
     def _joint_observations(self):
-        return (
-            (hasattr(self.args, 'networked') and self.args.networked) and
-            (hasattr(self.args, 'networked_joint_observations') and self.args.networked_joint_observations)
-        )
+        return self.args.networked_joint_observations
