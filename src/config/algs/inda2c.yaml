@@ -10,7 +10,7 @@ batch_size: 10
 env_args:
   state_last_action: False # critic adds last action internally
   joint_rewards: False
-  shared_rewards: False
+  shared_rewards: True
 
 
 # update the target network every {} training steps
@@ -31,8 +31,8 @@ standardise_rewards: True
 standardise_returns: False
 use_rnn: True
 q_nstep: 5 # 1 corresponds to normal r + gammaV
-critic_type: "ac_critic_baseline"
+critic_type: "ac_critic_dec"
 
 name: "inda2c"
 
-t_max: 20050000
+t_max: 20_050_000
