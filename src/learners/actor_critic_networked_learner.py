@@ -53,7 +53,8 @@ class ActorCriticNetworkedLearner:
         def fn(x):
             return th.from_numpy(x.astype(np.float32))
 
-        n_edges = self.args.networked_edges[self.n_agents]
+        # n_edges = self.args.networked_edges[self.n_agents]
+        n_edges = self.args.networked_edges
         self.cwms = [*map(fn, consensus_matrices(self.n_agents, n_edges))]
 
         if not self.args.networked_time_varying:

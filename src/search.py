@@ -9,8 +9,7 @@ import random
 
 import click
 
-# _CPU_COUNT = multiprocessing.cpu_count() - 1
-_CPU_COUNT = 6
+_CPU_COUNT = multiprocessing.cpu_count() - 1
 
 
 def _flatten_lists(object):
