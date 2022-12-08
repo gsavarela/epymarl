@@ -1,7 +1,6 @@
 #!/bin/bash
-
 envs=(15x15-3p-5f-v1)
-sleep 25200s
+
 for e in "${envs[@]}"
 do
     for i in {1..5}
