@@ -8,7 +8,6 @@ from .ac import ACCritic
 from .ac_ns import ACCriticNS
 from .ac_dec import ACCriticDecentralized
 from .ac_baseline import ACCriticBaseline
-from .ac_shallow import ACCriticShallow
 from .centralV_baseline import CentralVCriticBaseline
 
 REGISTRY = {}
@@ -23,7 +22,6 @@ REGISTRY["ac_critic"] = ACCritic
 REGISTRY["ac_critic_ns"] = ACCriticNS
 REGISTRY["ac_critic_dec"] = ACCriticDecentralized
 REGISTRY["ac_critic_baseline"] = ACCriticBaseline
-REGISTRY["ac_critic_shallow"] = ACCriticShallow
 REGISTRY["cv_critic_baseline"] = CentralVCriticBaseline
 
 

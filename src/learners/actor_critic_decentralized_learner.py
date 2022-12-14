@@ -17,16 +17,17 @@ class ActorCriticDecentralizedLearner:
         self.logger = logger
 
         self.mac = mac
-        self.agent_params = [dict(_a.named_parameters()) for _a in mac.agent.agents]
+        self.agent_params = [a.parameters() for a in mac.agent.agents]
         self.agent_optimisers = [
-            Adam(params=list(_params.values()), lr=args.lr) for _params in self.agent_params
+            Adam(params=_params, lr=args.lr) for _params in self.agent_params
         ]
+
         self.critic = critic_registry[args.critic_type](scheme, args)
         self.target_critic = copy.deepcopy(self.critic)
 
-        self.critic_params = [dict(_c.named_parameters()) for _c in self.critic.critics]
+        self.critic_params = [_c.parameters() for _c in self.critic.critics]
         self.critic_optimisers = [
-            Adam(params=list(_params.values()), lr=args.lr) for _params in self.critic_params
+            Adam(params=_params, lr=args.lr) for _params in self.critic_params
         ]
 
         self.last_target_update_step = 0
@@ -118,9 +119,7 @@ class ActorCriticDecentralizedLearner:
             # Optimise agents
             _opt.zero_grad()
             _pg_loss.backward()
-            _grad_norm = th.nn.utils.clip_grad_norm_(
-                list(_params.values()), self.args.grad_norm_clip
-            )
+            _grad_norm = th.nn.utils.clip_grad_norm_(_params, self.args.grad_norm_clip)
             _opt.step()
             with th.no_grad():
                 pg_loss_acum += _pg_loss.detach()
@@ -209,21 +208,20 @@ class ActorCriticDecentralizedLearner:
             _v = critic(batch, _i)
             # FIXME: Remove this t_max
             _td_error = _target.detach() - _v[:, :t_max]
-            _td_error[_mask ==0]=0
-            _loss = (_td_error**2).sum() / _mask.sum()
+            _masked_td_error = _td_error * _mask
+            _loss = (_masked_td_error**2).sum() / mask.sum()
 
             _opt.zero_grad()
             _loss.backward()
-
             _grad_norm = th.nn.utils.clip_grad_norm_(
-                list(_params.values()), self.args.grad_norm_clip
+                _params, self.args.grad_norm_clip
             )
             _opt.step()
 
             with th.no_grad():
                 total_loss += _loss
                 total_grad_norm += _grad_norm
-                masked_td_errors.append(_td_error)
+                masked_td_errors.append(_masked_td_error)
                 vs.append(_v[:, :t_max])
 
         with th.no_grad():
