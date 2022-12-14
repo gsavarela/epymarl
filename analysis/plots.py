@@ -20,6 +20,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 # legends for multiple x-axis
 import matplotlib.lines as mlines
+import matplotlib
+# matplotlib.use('Tkinter')
+matplotlib.use('QtCairo')
+# matplotlib.use('Cairo')
 
 Array = np.ndarray
 FIGURE_X = 6.0
@@ -629,9 +633,10 @@ def main3(
         # algos_paths = [algo_path / 'nonlinear_critic-regression_problem' for algo_path in algos_paths]
         # algos_paths = [algo_path / 'nonlinear_critic-full_observability_10steps' for algo_path in algos_paths]
         # algos_paths = [algo_path / 'nonlinear_critic-regression_problem-10_steps' for algo_path in algos_paths]
-        algos_paths = [algo_path / 'linear_critic-consensus_vs_regression' for algo_path in algos_paths]
+        # algos_paths = [algo_path / 'linear_critic-consensus_vs_regression' for algo_path in algos_paths]
         # algos_paths = [algo_path / 'shallow_critic-top_4' for algo_path in algos_paths]
         # algos_paths = [algo_path / 'shallow_critic-100_steps' for algo_path in algos_paths]
+        algos_paths = [algo_path / 'nonlinear_critic-debug' for algo_path in algos_paths]
         
     # algos_paths = []
     _coop = '-coop' if coop else ''
@@ -648,15 +653,17 @@ def main3(
         # title += f' (RegressionProblem-Hidden64)'
         # title += f' (RegressionProblem-5STEPS)'
         # title += f' (RegressionProblem-FO_10STEPS)'
-        title += f' (LinearCritic)'
+        # title += f' (LinearCritic)'
         # title += f' (ShallowCritic-TOP_4)'
         # title += f' (ShallowCritic-100_steps)'
+        title += f' (debug)'
 
     def task_pattern_builder(x):
         _paths = []
         partial = '2s-'if po else '*'
 
         _pattern = f'Foraging-{partial}{size}x{size}-{players}p-{food}f{_coop}'
+        # _pattern = f'Foraging-{size}x{size}-{players}p-{food}f{_coop}'
         # _paths += [*x.glob(f"lbforaging:{_pattern}-v2")]
         _paths += [*x.glob(f"lbforaging:{_pattern}-v1")]
         return _paths
@@ -685,9 +692,8 @@ def main3(
                     _values = data["test_return_mean"]["values"]
                     print(f"algoname: {algoname} source: {task_name} n_points:{len(_values)}")
 
-                    # Get at most the 41 first evaluations
-                    steps[key].append(_steps[:41])
-                    results[key].append(_values[:41])
+                    steps[key].append(_steps)
+                    results[key].append(_values)
                     sample_size += 1
 
             if sample_size > 0:
@@ -928,8 +934,9 @@ if __name__ == "__main__":
 
     # main3(algonames=["inda2c", "ntwa2c"], size=10, players=2, food=2, coop=True, po=False)
     # main3(algonames=["inda2c", "rega2c"], size=10, players=2, food=2, coop=True, po=False, baseline_critic=True)
-    # main3(algonames=["inda2c", "rega2c"], size=10, players=3, food=3, coop=False, po=True, baseline_critic=True)
-    main3(algonames=["inda2c", "rega2c_lin", "ntwa2c_lin"], size=15, players=3, food=5, coop=False, po=False, baseline_critic=True)
+    # main3(algonames=["inda2c", "ntwa2c"], size=10, players=3, food=3, coop=False, po=True, baseline_critic=True)
+    # main3(algonames=["inda2c", "ntwa2c", "ia2c_ns"], size=10, players=3, food=3, coop=False, po=True, baseline_critic=True)
+    main3(algonames=["inda2c", "ntwa2c"], size=15, players=3, food=5, coop=False, po=False, baseline_critic=True)
     # main3(algonames=["inda2c","ntwa2c"], size=15, players=3, food=3, coop=False, po=True)
     # main3(algonames=["inda2c", "ntwa2c"], size=10, players=2, food=3, coop=True, po=False)
     # main3(algonames=["inda2c"], size=15, players=3, food=3, coop=False, po=True)

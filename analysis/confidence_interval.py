@@ -24,9 +24,19 @@ from pathlib import Path
 from utils import standard_error
 import numpy as np
 
-BASE_PATH = Path("results/sacred/ntwa2c/baseline_critic")
+# BASE_PATH = Path("results/sacred/ntwa2c/baseline_critic")
 # BASE_PATH = Path("results/sacred/inda2c/baseline_critic")
-ktop  = 5
+# BASE_PATH = Path("results/sacred/inda2c/nonlinear_critic-regression_problem")
+# BASE_PATH = Path("results/sacred/ntwa2c/nonlinear_critic-regression_problem")
+# BASE_PATH = Path("results/sacred/inda2c/nonlinear_critic-regression_problem-validation")
+# BASE_PATH = Path("results/sacred/difa2c/nonlinear_critic-diffusion_validation")
+# BASE_PATH = Path("results/sacred/rega2c/nonlinear_critic-regression_problem-10_steps")
+# BASE_PATH = Path("results/sacred/inda2c/nonlinear_critic-debug")
+# BASE_PATH = Path("results/sacred/ntwa2c/nonlinear_critic-debug")
+# BASE_PATH = Path("results/sacred/ia2c_ns/25_000_000")
+BASE_PATH = Path("results/sacred/ia2c_ns/30_000_000")
+
+ktop  = 3
 for base_path in BASE_PATH.glob("lbforaging*"):
     test_returns = []
     test_ids = []

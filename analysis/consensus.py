@@ -95,7 +95,7 @@ def plots(weights: Dict, biases: Dict, values: Dict, info: Dict) -> None:
             for y in range(pl):
                 key = f'{k}_{x}_{y}'
                 # comes from
-                if 'weight' in k:
+                if 'weight' in k or 'bias' in k:
                     key += f'_{wid}'
                 Y[x, y] = v[key]['values']
         timestep = v[key]['steps']     # its the same for all samples.
