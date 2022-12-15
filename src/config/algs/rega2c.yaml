@@ -38,8 +38,8 @@ networked_edges:
     3: 2
     4: 3
     5: 7
-networked_rounds: 5
-networked_full_observability: True
+networked_rounds: 100
+networked_joint_observations: False
 
 name: "rega2c"
 

@@ -40,7 +40,13 @@ class ACCriticBaseline(ACCriticDecentralized):
         bs = batch.batch_size
         max_t = batch.max_seq_length if t is None else 1
         ts = slice(None) if t is None else slice(t, t+1)
-        inputs = batch["obs"][:, ts, i].clone()     # batch, time_max, num players, observation_size
+        if self._joint_observations():
+            # batch, time_max, observation_size
+            inputs = batch["state"][:, ts].clone()
+        else:
+             # batch, time_max, num players, observation_size
+            inputs = batch["obs"][:, ts, i].clone()
+
         if self.standardize_observations:
             # Current agent on the first position
             if i > 0:
@@ -51,8 +57,18 @@ class ACCriticBaseline(ACCriticDecentralized):
 
                     inputs[:, :, wo: wo + 3] = inputs[:, :, ro: ro + 3].clone()
                     inputs[:, :, ro: ro + 3] = aux
-                    
                     wo += 3
                     ro += 3
 
         return inputs, bs, max_t
+
+    def _get_input_shape(self, scheme):
+        if self._joint_observations():
+            input_shape = scheme["state"]["vshape"]
+        else:
+            input_shape = scheme["obs"]["vshape"]
+        return input_shape
+
+    def _joint_observations(self):
+        return hasattr(self.args, 'networked') and self.args.networked \
+            and self.args.networked_joint_observations

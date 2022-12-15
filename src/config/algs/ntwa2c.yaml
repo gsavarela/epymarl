@@ -9,7 +9,7 @@ batch_size: 10
 
 env_args:
   state_last_action: False # critic adds last action internally
-  joint_rewards: False
+  joint_rewards: True
   shared_rewards: False
 
 
@@ -25,21 +25,20 @@ obs_individual_obs: False
 mac: "dac"
 agent: "rnn_ns"
 agent_output_type: "pi_logits"
-learner: "actor_critic_regressor_learner"
+learner: "actor_critic_networked_learner"
 entropy_coef: 0.01
 standardise_rewards: True
 standardise_returns: False
 use_rnn: True
 q_nstep: 5 # 1 corresponds to normal r + gammaV
-critic_type: "ac_critic_dec"
-networked: True
-networked_edges:
-    2: 1
-    3: 2
-    4: 3
-    5: 7
-networked_rounds: 5
+critic_type: "ac_critic_networked" # All weights begin at the same place.
+networked_edges: 1  # maps n_agents: n_edges
+networked_rounds: 1  # At each consensus round try this many consensus matrices.
+networked_time_varying: True # if False the consensus matrix will be static.
+networked_joint_observations: False # Uses joint observations for training and consensus.
+networked_interval: 30_050_000 # Try consensus at every networked_interval number of training steps.
+
 
 name: "ntwa2c"
 
-t_max: 20_050_000
+t_max: 30_050_000

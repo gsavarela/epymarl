@@ -1,18 +1,17 @@
-# --- IA2C NS specific parameters ---
-
+# --- REGA2C specific parameters ---
 action_selector: "soft_policies"
 mask_before_softmax: True
 
 runner: "parallel"
-
 buffer_size: 10
 batch_size_run: 10
 batch_size: 10
 
 env_args:
   state_last_action: False # critic adds last action internally
-  joint_rewards: True
+  joint_rewards: False
   shared_rewards: False
+
 
 # update the target network every {} training steps
 target_update_interval_or_tau: 0.01
@@ -23,16 +22,25 @@ obs_agent_id: False
 obs_last_action: False
 obs_individual_obs: False
 
-mac: "non_shared_mac"
+mac: "dac"
 agent: "rnn_ns"
 agent_output_type: "pi_logits"
-learner: "actor_critic_learner"
+learner: "actor_critic_regressor_learner"
 entropy_coef: 0.01
-standardise_returns: False
 standardise_rewards: True
+standardise_returns: False
 use_rnn: True
 q_nstep: 5 # 1 corresponds to normal r + gammaV
-critic_type: "ac_critic_ns"
-name: "ia2c_ns"
+critic_type: "ac_critic_shallow"
+networked: True
+networked_edges:
+    2: 1
+    3: 2
+    4: 3
+    5: 7
+networked_rounds: 100
+networked_joint_observations: True
 
-t_max: 20_050_000
+name: "rega2c_shl"
+
+t_max: 20_050_000 

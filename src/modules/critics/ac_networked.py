@@ -1,19 +1,28 @@
+'''Like critic decentralized but all neural networks start on the same place
+spot.'''
 import numpy as np
 import torch as th
-from modules.critics.ac_ns import ACCriticNS
+import torch.nn as nn
+from modules.critics.mlp import MLP
 
-
-class ACCriticDecentralized(ACCriticNS):
+class ACCriticNetworked(nn.Module):
     def __init__(self, scheme, args):
 
-        # For consensus to work we standardize the triplets
-        # agents observations are different
-        # self.standardize_observations = \
-        #         ('lbforaging' in self.args.env_args['key'])
-        self.standardize_observations = False
+        super(ACCriticNetworked, self).__init__()
 
-        super().__init__(scheme, args)
+        self.args = args
+        self.n_actions = args.n_actions
+        self.n_agents = args.n_agents
 
+        input_shape = self._get_input_shape(scheme)
+        self.output_type = "v"
+
+        # Set up network layers
+        mlp = MLP(input_shape, args.hidden_dim, 1)
+        self.critics = []
+        for _ in range(self.n_agents):
+            self.critics.append(MLP(input_shape, args.hidden_dim, 1))
+            self.critics[-1].load_state_dict(mlp.state_dict())
 
     def forward(self, batch, i, t=None, j=None):
         j = i if j is None else j
@@ -49,16 +58,6 @@ class ACCriticDecentralized(ACCriticNS):
         else:
             inputs = batch["obs"][:, ts, i].clone()
 
-        # TODO: Complete fruits
-        if self.standardize_observations and i > 0:
-            # Current agent on the first position
-            # aligns inputs and complete observations
-            # OBS: on partially observable settings
-            # this won't work as the fruits also
-            # change locations.
-            inputs = self._align_inputs(inputs, i)
-            # mask = th.logical_and(inputs <= 0, obs >=0)
-            # inputs[mask] = obs[mask]
         return inputs, bs, max_t
 
     def _get_input_shape(self, scheme):
