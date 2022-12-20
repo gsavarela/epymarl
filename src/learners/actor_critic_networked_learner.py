@@ -180,7 +180,7 @@ class ActorCriticNetworkedLearner:
                 "target_mean",
             ]:
                 self.logger.log_stat(
-                    key, sum(critic_train_stats[key]) / ts_logged, t_env
+                    key, float(sum(critic_train_stats[key]) / ts_logged), t_env
                 )
 
             def keep(x):  # keep keys
@@ -189,21 +189,21 @@ class ActorCriticNetworkedLearner:
             # debugging critic
             for key in filter(keep, critic_train_stats.keys()):
                 self.logger.log_stat(
-                    key, sum(critic_train_stats[key]), t_env
+                    key, float(sum(critic_train_stats[key])), t_env
                 )
 
             # debugging consensus
             self.logger.log_stat(
                 "advantage_mean",
-                (advantages * mask).sum().item() / mask.sum().item(),
+                float((advantages * mask).sum().item() / mask.sum().item()),
                 t_env,
             )
-            self.logger.log_stat("pg_loss", pg_loss_acum, t_env)
-            self.logger.log_stat("agent_grad_norm", grad_norm_acum, t_env)
+            self.logger.log_stat("pg_loss", float(pg_loss_acum), t_env)
+            self.logger.log_stat("agent_grad_norm", float(grad_norm_acum), t_env)
             self.logger.log_stat(
                 "pi_max",
-                (th.stack(joint_pi, dim=2).max(dim=-1)[0] * mask).sum().item()
-                / mask.sum().item(),
+                float((th.stack(joint_pi, dim=2).max(dim=-1)[0] * mask).sum().item()
+                / mask.sum().item()),
                 t_env,
             )
             self.log_stats_t = t_env
@@ -263,13 +263,13 @@ class ActorCriticNetworkedLearner:
         with th.no_grad():
             masked_td_error = th.cat(masked_td_errors, dim=2)
             v = th.cat(vs, dim=2)
-        running_log["critic_loss"].append(total_loss.item())
-        running_log["critic_grad_norm"].append(total_grad_norm.item())
+        running_log["critic_loss"].append(float(total_loss.item()))
+        running_log["critic_grad_norm"].append(float(total_grad_norm.item()))
         mask_elems = mask.sum().item()
         running_log["td_error_abs"].append(
-            (masked_td_error.abs().sum().item() / mask_elems)
+            float(masked_td_error.abs().sum().item() / mask_elems)
         )
-        running_log["q_taken_mean"].append((v * mask).sum().item() / mask_elems)
+        running_log["q_taken_mean"].append(float((v * mask).sum().item() / mask_elems))
 
         # consolidates episode segregating by player
         v_taken_mean_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
@@ -278,7 +278,7 @@ class ActorCriticNetworkedLearner:
             running_log[key].append(float(v_taken_mean_player[_i]))
 
         running_log["target_mean"].append(
-            (target_returns * mask).sum().item() / mask_elems
+            float((target_returns * mask).sum().item() / mask_elems)
         )
 
         return masked_td_error, running_log
