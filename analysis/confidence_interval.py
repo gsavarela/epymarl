@@ -34,28 +34,39 @@ import numpy as np
 # BASE_PATH = Path("results/sacred/inda2c/nonlinear_critic-debug")
 # BASE_PATH = Path("results/sacred/ntwa2c/nonlinear_critic-debug")
 # BASE_PATH = Path("results/sacred/ia2c_ns/25_000_000")
+# BASE_PATH = Path("results/sacred/ia2c_ns/30_000_000")
+# BASE_PATH = Path("results/sacred/ntwa2c/hp_grp_07")
+# BASE_PATH = Path("results/sacred/ntwa2c/hp_grp_01")
+# BASE_PATH = Path("results/sacred/ntwa2c/hp_grp_06")
+# BASE_PATH = Path("results/sacred/ntwa2c/hp_grp_04")
 BASE_PATH = Path("results/sacred/ia2c_ns/30_000_000")
+# BASE_PATH = Path("results/sacred/ia2c_ns/")
 
-ktop  = 3
-for base_path in BASE_PATH.glob("lbforaging*"):
+ktop = 3
+# ktop  = 2
+for base_path in BASE_PATH.glob("lbforaging:Foraging-15x15-3p-5f-v1"):
     test_returns = []
     test_ids = []
     sample_size = 0
     for path in sorted(
         base_path.rglob("metrics.json"), key=lambda x: int(x.parent.stem)
     ):
+        print(path.as_posix())
         test_ids.append(int(path.parent.stem))
         with path.open("r") as f:
             data = json.load(f)
+        import ipdb; ipdb.set_trace()
 
         if "test_return_mean" in data:
             values = data["test_return_mean"]["values"]
             print(f"source: {path.parent} n_points:{len(values)}")
             test_returns.append(data["test_return_mean"]["values"])
             sample_size += 1
+        
     X = np.vstack(test_returns)
 
     # Computes maximum returns
+    import ipdb; ipdb.set_trace()
     if ktop == X.shape[0]:
         test_return_mean = np.mean(X, axis=0)
     else:
