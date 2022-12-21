@@ -293,8 +293,8 @@ class ActorCriticDecentralizedLearner:
         self.critic.cuda()
         self.target_critic.cuda()
 
-    def save_models(self, path):
-        self.mac.save_models(path)
+    def save_models(self, path, save_mongo=False):
+        self.mac.save_models(path, self.logger, save_mongo)
         th.save(self.critic.state_dict(), "{}/critic.th".format(path))
         th.save(
             [_opt.state_dict() for _opt in self.agent_optimisers],
@@ -303,6 +303,9 @@ class ActorCriticDecentralizedLearner:
         th.save(
             [_opt.state_dict() for _opt in self.critic_optimisers],
             "{}/critic_opt.th".format(path))
+
+        if save_mongo:
+            self.logger.log_model(filepath="{}/opt.th".format(path), name="opt.th")
 
     def load_models(self, path):
         self.mac.load_models(path)

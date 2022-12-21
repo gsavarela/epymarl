@@ -6,6 +6,7 @@ import torch as th
 # This multi-agent controller shares parameters between agents
 class BasicMAC:
     def __init__(self, scheme, groups, args):
+
         self.n_agents = args.n_agents
         self.args = args
         input_shape = self._get_input_shape(scheme)
@@ -48,8 +49,11 @@ class BasicMAC:
     def cuda(self):
         self.agent.cuda()
 
-    def save_models(self, path):
+    def save_models(self, path, logger=None, save_mongo=False):
         th.save(self.agent.state_dict(), "{}/agent.th".format(path))
+
+        if logger is not None and save_mongo is True:
+            logger.log_model(filepath="{}/agent.th".format(path), name="agent.th")
 
     def load_models(self, path):
         self.agent.load_state_dict(th.load("{}/agent.th".format(path), map_location=lambda storage, loc: storage))

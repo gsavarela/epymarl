@@ -230,7 +230,10 @@ def run_sequential(args, logger):
 
             # learner should handle saving/loading -- delegate actor save/load to mac,
             # use appropriate filenames to do critics, optimizer states
-            learner.save_models(save_path)
+            if runner.t_env == args.t_max:
+                learner.save_models(save_path, save_mongo=True)
+            else:
+                learner.save_models(save_path)
 
         episode += args.batch_size_run
 

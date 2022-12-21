@@ -182,11 +182,14 @@ class ActorCriticSingleLearner:
         self.critic.cuda()
         self.target_critic.cuda()
     
-    def save_models(self, path):
-        self.mac.save_models(path)
+    def save_models(self, path, save_mongo=False):
+        self.mac.save_models(path, self.logger, save_mongo)
         th.save(self.critic.state_dict(), "{}/critic.th".format(path))
         th.save(self.agent_optimiser.state_dict(), "{}/agent_opt.th".format(path))
         th.save(self.critic_optimiser.state_dict(), "{}/critic_opt.th".format(path))
+
+        if save_mongo:
+            self.logger.log_model(filepath="{}/opt.th".format(path), name="opt.th")
 
     def load_models(self, path):
         self.mac.load_models(path)
