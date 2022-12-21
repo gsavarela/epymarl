@@ -637,7 +637,8 @@ def main3(
         # algos_paths = [algo_path / 'shallow_critic-top_4' for algo_path in algos_paths]
         # algos_paths = [algo_path / 'shallow_critic-100_steps' for algo_path in algos_paths]
         # algos_paths = [algo_path / 'nonlinear_critic-debug' for algo_path in algos_paths]
-        algos_paths = [algo_path / '30_000_000' for algo_path in algos_paths]
+        # algos_paths = [algo_path / '30_000_000' for algo_path in algos_paths]
+        algos_paths = [algo_path / 'random_seeds' for algo_path in algos_paths]
         
     # algos_paths = []
     _coop = '-coop' if coop else ''
@@ -657,7 +658,7 @@ def main3(
         # title += f' (LinearCritic)'
         # title += f' (ShallowCritic-TOP_4)'
         # title += f' (ShallowCritic-100_steps)'
-        title += f' (30_000_000)'
+        title += f' (random_seeds)'
 
     def task_pattern_builder(x):
         _paths = []
@@ -938,7 +939,7 @@ if __name__ == "__main__":
     # main3(algonames=["inda2c", "ntwa2c"], size=10, players=3, food=3, coop=False, po=True, baseline_critic=True)
     # main3(algonames=["inda2c", "ntwa2c", "ia2c_ns"], size=10, players=3, food=3, coop=False, po=True, baseline_critic=True)
     main3(algonames=["ia2c_ns", "ntwa2c"], size=15, players=3, food=5, coop=False, po=False, baseline_critic=True)
-    main3(algonames=["ia2c_ns", "ntwa2c"], size=15, players=4, food=5, coop=False, po=False, baseline_critic=True)
+    # main3(algonames=["ia2c_ns", "ntwa2c"], size=15, players=4, food=5, coop=False, po=False, baseline_critic=True)
     # main3(algonames=["inda2c","ntwa2c"], size=15, players=3, food=3, coop=False, po=True)
     # main3(algonames=["inda2c", "ntwa2c"], size=10, players=2, food=3, coop=True, po=False)
     # main3(algonames=["inda2c"], size=15, players=3, food=3, coop=False, po=True)
