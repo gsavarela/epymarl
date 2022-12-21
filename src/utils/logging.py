@@ -40,6 +40,11 @@ class Logger:
             
             self._run_obj.log_scalar(key, value, t)
 
+    def log_model(self, name, filepath, to_sacred=True):
+
+        if self.use_sacred and to_sacred:
+            self._run_obj.add_artifact(filepath, name)
+
     def print_recent_stats(self):
         log_str = "Recent Stats | t_env: {:>10} | Episode: {:>8}\n".format(*self.stats["episode"][-1])
         i = 0
