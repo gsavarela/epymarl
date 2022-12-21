@@ -92,12 +92,10 @@ if __name__ == '__main__':
     try:
         map_name = config_dict["env_args"]["map_name"]
     except:
-        map_name = config_dict["env_args"]["key"]    
-    
-    
+        map_name = config_dict["env_args"]["key"]
     # now add all the config to sacred
     ex.add_config(config_dict)
-    
+
     for param in params:
         if param.startswith("env_args.map_name"):
             map_name = param.split("=")[1]
@@ -105,11 +103,12 @@ if __name__ == '__main__':
             map_name = param.split("=")[1]
 
     # Save to disk by default for sacred
-    logger.info("Saving to FileStorageObserver in results/sacred.")
-    file_obs_path = os.path.join(results_path, f"sacred/{config_dict['name']}/{map_name}")
+    # logger.info("Saving to FileStorageObserver in results/sacred.")
+    # file_obs_path = os.path.join(results_path, f"sacred/{config_dict['name']}/{map_name}")
 
-    # ex.observers.append(MongoObserver(db_name="marlbench")) #url='172.31.5.187:27017'))
-    ex.observers.append(FileStorageObserver.create(file_obs_path))
+    logger.info("Saving to MongoObserver in marlbench.")
+    ex.observers.append(MongoObserver(url='localhost:27017', db_name='marlbench')) #url='172.31.5.187:27017'))
+    # ex.observers.append(FileStorageObserver.create(file_obs_path))
     # ex.observers.append(MongoObserver())
 
     ex.run_commandline(params)
