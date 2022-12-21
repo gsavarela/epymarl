@@ -13,16 +13,16 @@ grid-search:
     - True
 
   use_rnn:
-    - True
-    # - False
+    # - True
+    - False
 
   target_update_interval_or_tau:
   #   - 200
     - 0.01
 
   hidden_dim:
-    - 64
-    # - 128
+    # - 64
+    - 128
 
   entropy_coef: 
     - 0.01
@@ -34,7 +34,6 @@ grid-search:
   networked_edges: # maps n_agents: n_edges
     - 1
     - 2
-    - 3
 
   networked_rounds:
     - 1
@@ -47,8 +46,8 @@ grid-search:
     - 10
 
   q_nstep:
-    - 5
-    # - 10
+    # - 5
+    - 10
 
   # evaluation_epsilon:
   #   - 0.0
@@ -61,7 +60,7 @@ grid-search:
     - 100
 
   test_interval:
-    - 500_000
+    - 750_000
 
   log_interval:
     - 10_000
@@ -75,5 +74,6 @@ grid-search:
 grid-search-groups:
   env0:
     - "--env-config": "gymma"
-    - env_args.key: lbforaging:Foraging-15x15-3p-5f-v1
-    - env_args.time_limit: 51
+    # - env_args.key: lbforaging:Foraging-15x15-3p-5f-v1
+    - env_args.key: mpe:SimpleSpread-v0
+    - env_args.time_limit: 25
