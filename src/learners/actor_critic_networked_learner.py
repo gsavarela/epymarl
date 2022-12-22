@@ -323,7 +323,7 @@ class ActorCriticNetworkedLearner:
             for _key in keys:
 
                 consensus_parameters[_key] = [
-                    th.stack([*map(itemgetter(_key), params)], dim=0)
+                    th.stack([*map(itemgetter(_key), self.critic_params)], dim=0)
                 ]
                 consensus_parameters_logs[_key + f'_0'] = copy.deepcopy(consensus_parameters[_key])
 
