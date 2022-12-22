@@ -389,7 +389,7 @@ class ActorCriticNetworkedLearner:
                         if n == 1: # 1D tensors OK
                             if _wi.shape[0] > 1:
                                 # samples weights
-                                for _n in (0, 3, 7):
+                                for _n in (7,):
                                     _key = f'{_k}_{_i}_{_n}'
                                     running_log[_key].append(float(_wi[_n]))
                             else:
@@ -397,7 +397,7 @@ class ActorCriticNetworkedLearner:
                                 running_log[_key].append(float(_wi))
                         else:
                             # samples weights
-                            for _n in (0, 3, 7):
+                            for _n in (7,):
                                 _key = f'{_k}_{_i}_{_n}'
                                 running_log[_key].append(float(_wi[_n, 0]))
 
