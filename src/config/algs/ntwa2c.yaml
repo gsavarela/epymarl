@@ -1,8 +1,10 @@
 # --- NTWA2C specific parameters ---
+
 action_selector: "soft_policies"
 mask_before_softmax: True
 
 runner: "parallel"
+
 buffer_size: 10
 batch_size_run: 10
 batch_size: 10
@@ -29,16 +31,14 @@ learner: "actor_critic_networked_learner"
 entropy_coef: 0.01
 standardise_rewards: True
 standardise_returns: False
-use_rnn: True
+use_rnn: False
 q_nstep: 5 # 1 corresponds to normal r + gammaV
 critic_type: "ac_critic_networked" # All weights begin at the same place.
 networked_edges: 1  # maps n_agents: n_edges
-networked_rounds: 1  # At each consensus round try this many consensus matrices.
+networked_rounds: 10  # At each consensus round try this many consensus matrices.
 networked_time_varying: True # if False the consensus matrix will be static.
 networked_joint_observations: False # Uses joint observations for training and consensus.
-networked_interval: 30_050_000 # Try consensus at every networked_interval number of training steps.
-
-
+networked_interval: 5 # Try consensus at every networked_interval number of training steps.
 name: "ntwa2c"
 
 t_max: 30_050_000
