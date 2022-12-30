@@ -323,7 +323,7 @@ class ActorCriticNetworkedLearner:
             for _key in keys:
 
                 consensus_parameters[_key] = [
-                    th.stack([*map(itemgetter(_key), params)], dim=0)
+                    th.stack([*map(itemgetter(_key), self.critic_params)], dim=0)
                 ]
                 consensus_parameters_logs[_key + f'_0'] = copy.deepcopy(consensus_parameters[_key])
 
@@ -389,7 +389,7 @@ class ActorCriticNetworkedLearner:
                         if n == 1: # 1D tensors OK
                             if _wi.shape[0] > 1:
                                 # samples weights
-                                for _n in (0, 3, 7):
+                                for _n in (7,):
                                     _key = f'{_k}_{_i}_{_n}'
                                     running_log[_key].append(float(_wi[_n]))
                             else:
@@ -397,7 +397,7 @@ class ActorCriticNetworkedLearner:
                                 running_log[_key].append(float(_wi))
                         else:
                             # samples weights
-                            for _n in (0, 3, 7):
+                            for _n in (7,):
                                 _key = f'{_k}_{_i}_{_n}'
                                 running_log[_key].append(float(_wi[_n, 0]))
 
