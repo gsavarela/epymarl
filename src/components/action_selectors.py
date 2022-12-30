@@ -41,7 +41,20 @@ class EpsilonGreedyActionSelector():
         self.epsilon = self.schedule.eval(0)
 
     def select_action(self, agent_inputs, avail_actions, t_env, test_mode=False):
+        if self.args.mac == 'dac':
+            # agent_inputs  [n_batches, n_actions]
+            # avail_actions [n_batches, n_actions]
+            return self._select_action(agent_inputs.unsqueeze(1), avail_actions.unsqueeze(1), t_env, test_mode)
+        else:
+            # agent_inputs [n_batches, n_agents, n_actions] or [n_batches, n_actions]
+            # avail_actions [n_batches, n_agents, n_actions]or [n_batches, n_actions]
+            return self._select_action(agent_inputs, avail_actions, t_env, test_mode)
 
+    def _select_action(self, agent_inputs, avail_actions, t_env, test_mode=False):
+        # agent_inputs [n_batches, n_agents, n_actions] or [n_batches, n_actions]
+        # avail_actions [n_batches, n_agents, n_actions]or [n_batches, n_actions]
+
+        # TODO: fix this to work for q-learning and q-networked
         # Assuming agent_inputs is a batch of Q-Values for each agent bav
         self.epsilon = self.schedule.eval(t_env)
 
@@ -53,11 +66,14 @@ class EpsilonGreedyActionSelector():
         masked_q_values = agent_inputs.clone()
         masked_q_values[avail_actions == 0.0] = -float("inf")  # should never be selected!
 
+        # if len(agent_inputs.shape) == 3:    # Handles b1a
         random_numbers = th.rand_like(agent_inputs[:, :, 0])
+        # else:  # Handles ba
+        #     random_numbers = th.rand_like(agent_inputs[:, 0])
         pick_random = (random_numbers < self.epsilon).long()
         random_actions = Categorical(avail_actions.float()).sample().long()
 
-        picked_actions = pick_random * random_actions + (1 - pick_random) * masked_q_values.max(dim=2)[1]
+        picked_actions = pick_random * random_actions + (1 - pick_random) * masked_q_values.max(dim=-1)[1]
         return picked_actions
 
 

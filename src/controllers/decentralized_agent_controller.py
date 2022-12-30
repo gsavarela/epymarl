@@ -23,8 +23,10 @@ class DAC:
 
     def select_actions(self, ep_batch, t_ep, t_env, bs=slice(None), test_mode=False):
         # Only select actions for the selected batch elements in bs
+        # TODO: Make sure avail_actions.shape == agent_outputs.shape
         avail_actions = [
-            x.squeeze()
+            # x.squeeze()
+            x.squeeze(0)
             for x in th.tensor_split(
                 ep_batch["avail_actions"][:, t_ep], self.n_agents, dim=1
             )
