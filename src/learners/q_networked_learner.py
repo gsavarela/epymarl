@@ -1,8 +1,14 @@
+from collections import defaultdict
 import copy
-from components.episode_buffer import EpisodeBatch
+from operator import itemgetter
+
+import numpy as np
 import torch as th
 from torch.optim import Adam
+
+from components.episode_buffer import EpisodeBatch
 from components.standarize_stream import RunningMeanStd
+from components.consensus import consensus_matrices
 
 
 class QNetworkedLearner:
@@ -20,7 +26,6 @@ class QNetworkedLearner:
         if args.mixer is not None:
             raise ValueError("Mixer {} not recognised.".format(args.mixer))
 
-        # self.optimiser = Adam(params=self.params, lr=args.lr)
         self.optimisers = [
             Adam(params=list(_params.values()), lr=args.lr) for _params in self.params
         ]
@@ -36,7 +41,29 @@ class QNetworkedLearner:
         if self.args.standardise_returns:
             self.ret_ms = RunningMeanStd(shape=(self.n_agents,), device=device)
         if self.args.standardise_rewards:
-            self.rew_ms = RunningMeanStd(shape=(1,), device=device)
+            self.joint_rewards = self.args.env_args.get("joint_rewards", True)
+            if self.joint_rewards:
+                self.rew_ms = RunningMeanStd(shape=(1,), device=device)
+            else:
+                self.rew_ms = RunningMeanStd(shape=(self.n_agents,), device=device)
+
+        # consensus evaluations
+        def fn(x):
+            return th.from_numpy(x.astype(np.float32))
+
+        n_edges = self.args.networked_edges
+        self.cwms = [*map(fn, consensus_matrices(self.n_agents, n_edges))]
+
+        if not self.args.networked_time_varying:
+            # test if consensus graph is fully connected
+            if  n_edges < (self.n_agents - 1):
+                raise ValueError("For fully_connected graphs n_edges >= (n_agents - 1)")
+
+            idx = np.random.randint(0, high=len(self.cwms))
+            self.cwms = [self.cwms[idx]]
+
+        self.consensus_rounds = self.args.networked_rounds
+        self.consensus_interval = self.args.networked_interval
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
         # Get the relevant quantities
@@ -78,7 +105,6 @@ class QNetworkedLearner:
             mac_out = th.stack(mac_out, dim=1)  # Concat over time
 
             # Pick the Q-Values for the actions taken by each agent
-            # chosen_action_qvals = th.gather(mac_out[:, :-1], dim=-1, index=_actions.squeeze(-1)).squeeze(3)  # Remove the last dim
             chosen_action_qvals = th.gather(mac_out[:, :-1], dim=-1, index=_actions).squeeze(-1)
 
             # Calculate the Q-Values necessary for the target
@@ -106,7 +132,10 @@ class QNetworkedLearner:
                 target_max_qvals = target_max_qvals * th.sqrt(self.ret_ms.var) + self.ret_ms.mean
 
             # Calculate 1-step Q-Learning targets
-            targets = rewards[:, :, _i] + self.args.gamma * (1 - terminated.squeeze(-1)) * target_max_qvals.detach()
+            if self.joint_rewards:
+                targets = rewards[:, :, 0] + self.args.gamma * (1 - terminated.squeeze(-1)) * target_max_qvals.detach()
+            else:
+                targets = rewards[:, :, _i] + self.args.gamma * (1 - terminated.squeeze(-1)) * target_max_qvals.detach()
 
             if self.args.standardise_returns:
                 self.ret_ms.update(targets)
@@ -126,16 +155,22 @@ class QNetworkedLearner:
             loss.backward()
             grad_norm = th.nn.utils.clip_grad_norm_(list(_params.values()), self.args.grad_norm_clip)
             _opt.step()
-            with th.no_grad():
-                loss_acum += loss
-                grad_norm_acum += grad_norm
-                masked_td_error_acum += masked_td_error.abs().sum()
-                masked_elems_acum += mask.sum()
-                chosen_action_qvals_acum += (mask.squeeze(-1) * chosen_action_qvals).sum()
-                target_mean_acum += (targets * mask.squeeze(-1)).sum()
+
+            if t_env - self.log_stats_t >= self.args.learner_log_interval:
+                with th.no_grad():
+                    loss_acum += loss
+                    grad_norm_acum += grad_norm
+                    masked_td_error_acum += masked_td_error.abs().sum()
+                    masked_elems_acum += mask.sum()
+                    chosen_action_qvals_acum += (mask.squeeze(-1) * chosen_action_qvals).sum()
+                    target_mean_acum += (targets * mask.squeeze(-1)).sum()
                 
 
         self.training_steps += 1
+        consensus_log = defaultdict(list)
+        if self.training_steps % self.consensus_interval == 0:
+            self.consensus_step(batch, mask, consensus_log, t_env)
+
         if self.args.target_update_interval_or_tau > 1 and (self.training_steps - self.last_target_update_step) / self.args.target_update_interval_or_tau >= 1.0:
             self._update_targets_hard()
             self.last_target_update_step = self.training_steps
@@ -149,7 +184,10 @@ class QNetworkedLearner:
             self.logger.log_stat("td_error_abs", float(masked_td_error_acum.item() / masked_elems_acum), t_env)
             self.logger.log_stat("q_taken_mean", float(chosen_action_qvals_acum.item() / (masked_elems_acum * self.args.n_agents)), t_env)
             self.logger.log_stat("target_mean", float(target_mean_acum.item() / (masked_elems_acum * self.args.n_agents)), t_env)
+            for k, v in consensus_log.items():
+                self.logger.log_stat(k, v, t_env)
             self.log_stats_t = t_env
+
 
     def _update_targets_hard(self):
         self.target_mac.load_state(self.mac)
@@ -157,6 +195,135 @@ class QNetworkedLearner:
     def _update_targets_soft(self, tau):
         for target_param, param in zip(self.target_mac.parameters(), self.mac.parameters()):
             target_param.data.copy_(target_param.data * (1.0 - tau) + param.data * tau)
+
+    def consensus_step(self, batch, mask, running_log, t_env):
+
+        t_max = batch.max_seq_length - 1
+
+        consensus_parameters = {}
+        consensus_parameters_logs = {}
+        with th.no_grad():
+            # Inititialization: Evaluate each Q-Value individually
+            mac_out = []
+            for _i in range(self.n_agents):
+                mac_i_out = []
+                for t in range(batch.max_seq_length):
+                    if self._joint_observations(): # full observability
+                        agent_outs = self.mac.forward(batch, t=t, i=_i)  # [b, a]
+                    else: # Assume state is perceived by agent 0
+                        agent_outs = self.mac.forward(batch, t=t, i=_i, j=0)  # [b, a]
+                    mac_i_out.append(agent_outs)
+                mac_out.append(th.stack(mac_i_out, dim=1))  # [b, t, a]
+            mac_out = th.stack(mac_out, dim=2)  # Concat over agents [b, t, n, a]
+            # Pick the Q-Values for the actions taken by each agent
+            cur_max_actions = mac_out[:, 1:].max(dim=-1, keepdim=True)[1]
+            max_qvals = th.gather(mac_out, -1, cur_max_actions).squeeze(-1)
+
+            _mask = mask.expand_as(max_qvals)
+            max_qvals[_mask == 0] = 0
+            consensus_values = (max_qvals.sum(dim=-1, keepdims=True) / th.clamp(_mask.sum(dim=-1, keepdims=True), min=1))
+            consensus_values = consensus_values.repeat(1, 1, self.n_agents)
+
+
+            # Log: Log step 0 if its logging period.
+            if t_env - self.log_stats_t >= self.args.learner_log_interval: # LOG.
+                for _i in range(self.n_agents):
+                    q_mean_batch_player = ((max_qvals * _mask).sum(dim=(0, 1)) / _mask.sum(dim=(0, 1))).numpy().round(6)
+                    key = f"q_mean_batch_player_{0}_{_i}"
+                    running_log[key] = float(q_mean_batch_player[_i])
+
+
+            # Init consensus: Get individual weights
+            keys = {_k for _keys in map(lambda x: x.keys(), self.params) for _k in _keys}
+            for _key in keys:
+                consensus_parameters[_key] = [
+                    th.stack([*map(itemgetter(_key), self.params)], dim=0)
+                ]
+                consensus_parameters_logs[_key + f'_0'] = copy.deepcopy(consensus_parameters[_key])
+            consensus_metropolis_logs = {}
+
+            # Consensus Loop
+            for k in range(self.consensus_rounds):
+                if self.args.networked_time_varying:
+                    idx = np.random.randint(0, high=len(self.cwms))
+                else:
+                    idx = 0
+                cwm = self.cwms[idx]
+                consensus_metropolis_logs[k] = cwm.clone()
+
+                for _key, _weights in consensus_parameters.items():
+                    # [n_agents, features_in, features_out]
+                    _w = _weights[0].clone()
+                    if 'weight' in _key:
+                        _w = th.einsum('nm, mij-> nij', cwm, _w)
+                    elif 'bias' in _key:
+                        _w = th.einsum('nm, mi-> ni', cwm, _w)
+                    else:
+                        raise ValueError(f'Unknwon parameter type {_key}')
+
+                    consensus_parameters[_key] = [_w]
+                    consensus_parameters_logs[_key + f'_{k + 1}'] = [_w]
+
+                # update parameters after consensus
+                for _i, _agent in enumerate(self.mac.agent.agents):
+                    for _key, _value in _agent.named_parameters():
+                        _value.data = th.nn.parameter.Parameter(consensus_parameters[_key][0][_i, :])
+
+                # Log k-th step
+                if t_env - self.log_stats_t >= self.args.learner_log_interval:
+                    # consolidates episode segregating by player
+                    mac_out = []
+                    for _i in range(self.n_agents):
+                        mac_i_out = []
+                        for t in range(batch.max_seq_length):
+                            if self._joint_observations():  # full observability
+                                agent_outs = self.mac.forward(batch, t=t, i=_i)  # [b, a]
+                            else: # Assume state is perceived by agent 0
+                                agent_outs = self.mac.forward(batch, t=t, i=_i, j=0)  # [b, a]
+                            mac_i_out.append(agent_outs)
+                        mac_out.append(th.stack(mac_i_out, dim=1))  # [b, t, a]
+                    mac_out = th.stack(mac_out, dim=2)  # Concat over agents [b, t, n, a]
+                    # Pick the Q-Values for the actions taken by each agent
+                    cur_max_actions = mac_out[:, 1:].max(dim=-1, keepdim=True)[1]
+                    max_qvals = th.gather(mac_out, -1, cur_max_actions).squeeze(-1)
+                    _mask = mask.expand_as(max_qvals)
+                    max_qvals[_mask == 0] = 0
+                    q_mean_batch_player = ((max_qvals * _mask).sum(dim=(0, 1)) / _mask.sum(dim=(0, 1))).numpy().round(6)
+
+                    for _i in range(self.n_agents):
+                        key = f"q_mean_batch_player_{k + 1}_{_i}"
+                        running_log[key] = float(q_mean_batch_player[_i])
+
+                    # Computes the loss for the current iteration.
+                    td_error = max_qvals[:, :t_max] - consensus_values[:, :t_max]
+                    loss = (td_error**2).sum() / mask.sum()
+                    running_log[f"consensus_loss_{k + 1}"] = float(loss.item())
+
+            # # debugging log j
+            # # saving all weights takes way too long.
+            # if t_env - self.log_stats_t >= self.args.learner_log_interval:
+            #     for _k, _w in self._logfilter(consensus_parameters_logs):
+            #         for _i in range(self.n_agents):
+            #             _wi = _w[0][_i]
+            #             # row tensor -- squeeze.
+            #             if _wi.shape[0] == 1 and len(_wi.shape) == 2:
+            #                 _wi.squeeze_(0)
+            #             n = len(_wi.shape)
+            #             if n == 1: # 1D tensors OK
+            #                 if _wi.shape[0] > 1:
+            #                     # samples weights
+            #                     for _n in (7,):
+            #                         _key = f'{_k}_{_i}_{_n}'
+            #                         running_log[_key].append(float(_wi[_n]))
+            #                 else:
+            #                     _key = f'{_k}_{_i}_0'
+            #                     running_log[_key].append(float(_wi))
+            #             else:
+            #                 # samples weights
+            #                 for _n in (7,):
+            #                     _key = f'{_k}_{_i}_{_n}'
+            #                     running_log[_key].append(float(_wi[_n, 0]))
+            return consensus_parameters_logs
 
     def cuda(self):
         self.mac.cuda()
@@ -180,3 +347,12 @@ class QNetworkedLearner:
         )
         for _opt, _states in zip(self.optimisers, optimizers):
             _opt.load_state_dict(_states)
+
+    def _logfilter(self, params):
+        return filter(self._lftr, params.items())
+
+    def _lftr(self, x):
+        return ('fc1.' in x[0])
+
+    def _joint_observations(self):
+        return self.args.networked_joint_observations

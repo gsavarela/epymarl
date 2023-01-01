@@ -1,11 +1,14 @@
-# --- IQL NS specific parameters ---
+# --- NTWQL specific parameters ---
 
+
+lr: 0.0003 # Learning rate for agents
+hidden_dim: 64 # Size of hidden state for default rnn agent
 # use epsilon greedy action selector
 action_selector: "epsilon_greedy"
 epsilon_start: 1.0
 epsilon_finish: 0.05
 epsilon_anneal_time: 50000
-evaluation_epsilon: 0.0
+evaluation_epsilon: 0.05
 
 runner: "episode"
 
@@ -14,6 +17,9 @@ buffer_size: 5000
 # update the target network every {} episodes
 target_update_interval_or_tau: 200
 
+env_args:
+  joint_rewards: True
+  shared_rewards: False
 
 obs_agent_id: False
 obs_last_action: False
@@ -27,7 +33,13 @@ learner: "q_networked_learner"
 standardise_returns: False
 standardise_rewards: True
 double_q: True
-use_rnn: False
+use_rnn: True
 mixer: # Mixer becomes None
+
+networked_edges: 1  # maps n_agents: n_edges
+networked_rounds: 1  # At each consensus round try this many consensus matrices.
+networked_time_varying: True # if False the consensus matrix will be static.
+networked_joint_observations: False # Uses joint observations for training and consensus.
+networked_interval: 1 # Try consensus at every networked_interval number of training steps.
 
 name: "ntwql"

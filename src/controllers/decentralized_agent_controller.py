@@ -6,8 +6,8 @@ import torch as th
 class DAC:
     """Decentralized agent controller
 
-    Extends non_shared_controller
     Guarantees that select_action and forward pass
+    Extends non_shared_controller
     happen individually and sequentially.
 
     init_hidden and parameters
@@ -44,9 +44,9 @@ class DAC:
         ]
         return th.cat([_a.unsqueeze(1) for _a in chosen_actions], dim=1)
 
-    def forward(self, ep_batch, t, i=None, test_mode=False):
-
-        inputs = self._build_inputs(ep_batch, t, i)
+    def forward(self, ep_batch, t, i=None, j=None, test_mode=False):
+        j = i if j is None else j
+        inputs = self._build_inputs(ep_batch, t, j)
         avail = ep_batch["avail_actions"][:, t, i]
         agent_outs, self.hidden_states[i] = self.agent.agents[i](
             inputs, self.hidden_states[i]
