@@ -1,11 +1,14 @@
 # --- IQL NS specific parameters ---
+# LBF 
 
+lr: 0.0003 # Learning rate for agents
+hidden_dim: 64 # Size of hidden state for default rnn agent
 # use epsilon greedy action selector
 action_selector: "epsilon_greedy"
 epsilon_start: 1.0
 epsilon_finish: 0.05
 epsilon_anneal_time: 50000
-evaluation_epsilon: 0.0
+evaluation_epsilon: 0.5
 
 runner: "episode"
 
@@ -27,7 +30,7 @@ learner: "q_learner"
 standardise_returns: False
 standardise_rewards: True
 double_q: True
-use_rnn: False
+use_rnn: True
 mixer: # Mixer becomes None
 
 name: "iql_ns"

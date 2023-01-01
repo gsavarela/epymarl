@@ -1,5 +1,6 @@
 # --- NTWQL specific parameters ---
 
+# LBF 
 
 lr: 0.0003 # Learning rate for agents
 hidden_dim: 64 # Size of hidden state for default rnn agent
@@ -37,9 +38,9 @@ use_rnn: True
 mixer: # Mixer becomes None
 
 networked_edges: 1  # maps n_agents: n_edges
-networked_rounds: 1  # At each consensus round try this many consensus matrices.
+networked_rounds: 10  # At each consensus round try this many consensus matrices.
 networked_time_varying: True # if False the consensus matrix will be static.
 networked_joint_observations: False # Uses joint observations for training and consensus.
-networked_interval: 1 # Try consensus at every networked_interval number of training steps.
+networked_interval: 5 # Try consensus at every networked_interval number of training steps.
 
 name: "ntwql"
