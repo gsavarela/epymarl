@@ -1,8 +1,7 @@
 """Plots
-
 Reference
 ---------
-[1] Papoudakis, Georgios and Christianos, Filippos and Sch\"{a}fer, Lukas and Albrecht, Stefano 
+[1] Papoudakis, Georgios and Christianos, Filippos and Sch\"{a}fer, Lukas and Albrecht, Stefano
 "Benchmarking Multi-Agent Deep Reinforcement Learning Algorithms in Cooperative Tasks",
 Proceedings of the Neural Information Processing Systems Track on Datasets and Benchmarks, 2021
 """
@@ -16,6 +15,8 @@ from collections import defaultdict
 from typing import List
 
 from utils import standard_error
+import src.mongo_db as mdb
+
 import numpy as np
 import matplotlib.pyplot as plt
 # legends for multiple x-axis
@@ -614,6 +615,54 @@ def main3(
     ENV = 'rware:rware-tiny-4ag-v1'
     ALGO_ID = 'ntwa2c'
     QUERIES = []
+    # QUERY_IDS = [63, 68, 75] 'hp_grp_0'  <3
+    # QUERY_IDS = [59, 66, 80] 'hp_grp_1'
+    # QUERY_IDS = [60, 73, 77] 'hp_grp_2'  <2
+    # QUERY_IDS = [64, 71, 78] 'hp_grp_3', <4
+    # QUERY_IDS = [62, 67, 72] 'hp_grp_4'
+    # QUERY_IDS = [61, 65, 79] 'hp_grp_5'
+    # QUERY_IDS = [58, 70, 76] 'hp_grp_6'
+    # QUERY_IDS = [69, 74, 81] 'hp_grp_7'
+    # QUERY_IDS = [82, 88, 94] 'hp_grp_8'
+    # QUERY_IDS = [83, 90, 100] # 'hp_grp_9' <5 10.09
+    # QUERY_IDS = [84, 96, 103] # 'hp_grp_10' <1 10.54 (12.0)
+    # QUERY_IDS = [89, 95, 101] # 'hp_grp_11'
+    # QUERY_IDS = [85, 93, 99] # 'hp_grp_12'
+    # QUERY_IDS = [86, 92, 105] # 'hp_grp_13'
+    # QUERY_IDS = [87, 97, 102] # 'hp_grp_14'
+    QUERY_IDS = [91, 98, 64] # 'hp_grp_15'
+    QUERIES.append({
+        # hyper_group exploration
+        'label': "hp_grp_15",
+        'query_config': {
+            'config.env_args.key': ENV,
+            'config.name': ALGO_ID,
+            # 'config.hypergroup': 'hp_grp_0',
+            # 'config.hypergroup': 'hp_grp_1',
+            # 'config.hypergroup': 'hp_grp_2',
+            # 'config.hypergroup': 'hp_grp_3',
+            # 'config.hypergroup': 'hp_grp_4',
+            # 'config.hypergroup': 'hp_grp_5',
+            # 'config.hypergroup': 'hp_grp_6',
+            # 'config.hypergroup': 'hp_grp_7',
+            # 'config.hypergroup': 'hp_grp_8',
+            # 'config.hypergroup': 'hp_grp_9',
+            # 'config.hypergroup': 'hp_grp_10',
+            # 'config.hypergroup': 'hp_grp_11',
+            # 'config.hypergroup': 'hp_grp_12',
+            # 'config.hypergroup': 'hp_grp_13',
+            # 'config.hypergroup': 'hp_grp_14',
+            'config.hypergroup': 'hp_grp_15',
+            'config.networked_edges': 2,
+            # 'config.networked_rounds': 1,
+            # 'config.networked_rounds': 5,
+            'config.networked_rounds': 10,
+            'config.networked_interval': 1,
+            # 'config.networked_interval': 5
+            # 'config.networked_interval': 10,
+        },
+        'query_ids': QUERY_IDS,
+    })
 
     # QUERY_IDS = [17, 18, 19]
     # QUERIES.append({
@@ -639,41 +688,27 @@ def main3(
     #     'query_ids': QUERY_IDS,
     # })
     # QUERY_IDS = [35, 36, 37] Exploration
-    QUERY_IDS = list(range(38, 42 + 1))
-    QUERIES.append({
-        'label': "RETRIES",
-        'query_config': {
-            'config.env_args.key': ENV,
-            'config.name': ALGO_ID,
-            'config.networked_edges': 1,
-            'config.networked_rounds': 10,
-            'config.networked_interval': 1,
-        },
-        'query_ids': QUERY_IDS,
-    })
+    # QUERY_IDS = list(range(38, 42 + 1))
+    # QUERIES.append({
+    #     'label': "RETRIES",
+    #     'query_config': {
+    #         'config.env_args.key': ENV,
+    #         'config.name': ALGO_ID,
+    #         'config.networked_edges': 1,
+    #         'config.networked_rounds': 10,
+    #         'config.networked_interval': 1,
+    #     },
+    #     'query_ids': QUERY_IDS,
+    # })
 
 
     QUERY_IDS = list(range(7, 11+1))
     ALGO_ID = 'ia2c_ns'
     QUERIES.append({
-        'label': "Adversary",
+        'label': "ia2c_ns",
         'query_config': {
             'config.env_args.key': ENV,
             'config.name': ALGO_ID,
-        },
-        'query_ids': QUERY_IDS,
-    })
-
-    # QUERY_IDS = [23, 25, 27]
-    QUERY_IDS = [24, 26, 28]
-    QUERIES.append({
-        'label': "MODEL-AVERAGING-100",
-        'query_config': {
-            'config.env_args.key': ENV,
-            'config.name': ALGO_ID,
-            'config.networked_edges': 6,
-            'config.networked_rounds': 1,
-            'config.networked_interval': 100,
         },
         'query_ids': QUERY_IDS,
     })
@@ -693,74 +728,10 @@ def main3(
     #     'query_ids': QUERY_IDS,
     # })
 
-
-    # loader = ExperimentLoader(mongo_uri="localhost:27017", db_name='marlbench')
-    loader = ExperimentLoader(mongo_uri="172.20.126.28:27017", db_name='marlbench')
-
-    # BASE_PATH = Path("results/sacred/")
-    # BASE_PATH = Path("results/sacred/inda2c/baseline_critic")
-    # baseline_critic/lbforaging:Foraging-10x10-2p-2f-coop-v2
-    # algos_paths = BASE_PATH.glob("*a2c")  # Pattern matching ia2c and maa2c
-    # algos_paths = BASE_PATH.glob("maa2c_ns")  # Only look for maa2c_ns
-    # Match many algorithms
-    # algos_paths = []
-    # for algoname in algonames:
-    #     algos_paths += [*BASE_PATH.glob(algoname)]
-    #
-    # if baseline_critic:
-    #     # /home/gvarela/ilu/epymarl/results/sacred/ntwa2c/nonlinear_critic-absolute_coordinates-algov2
-    #     # algos_paths = [algo_path / 'nonlinear_critic-absolute_coordinates-algov2' for algo_path in algos_paths]
-    #     # algos_paths = [algo_path / 'nonlinear_critic-relative_coordinates-algov3' for algo_path in algos_paths]
-    #     # algos_paths = [algo_path / 'nonlinear_critic-absolute_coordinates-algov3' for algo_path in algos_paths]
-    #     # algos_paths = [algo_path / 'nonlinear_critic-relative_coordinates-algov2' for algo_path in algos_paths]
-    #     # algos_paths = [algo_path / 'nonlinear_critic-regression_problem' for algo_path in algos_paths]
-    #     # algos_paths = [algo_path / 'nonlinear_critic-regression_problem-validation' for algo_path in algos_paths]
-    #     # algos_paths = [algo_path / 'nonlinear_critic-diffusion_validation' for algo_path in algos_paths]
-    #     # algos_paths = [algo_path / 'nonlinear_critic-regression_problem-target_updates' for algo_path in algos_paths]
-    #     # algos_paths = [algo_path / 'nonlinear_critic-regression_problem-hidden_64' for algo_path in algos_paths]
-    #     # algos_paths = [algo_path / 'nonlinear_critic-regression_problem' for algo_path in algos_paths]
-    #     # algos_paths = [algo_path / 'nonlinear_critic-full_observability_10steps' for algo_path in algos_paths]
-    #     # algos_paths = [algo_path / 'nonlinear_critic-regression_problem-10_steps' for algo_path in algos_paths]
-    #     # algos_paths = [algo_path / 'linear_critic-consensus_vs_regression' for algo_path in algos_paths]
-    #     # algos_paths = [algo_path / 'shallow_critic-top_4' for algo_path in algos_paths]
-    #     # algos_paths = [algo_path / 'shallow_critic-100_steps' for algo_path in algos_paths]
-    #     # algos_paths = [algo_path / 'nonlinear_critic-debug' for algo_path in algos_paths]
-    #     # algos_paths = [algo_path / '30_000_000' for algo_path in algos_paths]
-    #     algos_paths = [algo_path / 'mongo_db' for algo_path in algos_paths]
-        
-    # algos_paths = []
-    _coop = '-coop' if coop else ''
-    title = f'Foraging {size}x{size}-{players}p-{food}f{_coop}'
-    if baseline_critic:
-        # title += f' (AlgoV2-AbsoluteCoordinates)'
-        # title += f' (AlgoV3-RelativeCoordinates)'
-        # title += f' (AlgoV3-AbsoluteCoordinates)'
-        # title += f' (AlgoV2-RelativeCoordinates)'
-        # title += f' (RegressionProblem-Validation)'
-        # title += f' (RegressionProblem)'
-        # title += f' (DiffusionProblem)'
-        # title += f' (RegressionProblem-TargetUpdates)'
-        # title += f' (RegressionProblem-Hidden64)'
-        # title += f' (RegressionProblem-5STEPS)'
-        # title += f' (RegressionProblem-FO_10STEPS)'
-        # title += f' (LinearCritic)'
-        # title += f' (ShallowCritic-TOP_4)'
-        # title += f' (ShallowCritic-100_steps)'
-        title += f' (LOSSY)'
-
-    # def task_pattern_builder(x):
-    #     _paths = []
-    #     partial = '2s-'if po else '*'
-    #
-    #     _pattern = f'Foraging-{partial}{size}x{size}-{players}p-{food}f{_coop}'
-    #     # _pattern = f'Foraging-{size}x{size}-{players}p-{food}f{_coop}'
-    #     # _paths += [*x.glob(f"lbforaging:{_pattern}-v2")]
-    #     _paths += [*x.glob(f"lbforaging:{_pattern}-v1")]
-    #     return _paths
-
+    loader = ExperimentLoader(mongo_uri=mdb.MONGO_DB_CONN, db_name=mdb.MONGO_DB_NAME)
+    title = ''
     steps = defaultdict(list)
     results = defaultdict(list)
-    algo_paths = []
     for query in QUERIES:
         experiments = loader.find({
             '$and': [
@@ -768,17 +739,12 @@ def main3(
                 query["query_config"],
             ]
         })
-        # Matches every lbforaging task.
-        # if baseline_critic:
-        #     algoname = algo_path.parent.stem.upper()
-        # else:
-        #     algoname = algo_path.stem.upper()
-        # print(algoname, task_pattern_builder(algo_path))
 
         sample_size = 0
         algoname = query['query_config']['config.name'].upper()
         taskname = query['query_config']['config.env_args.key']
-        title = f"{taskname} ({query['label']})"
+        if 'config.hypergroup' in query['query_config']:
+            title = f"{taskname} ({query['query_config']['config.hypergroup']})"
         key = (algoname, taskname)
         for experiment in experiments:
             ts = experiment.metrics["test_return_mean"]
@@ -819,7 +785,7 @@ def main3(
         / "plots"
         / "nonlinear"
         / "-".join(algonames)
-        / title.split()[0].upper(),
+        / title.split(':')[0].upper(),
     )
 
 
