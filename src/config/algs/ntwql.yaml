@@ -44,3 +44,4 @@ networked_joint_observations: False # Uses joint observations for training and c
 networked_interval: 5 # Try consensus at every networked_interval number of training steps.
 
 name: "ntwql"
+t_max: 20_050_000
