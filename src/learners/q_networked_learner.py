@@ -32,6 +32,7 @@ class QNetworkedLearner:
 
         # a little wasteful to deepcopy (e.g. duplicates action selector), but should work for any MAC
         self.target_mac = copy.deepcopy(mac)
+        self.target_params = [dict(_a.named_parameters()) for _a in self.target_mac.agent.agents]
 
         self.training_steps = 0
         self.last_target_update_step = 0
@@ -193,8 +194,9 @@ class QNetworkedLearner:
         self.target_mac.load_state(self.mac)
 
     def _update_targets_soft(self, tau):
-        for target_param, param in zip(self.target_mac.parameters(), self.mac.parameters()):
-            target_param.data.copy_(target_param.data * (1.0 - tau) + param.data * tau)
+        for target, param in zip(self.target_params, self.params):
+            for name, value in target.items():
+                value.data.copy_(value.data * (1.0 - tau) + param[name].data * tau)
 
     def consensus_step(self, batch, mask, running_log, t_env):
 
