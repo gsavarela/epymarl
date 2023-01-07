@@ -1,21 +1,21 @@
 # --- IQL NS specific parameters ---
-# LBF 
-
-lr: 0.0003 # Learning rate for agents
-hidden_dim: 64 # Size of hidden state for default rnn agent
+# lr: 0.0003 # LBF: Learning rate for agents
+lr: 0.0005 # RWARE: Learning rate for agents
+hidden_dim: 64 # LBF: Size of hidden state for default rnn agent
 # use epsilon greedy action selector
 action_selector: "epsilon_greedy"
 epsilon_start: 1.0
 epsilon_finish: 0.05
 epsilon_anneal_time: 50000
-evaluation_epsilon: 0.5
+evaluation_epsilon: 0.05
 
 runner: "episode"
 
 buffer_size: 5000
 
 # update the target network every {} episodes
-target_update_interval_or_tau: 200
+# target_update_interval_or_tau: 200 # LBF
+target_update_interval_or_tau: 0.01 # RWARE
 
 
 obs_agent_id: False
@@ -30,7 +30,7 @@ learner: "q_learner"
 standardise_returns: False
 standardise_rewards: True
 double_q: True
-use_rnn: True
+use_rnn: False
 mixer: # Mixer becomes None
 
 name: "iql_ns"
