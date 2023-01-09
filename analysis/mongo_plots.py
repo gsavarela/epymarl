@@ -27,6 +27,7 @@ matplotlib.use('QtCairo')
 # matplotlib.use('Cairo')
 
 from incense import ExperimentLoader
+from IPython.core.debugger import set_trace
 
 Array = np.ndarray
 FIGURE_X = 6.0
@@ -625,7 +626,7 @@ def main3(
     # QUERY_IDS = [69, 74, 81] 'hp_grp_7'
     # QUERY_IDS = [82, 88, 94] 'hp_grp_8'
     # QUERY_IDS = [83, 90, 100] # 'hp_grp_9' <5 10.09
-    # QUERY_IDS = [84, 96, 103] # 'hp_grp_10' <1 10.54 (12.0)
+    QUERY_IDS = [84, 96, 103] # 'hp_grp_10' <1 10.54 (12.0)
     # QUERY_IDS = [89, 95, 101] # 'hp_grp_11'
     # QUERY_IDS = [85, 93, 99] # 'hp_grp_12'
     # QUERY_IDS = [86, 92, 105] # 'hp_grp_13'
@@ -636,13 +637,13 @@ def main3(
     # QUERY_IDS = [108, 118, 124] # 'hp_grp_18'
     # QUERY_IDS = [114, 121, 127] # 'hp_grp_19'
     # QUERY_IDS = [109, 115, 120] # 'hp_grp_20'
-    QUERY_IDS = [110, 116, 126] # 'hp_grp_21' < 10.79
+    # QUERY_IDS = [110, 116, 126] # 'hp_grp_21' < 10.79
     # QUERY_IDS = [111, 123, 129] # 'hp_grp_22'
     # QUERY_IDS = [117, 122, 128] # 'hp_grp_23'
     # QUERY_IDS = [132, 140, 142] # 'hp_grp_26'
     QUERIES.append({
         # hyper_group exploration
-        'label': "hp_grp_21",
+        'label': "hp_grp_10",
         'query_config': {
             'config.env_args.key': ENV,
             'config.name': ALGO_ID,
@@ -656,7 +657,7 @@ def main3(
             # 'config.hypergroup': 'hp_grp_7',
             # 'config.hypergroup': 'hp_grp_8',
             # 'config.hypergroup': 'hp_grp_9',
-            # 'config.hypergroup': 'hp_grp_10',
+            'config.hypergroup': 'hp_grp_10',
             # 'config.hypergroup': 'hp_grp_11',
             # 'config.hypergroup': 'hp_grp_12',
             # 'config.hypergroup': 'hp_grp_13',
@@ -666,16 +667,16 @@ def main3(
             # 'config.hypergroup': 'hp_grp_18',
             # 'config.hypergroup': 'hp_grp_19',
             # 'config.hypergroup': 'hp_grp_20',
-            'config.hypergroup': 'hp_grp_21',
+            # 'config.hypergroup': 'hp_grp_21',
             # 'config.hypergroup': 'hp_grp_22',
             # 'config.hypergroup': 'hp_grp_23',
             # 'config.hypergroup': 'hp_grp_26',
-            'config.networked_edges': 3,
-            # 'config.networked_rounds': 1,
-            'config.networked_rounds': 5,
+            'config.networked_edges': 2,
+            'config.networked_rounds': 1,
+            # 'config.networked_rounds': 5,
             # 'config.networked_rounds': 10,
-            'config.networked_interval': 1,
-            # 'config.networked_interval': 5
+            # 'config.networked_interval': 1,
+            'config.networked_interval': 5
             # 'config.networked_interval': 10,
         },
         'query_ids': QUERY_IDS,
@@ -751,12 +752,15 @@ def main3(
     results = defaultdict(list)
 
     for query in QUERIES:
-        experiments = loader.find({
+
+        mongo_query = {
             '$and': [
                 {'_id': { "$in": query['query_ids']}},
                 query["query_config"],
             ]
-        })
+        }
+        print(mongo_query)
+        experiments = loader.find(mongo_query)
 
         sample_size = 0
         algoname = query['query_config']['config.name'].upper()
