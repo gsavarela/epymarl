@@ -1,4 +1,5 @@
 #!/bin/bash
+envs=(SimpleTag-v0)
 for e in "${envs[@]}"
 do
     for i in {1..5}
