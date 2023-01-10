@@ -8,9 +8,9 @@ env_args:
 
 test_greedy: True
 test_nepisode: 100
-test_interval: 125_000
-log_interval: 125_000
+test_interval: 50_000 
+log_interval: 5_000
 runner_log_interval: 10_000
 learner_log_interval: 10_000
-t_max: 5_050_000
+t_max: 2_050_000
 

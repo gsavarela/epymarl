@@ -1,10 +1,11 @@
 #!/bin/bash
-envs=(15x15-3p-5f-v1)
+envs=(SimpleTag-v0)
+
 for e in "${envs[@]}"
 do
-    for i in {1..5}
+    for i in {0..4}
     do
-        python src/main.py --config=ntwql --env-config=gymma with env_args.key="lbforaging:Foraging-$e" hidden_dim=64 env_args.time_limit=50 &
+        python src/main.py --config=ntwql --env-config=gymma with env_args.time_limit=25 env_args.key="mpe:$e" env_args.pretrained_wrapper="PretrainedTag" &
         echo "Running with ntwql and lbforaging:Foraging-$e"
         sleep 2s
     done

@@ -1,24 +1,28 @@
 # --- VDN_NS specific parameters ---
-lr: 0.0001 # LBF: Learning rate for agents
+# lr: 0.0001 # LBF: Learning rate for agents
+lr: 0.0005 # MPE: Learning rate for agents
 # use epsilon greedy action selector
-hidden_dim: 64 # LBF: Size of hidden state for default rnn agent
+# hidden_dim: 64 # LBF: Size of hidden state for default rnn agent
+hidden_dim: 128 # MPE: Size of hidden state for default rnn agent
 action_selector: "epsilon_greedy"
 epsilon_start: 1.0
 epsilon_finish: 0.05
 epsilon_anneal_time: 50_000
-evaluation_epsilon: 0.05
+# evaluation_epsilon: 0.05 # LBF
+evaluation_epsilon: 0.0 # MPE
 
 runner: "episode"
 
-buffer_size: 5000
+buffer_size: 5_000
 
 # update the target network every {} episodes
-target_update_interval_or_tau: 200
+target_update_interval_or_tau: 200 # MPE
 
 env_args:
   joint_rewards: True
   shared_rewards: False
-  time_limit: 50 # LBF: Max seq_length
+  time_limit: 25 # MPE: Max seq_length
+  # time_limit: 50 # LBF: Max seq_length
   # time_limit: 500
 
 obs_agent_id: False
@@ -31,11 +35,13 @@ mac: "non_shared_mac"
 agent: "rnn_ns"
 standardise_returns: False
 standardise_rewards: True
-use_rnn: True
+# use_rnn: True # LBF
+use_rnn: False
 agent_output_type: "q"
 learner: "q_learner"
 double_q: True
 mixer: "vdn"
 
 name: "vdn_ns"
-t_max: 5_050_000
+# t_max: 5_050_000 LBF
+t_max: 2_050_000

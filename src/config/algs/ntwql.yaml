@@ -1,26 +1,29 @@
 # --- NTWQL specific parameters ---
-lr: 0.0003 # LBF: Learning rate for agents
-# lr: 0.0005 # RWARE: Learning rate for agents
-hidden_dim: 64 # Size of hidden state for default rnn agent
+# lr: 0.0003 # LBF: Learning rate for agents
+lr: 0.0005 # RWARE and TAG: Learning rate for agents
+# hidden_dim: 64 # Size of hidden state for default rnn agent
+hidden_dim: 128 # MPE: Size of hidden state for default rnn agent
 # use epsilon greedy action selector
 action_selector: "epsilon_greedy"
 epsilon_start: 1.0
 epsilon_finish: 0.05
-epsilon_anneal_time: 50_000
-evaluation_epsilon: 0.05
+# epsilon_anneal_time: 50_000
+epsilon_anneal_time: 200_000 # MPE
+evaluation_epsilon: 0.0
 
 runner: "episode"
 
 buffer_size: 5000
 
 # update the target network every {} episodes
-target_update_interval_or_tau: 200 # LBF: Refresh target
-# target_update_interval_or_tau: 0.01 # RWARE: EWMA 
+# target_update_interval_or_tau: 200 # LBF: Refresh target
+target_update_interval_or_tau: 0.01 # RWARE AND MPE
 
 env_args:
   joint_rewards: True
   shared_rewards: False
-  time_limit: 50 # LBF: Max seq_length
+  # time_limit: 50 # LBF: Max seq_length
+  time_limit: 25 # TAG: Max seq_length
   # time_limit: 500
 
 obs_agent_id: False
@@ -35,8 +38,8 @@ learner: "q_networked_learner"
 standardise_returns: False
 standardise_rewards: True
 double_q: True
-use_rnn: True # LBF: GRU
-# use_rnn: False # RWARE: FC
+# use_rnn: True # LBF: GRU
+use_rnn: False # RWARE AND MPE: FC
 mixer: # Mixer becomes None
 
 networked_edges: 2  # maps n_agents: n_edges
@@ -46,4 +49,5 @@ networked_joint_observations: False # Uses joint observations for training and c
 networked_interval: 5 # Try consensus at every networked_interval number of training steps.
 
 name: "ntwql"
-t_max: 5_050_000
+# t_max: 5_050_000
+t_max: 2_050_000 # TAG
