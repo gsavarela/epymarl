@@ -1,10 +1,11 @@
 # --- IA2C NS specific parameters ---
+hidden_dim: 128 # MPE
+lr: 0.0005 # MPE
 
 action_selector: "soft_policies"
 mask_before_softmax: True
 
 runner: "parallel"
-
 buffer_size: 10
 batch_size_run: 10
 batch_size: 10
@@ -13,11 +14,12 @@ env_args:
   state_last_action: False # critic adds last action internally
   joint_rewards: True
   shared_rewards: False
+  time_limit: 25 # MPE
+  
 
 # update the target network every {} training steps
-target_update_interval_or_tau: 0.01
+target_update_interval_or_tau: 0.01 # MPE
 
-lr: 0.0005
 
 obs_agent_id: False
 obs_last_action: False
@@ -30,9 +32,9 @@ learner: "actor_critic_learner"
 entropy_coef: 0.01
 standardise_returns: False
 standardise_rewards: True
-use_rnn: True
-q_nstep: 5 # 1 corresponds to normal r + gammaV
+use_rnn: False # MPE
+q_nstep: 10 # MPE: 1 corresponds to normal r + gammaV
 critic_type: "ac_critic_ns"
-name: "ia2c_ns"
 
-t_max: 20_050_000
+name: "ia2c_ns"
+t_max: 10_050_000 # MPE
