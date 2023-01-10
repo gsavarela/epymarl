@@ -37,4 +37,4 @@ use_rnn: False # RWARE
 mixer: # Mixer becomes None
 
 name: "iql_ns"
-t_max: 10_050_000 LBF
+t_max: 10_050_000 # LBF
