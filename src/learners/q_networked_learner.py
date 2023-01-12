@@ -228,11 +228,11 @@ class QNetworkedLearner:
 
 
             # Log: Log step 0 if its logging period.
-            if t_env - self.log_stats_t >= self.args.learner_log_interval: # LOG.
-                for _i in range(self.n_agents):
-                    q_mean_batch_player = ((max_qvals * _mask).sum(dim=(0, 1)) / _mask.sum(dim=(0, 1))).numpy().round(6)
-                    key = f"q_mean_batch_player_{0}_{_i}"
-                    running_log[key] = float(q_mean_batch_player[_i])
+            # if t_env - self.log_stats_t >= self.args.learner_log_interval: # LOG.
+            #     for _i in range(self.n_agents):
+            #         q_mean_batch_player = ((max_qvals * _mask).sum(dim=(0, 1)) / _mask.sum(dim=(0, 1))).numpy().round(6)
+            #         key = f"q_mean_batch_player_{0}_{_i}"
+            #         running_log[key] = float(q_mean_batch_player[_i])
 
 
             # Init consensus: Get individual weights
@@ -272,34 +272,34 @@ class QNetworkedLearner:
                         _value.data = th.nn.parameter.Parameter(consensus_parameters[_key][0][_i, :])
 
                 # Log k-th step
-                if t_env - self.log_stats_t >= self.args.learner_log_interval:
-                    # consolidates episode segregating by player
-                    mac_out = []
-                    for _i in range(self.n_agents):
-                        mac_i_out = []
-                        for t in range(batch.max_seq_length):
-                            if self._joint_observations():  # full observability
-                                agent_outs = self.mac.forward(batch, t=t, i=_i)  # [b, a]
-                            else: # Assume state is perceived by agent 0
-                                agent_outs = self.mac.forward(batch, t=t, i=_i, j=0)  # [b, a]
-                            mac_i_out.append(agent_outs)
-                        mac_out.append(th.stack(mac_i_out, dim=1))  # [b, t, a]
-                    mac_out = th.stack(mac_out, dim=2)  # Concat over agents [b, t, n, a]
-                    # Pick the Q-Values for the actions taken by each agent
-                    cur_max_actions = mac_out[:, 1:].max(dim=-1, keepdim=True)[1]
-                    max_qvals = th.gather(mac_out, -1, cur_max_actions).squeeze(-1)
-                    _mask = mask.expand_as(max_qvals)
-                    max_qvals[_mask == 0] = 0
-                    q_mean_batch_player = ((max_qvals * _mask).sum(dim=(0, 1)) / _mask.sum(dim=(0, 1))).numpy().round(6)
+                # if t_env - self.log_stats_t >= self.args.learner_log_interval:
+                #     # consolidates episode segregating by player
+                #     mac_out = []
+                #     for _i in range(self.n_agents):
+                #         mac_i_out = []
+                #         for t in range(batch.max_seq_length):
+                #             if self._joint_observations():  # full observability
+                #                 agent_outs = self.mac.forward(batch, t=t, i=_i)  # [b, a]
+                #             else: # Assume state is perceived by agent 0
+                #                 agent_outs = self.mac.forward(batch, t=t, i=_i, j=0)  # [b, a]
+                #             mac_i_out.append(agent_outs)
+                #         mac_out.append(th.stack(mac_i_out, dim=1))  # [b, t, a]
+                #     mac_out = th.stack(mac_out, dim=2)  # Concat over agents [b, t, n, a]
+                #     # Pick the Q-Values for the actions taken by each agent
+                #     cur_max_actions = mac_out[:, 1:].max(dim=-1, keepdim=True)[1]
+                #     max_qvals = th.gather(mac_out, -1, cur_max_actions).squeeze(-1)
+                #     _mask = mask.expand_as(max_qvals)
+                #     max_qvals[_mask == 0] = 0
+                #     q_mean_batch_player = ((max_qvals * _mask).sum(dim=(0, 1)) / _mask.sum(dim=(0, 1))).numpy().round(6)
 
-                    for _i in range(self.n_agents):
-                        key = f"q_mean_batch_player_{k + 1}_{_i}"
-                        running_log[key] = float(q_mean_batch_player[_i])
+                #     for _i in range(self.n_agents):
+                #         key = f"q_mean_batch_player_{k + 1}_{_i}"
+                #         running_log[key] = float(q_mean_batch_player[_i])
 
-                    # Computes the loss for the current iteration.
-                    td_error = max_qvals[:, :t_max] - consensus_values[:, :t_max]
-                    loss = (td_error**2).sum() / mask.sum()
-                    running_log[f"consensus_loss_{k + 1}"] = float(loss.item())
+                #     # Computes the loss for the current iteration.
+                #     td_error = max_qvals[:, :t_max] - consensus_values[:, :t_max]
+                #     loss = (td_error**2).sum() / mask.sum()
+                #     running_log[f"consensus_loss_{k + 1}"] = float(loss.item())
 
             # # debugging log j
             # # saving all weights takes way too long.
