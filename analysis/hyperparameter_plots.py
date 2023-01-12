@@ -116,7 +116,7 @@ TAG_HYPERGROUP_NTWQL_QUERIES = OrderedDict({
         }
     },
     7: {
-        'query_ids': [279, 285, 290],
+        'query_ids': [279, 286, 290],
         'source': 'remote',
         'query_config': {
             'config.name': 'ntwql',
