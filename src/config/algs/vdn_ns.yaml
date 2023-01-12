@@ -43,5 +43,5 @@ double_q: True
 mixer: "vdn"
 
 name: "vdn_ns"
-# t_max: 5_050_000 LBF
-t_max: 2_050_000
+t_max: 5_005_000 #LBF
+# t_max: 2_050_000
