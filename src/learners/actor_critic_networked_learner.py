@@ -300,21 +300,21 @@ class ActorCriticNetworkedLearner:
             consensus_values = consensus_values.repeat(1, 1, self.n_agents)
 
 
-            if t_env - self.log_stats_t >= self.args.learner_log_interval: # LOG.
-                running_log["v_mean_batch_target_0"].append(float(((v * mask).sum() / mask.sum()).item()))
+            # if t_env - self.log_stats_t >= self.args.learner_log_interval: # LOG.
+            #     running_log["v_mean_batch_target_0"].append(float(((v * mask).sum() / mask.sum()).item()))
 
-                # consolidates episode segregating by player
-                if not self._joint_observations():
-                    vs = []
-                    for _i in range(self.n_agents):
-                        vs.append(self.critic(batch, _i, j=0)[:, :t_max])
-                    v = th.cat(vs, dim=2)
-                    v[mask==0] = 0
-                v_mean_batch_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
+            #     # consolidates episode segregating by player
+            #     if not self._joint_observations():
+            #         vs = []
+            #         for _i in range(self.n_agents):
+            #             vs.append(self.critic(batch, _i, j=0)[:, :t_max])
+            #         v = th.cat(vs, dim=2)
+            #         v[mask==0] = 0
+            #     v_mean_batch_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
 
-                for _i in range(self.n_agents):
-                    key = f"v_mean_batch_player_{0}_{_i}"
-                    running_log[key].append(float(v_mean_batch_player[_i]))
+            #     for _i in range(self.n_agents):
+            #         key = f"v_mean_batch_player_{0}_{_i}"
+            #         running_log[key].append(float(v_mean_batch_player[_i]))
 
 
             # Each critic has many fully connected layers each of which with
@@ -354,52 +354,52 @@ class ActorCriticNetworkedLearner:
                     for _key, _value in _critic.named_parameters():
                         _value.data = th.nn.parameter.Parameter(consensus_parameters[_key][0][_i, :])
 
-                if t_env - self.log_stats_t >= self.args.learner_log_interval:
-                    vs = []
+                # if t_env - self.log_stats_t >= self.args.learner_log_interval:
+                #     vs = []
 
-                    for _i in range(self.n_agents):
-                        if self._joint_observations():
-                            vs.append(self.critic(batch, _i)[:, :t_max])
-                        else:
-                            vs.append(self.critic(batch, _i, j=0)[:, :t_max])
-                    v = th.cat(vs, dim=2)
+                #     for _i in range(self.n_agents):
+                #         if self._joint_observations():
+                #             vs.append(self.critic(batch, _i)[:, :t_max])
+                #         else:
+                #             vs.append(self.critic(batch, _i, j=0)[:, :t_max])
+                #     v = th.cat(vs, dim=2)
 
-                    # Computes the loss for the current iteration.
-                    v[mask==0] = 0
-                    td_error = v[:, :t_max] - consensus_values[:, :t_max]
-                    loss = (td_error**2).sum() / mask.sum()
-                    running_log[f"critic_loss_mse_{k + 1}"].append(float(loss.item()))
-                    running_log[f"v_mean_batch_target_{k + 1}"].append(float((consensus_values.sum() / th.clamp(mask.sum(), min=1)).item()))
-                    # consolidates episode segregating by player
-                    v_mean_batch_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
-                    for _i in range(self.n_agents):
-                        key = f"v_mean_batch_player_{k + 1}_{_i}"
-                        running_log[key].append(float(v_mean_batch_player[_i]))
+                #     # Computes the loss for the current iteration.
+                #     v[mask==0] = 0
+                #     td_error = v[:, :t_max] - consensus_values[:, :t_max]
+                #     loss = (td_error**2).sum() / mask.sum()
+                #     running_log[f"critic_loss_mse_{k + 1}"].append(float(loss.item()))
+                #     running_log[f"v_mean_batch_target_{k + 1}"].append(float((consensus_values.sum() / th.clamp(mask.sum(), min=1)).item()))
+                #     # consolidates episode segregating by player
+                #     v_mean_batch_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
+                #     for _i in range(self.n_agents):
+                #         key = f"v_mean_batch_player_{k + 1}_{_i}"
+                #         running_log[key].append(float(v_mean_batch_player[_i]))
 
             # debugging log report consensus weights.
             # saving all weights takes way too long.
-            if t_env - self.log_stats_t >= self.args.learner_log_interval:
-                for _k, _w in self._logfilter(consensus_parameters_logs):
-                    for _i in range(self.n_agents):
-                        _wi = _w[0][_i]
-                        # row tensor -- squeeze.
-                        if _wi.shape[0] == 1 and len(_wi.shape) == 2:
-                            _wi.squeeze_(0)
-                        n = len(_wi.shape)
-                        if n == 1: # 1D tensors OK
-                            if _wi.shape[0] > 1:
-                                # samples weights
-                                for _n in (7,):
-                                    _key = f'{_k}_{_i}_{_n}'
-                                    running_log[_key].append(float(_wi[_n]))
-                            else:
-                                _key = f'{_k}_{_i}_0'
-                                running_log[_key].append(float(_wi))
-                        else:
-                            # samples weights
-                            for _n in (7,):
-                                _key = f'{_k}_{_i}_{_n}'
-                                running_log[_key].append(float(_wi[_n, 0]))
+            # if t_env - self.log_stats_t >= self.args.learner_log_interval:
+            #     for _k, _w in self._logfilter(consensus_parameters_logs):
+            #         for _i in range(self.n_agents):
+            #             _wi = _w[0][_i]
+            #             # row tensor -- squeeze.
+            #             if _wi.shape[0] == 1 and len(_wi.shape) == 2:
+            #                 _wi.squeeze_(0)
+            #             n = len(_wi.shape)
+            #             if n == 1: # 1D tensors OK
+            #                 if _wi.shape[0] > 1:
+            #                     # samples weights
+            #                     for _n in (7,):
+            #                         _key = f'{_k}_{_i}_{_n}'
+            #                         running_log[_key].append(float(_wi[_n]))
+            #                 else:
+            #                     _key = f'{_k}_{_i}_0'
+            #                     running_log[_key].append(float(_wi))
+            #             else:
+            #                 # samples weights
+            #                 for _n in (7,):
+            #                     _key = f'{_k}_{_i}_{_n}'
+            #                     running_log[_key].append(float(_wi[_n, 0]))
 
     def nstep_returns(self, rewards, mask, values, nsteps):
         # nstep is a hyperparameter that regulates the number of look aheads

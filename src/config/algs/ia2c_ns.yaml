@@ -1,10 +1,10 @@
 # --- IA2C NS specific parameters ---
-
+lr: 0.0005  # LBF
+hidden_dim: 64 # LBF
 action_selector: "soft_policies"
 mask_before_softmax: True
 
 runner: "parallel"
-
 buffer_size: 10
 batch_size_run: 10
 batch_size: 10
@@ -15,9 +15,8 @@ env_args:
   shared_rewards: False
 
 # update the target network every {} training steps
-target_update_interval_or_tau: 0.01
+target_update_interval_or_tau: 0.01 # LBF
 
-lr: 0.0005
 
 obs_agent_id: False
 obs_last_action: False
@@ -35,4 +34,5 @@ q_nstep: 5 # 1 corresponds to normal r + gammaV
 critic_type: "ac_critic_ns"
 name: "ia2c_ns"
 
-t_max: 20_050_000
+# t_max: 20_050_000
+t_max: 40_050_000

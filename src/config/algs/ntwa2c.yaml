@@ -1,4 +1,6 @@
 # --- NTWA2C specific parameters ---
+lr: 0.0005 # LBF
+hidden_dim: 64 # LBF
 action_selector: "soft_policies"
 mask_before_softmax: True
 
@@ -14,9 +16,8 @@ env_args:
 
 
 # update the target network every {} training steps
-target_update_interval_or_tau: 0.01
+target_update_interval_or_tau: 0.01 # LBF
 
-lr: 0.0005
 
 obs_agent_id: False
 obs_last_action: False
@@ -33,12 +34,13 @@ use_rnn: True
 q_nstep: 5 # 1 corresponds to normal r + gammaV
 critic_type: "ac_critic_networked" # All weights begin at the same place.
 networked_edges: 1  # maps n_agents: n_edges
-networked_rounds: 1  # At each consensus round try this many consensus matrices.
+networked_rounds: 10  # At each consensus round try this many consensus matrices.
+networked_interval: 5 # Try consensus at every networked_interval number of training steps.
 networked_time_varying: True # if False the consensus matrix will be static.
 networked_joint_observations: False # Uses joint observations for training and consensus.
-networked_interval: 30_050_000 # Try consensus at every networked_interval number of training steps.
 
 
 name: "ntwa2c"
 
-t_max: 30_050_000
+# t_max: 30_050_000
+t_max: 40_050_000
