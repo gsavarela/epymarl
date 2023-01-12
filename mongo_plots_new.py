@@ -11,7 +11,7 @@ from pathlib import Path
 import re
 import string
 from operator import itemgetter
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from typing import List
 
 from utils import standard_error
@@ -37,7 +37,7 @@ SEED_PATTERN = r"seed=(.*?)\)"
 M_PATTERN = r"M=(.*?)\,"
 
 ## RWARE HYPER_GROUP 
-RWARE_NTWA2C_QUERIES = {
+RWARE_NTWA2C_QUERIES = OrderedDict({
     10: {
         'query_ids': [*range(150, 155 + 1)],
         'query_config': {
@@ -56,15 +56,15 @@ RWARE_NTWA2C_QUERIES = {
             'config.networked_interval': 1,
         }
     }
-}
+})
 
 
-LBF_NTWA2C_QUERIES = {
+LBF_NTWA2C_QUERIES = OrderedDict({
     'lbforaging:Foraging-15x15-3p-5f-v1': {
         'ia2c_ns': {
             'source': 'filesystem',
             'sub_dir': 'random_seeds',
-            'query_ids': [*range(239, 243 + 1)],
+            'query_ids': [*range(22, 26 + 1)],
             'query_config': {
                 'config.name': 'ia2c_ns',
             }
@@ -78,7 +78,8 @@ LBF_NTWA2C_QUERIES = {
             }
         },
         'maa2c_ns': {
-            'query_ids': [*range(189, 253 + 1)],
+            # 'query_ids': [*range(215, 219 + 1)],
+            'query_ids': [*range(195, 199 + 1)],
             'source': 'remote',
             'query_config': {
                 'config.name': 'maa2c_ns',
@@ -104,15 +105,16 @@ LBF_NTWA2C_QUERIES = {
         },
         'maa2c_ns': {
             'source': 'remote',
-            'query_ids': [*range(195, 199 + 1)],
+            # 'query_ids': [*range(22, 26 + 1)],
+            'query_ids': [*range(215, 219 + 1)],
             'query_config': {
                 'config.name': 'maa2c_ns',
             }
         },
     }
-}
+})
 
-TAG_NTWA2C_QUERIES = {
+TAG_NTWA2C_QUERIES = OrderedDict({
     'mpe:SimpleTag-v0': {
         'ia2c_ns': {
             'query_ids': [*range(239, 243 + 1)],
@@ -136,9 +138,9 @@ TAG_NTWA2C_QUERIES = {
             }
         },
     }
-}
+})
 
-RWARE_NTWQL_QUERIES = {
+RWARE_NTWQL_QUERIES = OrderedDict({
     21: {
         'query_ids': [*range(160, 164 + 1)],
         'query_config': {
@@ -148,12 +150,12 @@ RWARE_NTWQL_QUERIES = {
             'config.networked_interval': 1,
         }
     }
-}
+})
 
 
 
 ## LBF
-LBF_HYPER_GROUP_QUERIES = {
+LBF_HYPER_GROUP_QUERIES = OrderedDict({
     7: {
         'query_ids': [*range(17, 21 + 1)],
         'query_config': {
@@ -163,9 +165,9 @@ LBF_HYPER_GROUP_QUERIES = {
             'config.networked_interval': 5,
         }
     }
-}
+})
 
-LBF_NTWQL_QUERIES = {
+LBF_NTWQL_QUERIES = OrderedDict({
     'lbforaging:Foraging-15x15-3p-5f-v1': {
         'iql_ns': {
             'query_ids': [*range(210, 214 + 1)],
@@ -189,7 +191,7 @@ LBF_NTWQL_QUERIES = {
             }
         }
     }
-}
+})
 
 LBF_ADVERSARIES_QUERIES = {
     'iql_ns': {
@@ -201,7 +203,7 @@ LBF_ADVERSARIES_QUERIES = {
 }
 
 # TAG
-TAG_NTWQL_QUERIES = {
+TAG_NTWQL_QUERIES = OrderedDict({
     'iql_ns': {
         'query_ids': [*range(58, 62 + 1)],
         'query_config': {
@@ -223,10 +225,10 @@ TAG_NTWQL_QUERIES = {
             'config.name': 'vdn_ns',
         }
     },
-}
+})
 
 # RWARE
-RWARE_NTWQL_QUERIES = {
+RWARE_NTWQL_QUERIES = OrderedDict({
     'iql_ns': {
         'query_ids': [*range(58, 62 + 1)],
         'query_config': {
@@ -248,11 +250,48 @@ RWARE_NTWQL_QUERIES = {
             'config.name': 'vdn_ns',
         }
     },
-}
+})
 
 
-def file_loader(environment: str, algo: str, source: str, query: Dict):
-    pass
+def file_processor(environment: str, algo: str,  query: Dict):
+    root_path = Path(f"results/sacred/{algo}")
+
+    if 'sub_dir' in query:
+        root_path = root_path / query.pop('sub_dir')
+    root_path = root_path / environment
+
+    steps = defaultdict(list)
+    results = defaultdict(list)
+    max_rollouts = 41  # Required number of tests
+
+    taskname = environment.split(":")[-1].split("-v")[0]
+    algoname = algo.upper()
+    key = (algoname, taskname)
+    sample_size = 0
+    for experiment_id in query['query_ids']:
+        # Matches every lbforaging task.
+        experiment_path = root_path / str(experiment_id)
+
+        print(algoname, experiment_path)
+        with (experiment_path / 'metrics.json').open("r") as f:
+            data = json.load(f)
+
+        if "test_return_mean" in data:
+            _steps = data["test_return_mean"]["steps"]
+            _values = data["test_return_mean"]["values"]
+            print(f"algo: {algoname}\tsource: {taskname}\tn_points:{len(_values)}")
+
+            # Get at most the 41 first evaluations
+            steps[key].append(_steps[:max_rollouts])
+            results[key].append(_values[:max_rollouts])
+            sample_size += 1
+
+    if sample_size > 0:
+        steps[key] = np.vstack(steps[key])
+        results[key] = np.vstack(
+            results[key]
+        )
+    return steps, results
 
 def mongo_processor(environment: str, algo: str, source: str, query: Dict) -> Tuple[Dict]:
 
@@ -573,6 +612,7 @@ def main(
     sources: Union[str, List[str]]
         Either a N_ALGO sized list of strings or string.
         examples: 'local' or ['remote', 'local']
+        choice:
     queries: List[Dict]
         A list with dicts containg queries for each algoname
     suptitle: str, default ''
@@ -587,6 +627,7 @@ def main(
     if isinstance(sources, str):
         sources = [sources] * len(algonames)
     assert len(sources) == len(algonames)
+    assert all([source in ('local', 'remote', 'filesystem') for source in sources])
 
 
     title = ''
@@ -596,10 +637,13 @@ def main(
     # 1. Queries algos and aggregates runs
     for algo, source, query in zip(algonames, sources, queries):
 
-        experiments = mongo_loader(environment, algo, source, query)
-
-
-        _steps, _results = mongo_parser(environment, algo, experiments)
+        if source == 'filesystem':
+            _steps, _results = file_processor(environment, algo, query)
+        elif source in ('remote', 'local'):
+            _steps, _results = mongo_processor(environment, algo, source, query)
+        else:
+            raise ValueError()
+            
         steps.update(_steps)
         results.update(_results)
 
@@ -742,22 +786,11 @@ if __name__ == "__main__":
     #     food=5,
     #     coop=False,
     #     dual_x_axis=False)
-    ENV = 'mpe:SimpleTag-v0'
+    # ENV = 'mpe:SimpleTag-v0'
     # ENV = 'rware:rware-tiny-4ag-v1'
-    # ENV = 'lbforaging:Foraging-15x15-3p-5f-v1'
-    # algonames = ["iql_ns","ntwql"]
-    algonames = list(TAG_NTWQL_QUERIES.keys())
-    # algonames = ["ia2c_ns", "ntwa2c"]
-    # sources = ['remote', 'local'] # list or string
-    # sources = ['local', 'remote'] # list or string
-    sources = 'local' # list or string
-    # sources = 'remote' # list or string
-    # queries = [
-    #     # {'query_ids': [*range(135, 139 + 1)]},
-    #     # {'query_ids': [*range(7, 11 + 1)]},
-    #     RWARE_NTWQL_QUERIES[21]
-    #
-    # ]
-    queries = list(TAG_NTWQL_QUERIES.values())
+    ENV = 'lbforaging:Foraging-15x15-3p-5f-v1'
+    algonames = list(LBF_NTWA2C_QUERIES[ENV].keys())
+    sources = [query.pop('source') for query in LBF_NTWA2C_QUERIES[ENV].values()]
+    queries = list(LBF_NTWA2C_QUERIES[ENV].values())
 
     main(ENV, algonames, sources, queries, '')
