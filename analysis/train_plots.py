@@ -37,30 +37,53 @@ SEED_PATTERN = r"seed=(.*?)\)"
 M_PATTERN = r"M=(.*?)\,"
 
 ## RWARE HYPER_GROUP 
-RWARE_NTWA2C_QUERIES = OrderedDict({
-    10: {
-        'query_ids': [*range(150, 155 + 1)],
-        'query_config': {
-            'config.name': 'ntwa2c',
-            'config.networked_edges': 2,
-            'config.networked_rounds': 1,
-            'config.networked_interval': 5,
-        }
-    },
-    21: {
-        'query_ids': [*range(156, 159 + 1)],
-        'query_config': {
-            'config.name': 'ntwa2c',
-            'config.networked_edges': 3,
-            'config.networked_rounds': 5,
-            'config.networked_interval': 1,
-        }
-    }
-})
+# RWARE_NTWA2C_QUERIES = OrderedDict({
+#     10: {
+#         'query_ids': [*range(150, 155 + 1)],
+#         'query_config': {
+#             'config.name': 'ntwa2c',
+#             'config.networked_edges': 2,
+#             'config.networked_rounds': 1,
+#             'config.networked_interval': 5,
+#         }
+#     },
+#     21: {
+#         'query_ids': [*range(156, 159 + 1)],
+#         'query_config': {
+#             'config.name': 'ntwa2c',
+#             'config.networked_edges': 3,
+#             'config.networked_rounds': 5,
+#             'config.networked_interval': 1,
+#         }
+#     }
+# })
 
 
-LBF_NTWA2C_QUERIES = OrderedDict({
-    'lbforaging:Foraging-15x15-3p-5f-v1': {
+NTWA2C_QUERIES = OrderedDict({
+    'mpe:SimpleTag-v0': OrderedDict({
+        'ia2c_ns': {
+            'query_ids': [*range(239, 243 + 1)],
+            'query_config': {
+                'config.name': 'ia2c_ns',
+            }
+        },
+        'ntwa2c': {
+            'query_ids': [*range(244, 248 + 1)],
+            'query_config': {
+                'config.name': 'ntwa2c',
+                'config.networked_edges': 1,
+                'config.networked_rounds': 1,
+                'config.networked_interval': 5,
+            }
+        },
+        'maa2c_ns': {
+            'query_ids': [*range(249, 253 + 1)],
+            'query_config': {
+                'config.name': 'maa2c_ns',
+            }
+        },
+    }),
+    'lbforaging:Foraging-15x15-3p-5f-v1': OrderedDict({
         'ia2c_ns': {
             'source': 'filesystem',
             'sub_dir': 'random_seeds',
@@ -85,61 +108,70 @@ LBF_NTWA2C_QUERIES = OrderedDict({
                 'config.name': 'maa2c_ns',
             }
         },
-    },
-    'lbforaging:Foraging-15x15-4p-5f-v1': {
-        'ia2c_ns': {
-            'source': 'filesystem',
-            'sub_dir': '30_000_000',
-            'query_ids': [*range(6, 10 + 1)],
-            'query_config': {
-                'config.name': 'ia2c_ns',
-            }
-        },
-        'ntwa2c': {
-            'source': 'filesystem',
-            'sub_dir': '30_000_000',
-            'query_ids': [*range(185, 189 + 1)],
-            'query_config': {
-                'config.name': 'ntwa2c',
-            }
-        },
-        'maa2c_ns': {
+    }),
+    'lbforaging:Foraging-15x15-4p-5f-v1': OrderedDict({
+        # 'ia2c_ns': {
+        #     'source': 'filesystem',
+        #     'sub_dir': '30_000_000',
+        #     'query_ids': [*range(6, 10 + 1)],
+        #     'query_config': {
+        #         'config.name': 'ia2c_ns',
+        #     }
+        # },
+        # 'ntwa2c': {
+        #     'source': 'filesystem',
+        #     'sub_dir': '30_000_000',
+        #     'query_ids': [*range(185, 189 + 1)],
+        #     'query_config': {
+        #         'config.name': 'ntwa2c',
+        #     }
+        # },
+        # 'maa2c_ns': {
+        #     'source': 'remote',
+        #     # 'query_ids': [*range(22, 26 + 1)],
+        #     'query_ids': [*range(215, 219 + 1)],
+        #     'query_config': {
+        #         'config.name': 'maa2c_ns',
+        #     }
+        # },
+        'maa2c_ns': { # LONG RUN
             'source': 'remote',
             # 'query_ids': [*range(22, 26 + 1)],
-            'query_ids': [*range(215, 219 + 1)],
+            'query_ids': [*range(318, 322 + 1)],
             'query_config': {
                 'config.name': 'maa2c_ns',
+                'config.t_max': 40050000
             }
         },
-    }
+    })
 })
 
-TAG_NTWA2C_QUERIES = OrderedDict({
-    'mpe:SimpleTag-v0': {
-        'ia2c_ns': {
-            'query_ids': [*range(239, 243 + 1)],
-            'query_config': {
-                'config.name': 'ia2c_ns',
-            }
-        },
-        'ntwa2c': {
-            'query_ids': [*range(244, 248 + 1)],
-            'query_config': {
-                'config.name': 'ntwa2c',
-                'config.networked_edges': 1,
-                'config.networked_rounds': 1,
-                'config.networked_interval': 5,
-            }
-        },
-        'maa2c_ns': {
-            'query_ids': [*range(249, 253 + 1)],
-            'query_config': {
-                'config.name': 'maa2c_ns',
-            }
-        },
-    }
-})
-
+# TAG_NTWA2C_QUERIES = OrderedDict({
+#     'mpe:SimpleTag-v0': {
+#         'ia2c_ns': {
+#             'query_ids': [*range(239, 243 + 1)],
+#             'query_config': {
+#                 'config.name': 'ia2c_ns',
+#             }
+#         },
+#         'ntwa2c': {
+#             'query_ids': [*range(244, 248 + 1)],
+#             'query_config': {
+#                 'config.name': 'ntwa2c',
+#                 'config.networked_edges': 1,
+#                 'config.networked_rounds': 1,
+#                 'config.networked_interval': 5,
+#             }
+#         },
+#         'maa2c_ns': {
+#             'query_ids': [*range(249, 253 + 1)],
+#             'query_config': {
+#                 'config.name': 'maa2c_ns',
+#             }
+#         },
+#     }
+# })
+#
 # RWARE_NTWQL_QUERIES = OrderedDict({
 #     21: {
 #         'query_ids': [*range(160, 164 + 1)],
@@ -155,20 +187,85 @@ TAG_NTWA2C_QUERIES = OrderedDict({
 
 
 ## LBF
-LBF_HYPER_GROUP_QUERIES = OrderedDict({
-    7: {
-        'query_ids': [*range(17, 21 + 1)],
-        'query_config': {
-            'config.name': 'ntwql',
-            'config.networked_edges': 1,
-            'config.networked_rounds': 10,
-            'config.networked_interval': 5,
-        }
-    }
-})
+# LBF_HYPER_GROUP_QUERIES = OrderedDict({
+#     7: {
+#         'query_ids': [*range(17, 21 + 1)],
+#         'query_config': {
+#             'config.name': 'ntwql',
+#             'config.networked_edges': 1,
+#             'config.networked_rounds': 10,
+#             'config.networked_interval': 5,
+#         }
+#     }
+# })
+#
+# LBF_NTWQL_QUERIES = OrderedDict({
+#     'lbforaging:Foraging-15x15-3p-5f-v1': {
+#         'iql_ns': {
+#             'query_ids': [*range(210, 214 + 1)],
+#             'query_config': {
+#                 'config.name': 'iql_ns',
+#             }
+#         },
+#         'ntwql': {
+#             'query_ids': [*range(205, 209 + 1)],
+#             'query_config': {
+#                 'config.name': 'ntwql',
+#                 'config.networked_edges': 2,
+#                 'config.networked_rounds': 1,
+#                 'config.networked_interval': 5,
+#             }
+#         },
+#         'vdn_ns': {
+#             'query_ids': [*range(220, 224 + 1)],
+#             'query_config': {
+#                 'config.name': 'vdn_ns',
+#             }
+#         }
+#     }
+# })
+#
+# LBF_ADVERSARIES_QUERIES = {
+#     'iql_ns': {
+#         'query_ids': [*range(170, 174 + 1)],
+#         'query_config': {
+#             'config.name': 'iql_ns',
+#         }
+#     },
+# }
 
-LBF_NTWQL_QUERIES = OrderedDict({
-    'lbforaging:Foraging-15x15-3p-5f-v1': {
+# TAG
+NTWQL_QUERIES = OrderedDict({
+    'mpe:SimpleTag-v0': OrderedDict({
+        # 'iql_ns': {
+        #     'query_ids': [*range(58, 62 + 1)],
+        #     'source': 'local',
+        #     'query_config': {
+        #         'config.name': 'iql_ns',
+        #     }
+        # },
+        # 'ntwql': {
+        #     'query_ids': [*range(63, 67 + 1)],
+        #     'source': 'local',
+        #     'query_config': {
+        #         'config.name': 'ntwql',
+        #         'config.networked_edges': 2,
+        #         'config.networked_rounds': 1,
+        #         'config.networked_interval': 5,
+        #     }
+        # },
+        'vdn_ns': {
+            # 'query_ids': [*range(68, 72 + 1)],
+            'query_ids': [*range(344, 348 + 1)],
+            # 'source': 'local',
+            'source': 'remote',
+            'query_config': {
+                'config.name': 'vdn_ns',
+                'config.t_max': 5005000
+            }
+        }
+    }),
+    'lbforaging:Foraging-15x15-3p-5f-v1': OrderedDict({
         'iql_ns': {
             'query_ids': [*range(210, 214 + 1)],
             'query_config': {
@@ -190,45 +287,7 @@ LBF_NTWQL_QUERIES = OrderedDict({
                 'config.name': 'vdn_ns',
             }
         }
-    }
-})
-
-LBF_ADVERSARIES_QUERIES = {
-    'iql_ns': {
-        'query_ids': [*range(170, 174 + 1)],
-        'query_config': {
-            'config.name': 'iql_ns',
-        }
-    },
-}
-
-# TAG
-TAG_NTWQL_QUERIES = OrderedDict({
-    'iql_ns': {
-        'query_ids': [*range(58, 62 + 1)],
-        'query_config': {
-            'config.name': 'iql_ns',
-        }
-    },
-    'ntwql': {
-        'query_ids': [*range(63, 67 + 1)],
-        'query_config': {
-            'config.name': 'ntwql',
-            'config.networked_edges': 2,
-            'config.networked_rounds': 1,
-            'config.networked_interval': 5,
-        }
-    },
-    'vdn_ns': {
-        'query_ids': [*range(68, 72 + 1)],
-        'query_config': {
-            'config.name': 'vdn_ns',
-        }
-    },
-})
-
-# RWARE
-RWARE_NTWQL_QUERIES = OrderedDict({
+    }),
     'rware-tiny-4ag-v1': OrderedDict({
         'iql_ns': {
             # 'query_ids': [*range(58, 62 + 1)],
@@ -273,7 +332,8 @@ def file_processor(environment: str, algo: str,  query: Dict):
 
     steps = defaultdict(list)
     results = defaultdict(list)
-    max_rollouts = 41  # Required number of tests
+    # max_rollouts = 41  # Required number of tests
+    max_rollouts = 1000  # Required number of tests
 
     taskname = environment.split(":")[-1].split("-v")[0]
     algoname = algo.upper()
@@ -329,11 +389,11 @@ def mongo_parser(environment:str, algo: str, experiments: List[object]) -> Tuple
 
         steps = defaultdict(list)
         results = defaultdict(list)
-        max_rollouts = 41
         sample_size = 0
         algoname = algo.upper()
         taskname = environment
-        max_rollouts = 41
+        # max_rollouts = 41
+        max_rollouts = 1000
         # title = taskname
         # if len(suptitle) > 1:
         #     title = f"{taskname} ({suptitle})"
@@ -798,10 +858,12 @@ if __name__ == "__main__":
     #     coop=False,
     #     dual_x_axis=False)
     # ENV = 'mpe:SimpleTag-v0'
-    ENV = 'rware-tiny-4ag-v1'
+    # ENV = 'rware-tiny-4ag-v1'
     # ENV = 'lbforaging:Foraging-15x15-3p-5f-v1'
-    algonames = list(RWARE_NTWQL_QUERIES[ENV].keys())
-    sources = [query.pop('source') for query in RWARE_NTWQL_QUERIES[ENV].values()]
-    queries = list(RWARE_NTWQL_QUERIES[ENV].values())
+    ENV = 'lbforaging:Foraging-15x15-4p-5f-v1'
+    algonames = list(NTWA2C_QUERIES[ENV].keys())
+    sources = [_q.pop('source') if 'source' in _q else 'remote' for _q in NTWA2C_QUERIES[ENV].values()]
+    queries = list(NTWA2C_QUERIES[ENV].values())
 
     main(ENV, algonames, sources, queries, '')
+
