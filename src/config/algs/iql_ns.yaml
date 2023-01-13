@@ -1,15 +1,11 @@
 # --- IQL NS specific parameters ---
-# lr: 0.0003 # LBF: Learning rate for agents
-lr: 0.0005 # RWARE and TAG:  Learning rate for agents
-# hidden_dim: 64 # LBF: Size of hidden state for default rnn agent
-hidden_dim: 128 # MPE: Size of hidden state for default rnn agent
+lr: 0.0005 # MPE
+hidden_dim: 128 # MPE
 # use epsilon greedy action selector
 action_selector: "epsilon_greedy"
 epsilon_start: 1.0
 epsilon_finish: 0.05
-# epsilon_anneal_time: 50_000
-epsilon_anneal_time: 200_000
-# evaluation_epsilon: 0.05 # LBF
+epsilon_anneal_time: 200_000 # MPE
 evaluation_epsilon: 0.0 # MPE
 
 runner: "episode"
@@ -17,16 +13,13 @@ runner: "episode"
 buffer_size: 5_000
 
 # update the target network every {} episodes
-# target_update_interval_or_tau: 200 # LBF
-target_update_interval_or_tau: 0.01 # RWARE AND MPE
+target_update_interval_or_tau: 0.01 # MPE
 
 
 env_args:
   joint_rewards: True
   shared_rewards: False
-  # time_limit: 50 # LBF: Max seq_length
-  time_limit: 25 # TAG: Max seq_length
-  # time_limit: 500
+  time_limit: 25 # MPE
 
 obs_agent_id: False
 obs_last_action: False
@@ -41,9 +34,8 @@ standardise_returns: False
 standardise_rewards: True
 double_q: True
 use_rnn: False # MPE
-# use_rnn: True # LBF: GRU
 mixer: # Mixer becomes None
 
 name: "iql_ns"
-# t_max: 5_050_000 LBF
-t_max: 2_050_000 # TAG
+t_max: 5_050_000 # MPE
+
