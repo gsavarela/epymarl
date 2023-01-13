@@ -140,17 +140,17 @@ TAG_NTWA2C_QUERIES = OrderedDict({
     }
 })
 
-RWARE_NTWQL_QUERIES = OrderedDict({
-    21: {
-        'query_ids': [*range(160, 164 + 1)],
-        'query_config': {
-            'config.name': 'ntwql',
-            'config.networked_edges': 3,
-            'config.networked_rounds': 5,
-            'config.networked_interval': 1,
-        }
-    }
-})
+# RWARE_NTWQL_QUERIES = OrderedDict({
+#     21: {
+#         'query_ids': [*range(160, 164 + 1)],
+#         'query_config': {
+#             'config.name': 'ntwql',
+#             'config.networked_edges': 3,
+#             'config.networked_rounds': 5,
+#             'config.networked_interval': 1,
+#         }
+#     }
+# })
 
 
 
@@ -229,27 +229,38 @@ TAG_NTWQL_QUERIES = OrderedDict({
 
 # RWARE
 RWARE_NTWQL_QUERIES = OrderedDict({
-    'iql_ns': {
-        'query_ids': [*range(58, 62 + 1)],
-        'query_config': {
-            'config.name': 'iql_ns',
+    'rware-tiny-4ag-v1': OrderedDict({
+        'iql_ns': {
+            # 'query_ids': [*range(58, 62 + 1)],
+            'source': 'remote',
+            'query_ids': [*range(226, 229 + 1)],  # LONG RUN 
+            'query_config': {
+                'config.name': 'iql_ns',
+                'config.t_max': 10_050_000
+            }
+        },
+        'ntwql': {
+            # 'query_ids': [*range(63, 67 + 1)],
+            'query_ids': [263, 264, 265, 267], # LONG RUN
+            'source': 'remote',
+            'query_config': {
+                'config.name': 'ntwql',
+                'config.networked_edges': 2,
+                'config.networked_rounds': 1,
+                'config.networked_interval': 5,
+                'config.t_max': 10_050_000
+            }
+        },
+        'vdn_ns': {
+            # 'query_ids': [*range(68, 72 + 1)],
+            'query_ids': [313, 314, 315, 316],
+            'source': 'remote',
+            'query_config': {
+                'config.name': 'vdn_ns',
+                'config.t_max': 10_050_000
+            }
         }
-    },
-    'ntwql': {
-        'query_ids': [*range(63, 67 + 1)],
-        'query_config': {
-            'config.name': 'ntwql',
-            'config.networked_edges': 2,
-            'config.networked_rounds': 1,
-            'config.networked_interval': 5,
-        }
-    },
-    'vdn_ns': {
-        'query_ids': [*range(68, 72 + 1)],
-        'query_config': {
-            'config.name': 'vdn_ns',
-        }
-    },
+    })
 })
 
 
@@ -787,10 +798,10 @@ if __name__ == "__main__":
     #     coop=False,
     #     dual_x_axis=False)
     # ENV = 'mpe:SimpleTag-v0'
-    # ENV = 'rware:rware-tiny-4ag-v1'
-    ENV = 'lbforaging:Foraging-15x15-3p-5f-v1'
-    algonames = list(LBF_NTWA2C_QUERIES[ENV].keys())
-    sources = [query.pop('source') for query in LBF_NTWA2C_QUERIES[ENV].values()]
-    queries = list(LBF_NTWA2C_QUERIES[ENV].values())
+    ENV = 'rware-tiny-4ag-v1'
+    # ENV = 'lbforaging:Foraging-15x15-3p-5f-v1'
+    algonames = list(RWARE_NTWQL_QUERIES[ENV].keys())
+    sources = [query.pop('source') for query in RWARE_NTWQL_QUERIES[ENV].values()]
+    queries = list(RWARE_NTWQL_QUERIES[ENV].values())
 
     main(ENV, algonames, sources, queries, '')
