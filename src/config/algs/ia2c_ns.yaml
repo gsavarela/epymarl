@@ -37,4 +37,4 @@ q_nstep: 10 # MPE: 1 corresponds to normal r + gammaV
 critic_type: "ac_critic_ns"
 
 name: "ia2c_ns"
-t_max: 10_050_000 # MPE
+t_max: 20_050_000 # MPE
