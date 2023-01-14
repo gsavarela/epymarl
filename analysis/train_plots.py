@@ -134,6 +134,25 @@ NTWA2C_QUERIES = OrderedDict({
         #         'config.name': 'maa2c_ns',
         #     }
         # },
+
+        'ia2c_ns': {
+            'source': 'remote',
+            'query_ids': [*range(359, 363 + 1)],
+            'query_config': {
+                'config.name': 'ia2c_ns',
+            }
+        },
+        'ntwa2c': { # LONG RUN
+            'source': 'remote',
+            'query_ids': [*range(339, 343 + 1)],
+            'query_config': {
+                'config.name': 'ntwa2c',
+                'config.networked_edges': 1,
+                'config.networked_rounds': 10,
+                'config.networked_interval': 5,
+                'config.t_max': 40050000
+            }
+        },
         'maa2c_ns': { # LONG RUN
             'source': 'remote',
             # 'query_ids': [*range(22, 26 + 1)],
@@ -237,23 +256,29 @@ NTWA2C_QUERIES = OrderedDict({
 # TAG
 NTWQL_QUERIES = OrderedDict({
     'mpe:SimpleTag-v0': OrderedDict({
-        # 'iql_ns': {
-        #     'query_ids': [*range(58, 62 + 1)],
-        #     'source': 'local',
-        #     'query_config': {
-        #         'config.name': 'iql_ns',
-        #     }
-        # },
-        # 'ntwql': {
-        #     'query_ids': [*range(63, 67 + 1)],
-        #     'source': 'local',
-        #     'query_config': {
-        #         'config.name': 'ntwql',
-        #         'config.networked_edges': 2,
-        #         'config.networked_rounds': 1,
-        #         'config.networked_interval': 5,
-        #     }
-        # },
+        'iql_ns': {
+            'query_ids': [*range(367, 371 + 1)],
+            # 'source': 'local',
+            'source': 'remote',
+            'query_config': {
+                'config.name': 'iql_ns',
+                'config.t_max': 5050000
+            }
+        },
+        'ntwql': OrderedDict({
+            # 'query_ids': [*range(63, 67 + 1)],
+            # 'source': 'local',
+            'query_ids': [*range(354, 358 + 1)],
+            'source': 'remote',
+            'query_config': {
+                'config.name': 'ntwql',
+                'config.networked_edges': 1,
+                'config.networked_rounds': 10,
+                'config.networked_interval': 5,
+                'config.t_max': 5050000
+                
+            }
+        }),
         'vdn_ns': {
             # 'query_ids': [*range(68, 72 + 1)],
             'query_ids': [*range(344, 348 + 1)],
@@ -292,7 +317,8 @@ NTWQL_QUERIES = OrderedDict({
         'iql_ns': {
             # 'query_ids': [*range(58, 62 + 1)],
             'source': 'remote',
-            'query_ids': [*range(226, 229 + 1)],  # LONG RUN 
+            # 'query_ids': [*range(226, 229 + 1)],  # LONG RUN 
+            'query_ids': [226, 227, 228, 229, 351],  # LONG RUN 
             'query_config': {
                 'config.name': 'iql_ns',
                 'config.t_max': 10_050_000
@@ -300,7 +326,7 @@ NTWQL_QUERIES = OrderedDict({
         },
         'ntwql': {
             # 'query_ids': [*range(63, 67 + 1)],
-            'query_ids': [263, 264, 265, 267], # LONG RUN
+            'query_ids': [263, 264, 265, 267, 365], # LONG RUN
             'source': 'remote',
             'query_config': {
                 'config.name': 'ntwql',
@@ -312,7 +338,7 @@ NTWQL_QUERIES = OrderedDict({
         },
         'vdn_ns': {
             # 'query_ids': [*range(68, 72 + 1)],
-            'query_ids': [313, 314, 315, 316],
+            'query_ids': [313, 314, 315, 316, 366],
             'source': 'remote',
             'query_config': {
                 'config.name': 'vdn_ns',
@@ -333,7 +359,8 @@ def file_processor(environment: str, algo: str,  query: Dict):
     steps = defaultdict(list)
     results = defaultdict(list)
     # max_rollouts = 41  # Required number of tests
-    max_rollouts = 1000  # Required number of tests
+    max_rollouts = 101  # Required number of tests
+    # max_rollouts = 1000  # Required number of tests
 
     taskname = environment.split(":")[-1].split("-v")[0]
     algoname = algo.upper()
@@ -393,7 +420,8 @@ def mongo_parser(environment:str, algo: str, experiments: List[object]) -> Tuple
         algoname = algo.upper()
         taskname = environment
         # max_rollouts = 41
-        max_rollouts = 1000
+        # max_rollouts = 1000
+        max_rollouts = 101
         # title = taskname
         # if len(suptitle) > 1:
         #     title = f"{taskname} ({suptitle})"
