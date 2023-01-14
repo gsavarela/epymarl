@@ -1,6 +1,5 @@
 #!/bin/bash
-envs=(15x15-4p-5f)
-
+envs=(15x15-3p-5f)
 for e in "${envs[@]}"
 do
    for i in {1..5}
