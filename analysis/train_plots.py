@@ -142,12 +142,25 @@ NTWA2C_QUERIES = OrderedDict({
         #         'config.name': 'maa2c_ns',
         #     }
         # },
+        'ia2c_ns': { # LONG RUN
+            'source': 'remote',
+            # 'query_ids': [*range(339, 343 + 1)],
+            'query_ids': [*range(359, 363 + 1)],
+            'query_config': {
+                'config.name': 'ia2c_ns',
+                'config.t_max': 40050000
+            }
+        },
         'ntwa2c': { # LONG RUN
             'source': 'remote',
+            # 'query_ids': [*range(339, 343 + 1)],
             'query_ids': [*range(339, 343 + 1)],
             'query_config': {
                 'config.name': 'ntwa2c',
-                'config.networked_edges': 2,
+                # 'config.networked_edges': 2,
+                # 'config.networked_rounds': 10,
+                # 'config.networked_interval': 5,
+                'config.networked_edges': 1,
                 'config.networked_rounds': 10,
                 'config.networked_interval': 5,
                 'config.t_max': 40050000
@@ -579,7 +592,7 @@ def task_plot(
         elif algoname.startswith("MAPPO"):
             marker, color = "h", "C7"
         elif algoname.startswith("MAA2C") or algoname.startswith("VDN"):
-            marker, color = "p", "C3"
+            marker, color = "p", "C5"
         else:
             raise ValueError(f'{algoname} not recognizable.')
         X = timesteps[algo_task_name]
@@ -881,10 +894,10 @@ if __name__ == "__main__":
     #     food=5,
     #     coop=False,
     #     dual_x_axis=False)
-    ENV = 'mpe:SimpleTag-v0'
+    # ENV = 'mpe:SimpleTag-v0'
     # ENV = 'rware-tiny-4ag-v1'
     # ENV = 'lbforaging:Foraging-15x15-3p-5f-v1'
-    # ENV = 'lbforaging:Foraging-15x15-4p-5f-v1'
+    ENV = 'lbforaging:Foraging-15x15-4p-5f-v1'
     algonames = list(NTWA2C_QUERIES[ENV].keys())
     sources = [_q.pop('source') if 'source' in _q else 'remote' for _q in NTWA2C_QUERIES[ENV].values()]
     queries = list(NTWA2C_QUERIES[ENV].values())
