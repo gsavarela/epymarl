@@ -62,24 +62,32 @@ M_PATTERN = r"M=(.*?)\,"
 NTWA2C_QUERIES = OrderedDict({
     'mpe:SimpleTag-v0': OrderedDict({
         'ia2c_ns': {
-            'query_ids': [*range(239, 243 + 1)],
+            'query_ids': [*range(397, 401 + 1)],
             'query_config': {
                 'config.name': 'ia2c_ns',
+                'config.t_max': 20050000
             }
         },
         'ntwa2c': {
-            'query_ids': [*range(244, 248 + 1)],
+            # 'query_ids': [*range(244, 248 + 1)],
+            'query_ids': [*range(387, 391 + 1)],
             'query_config': {
                 'config.name': 'ntwa2c',
+                # 'config.networked_edges': 1,
+                # 'config.networked_rounds': 1,
+                # 'config.networked_interval': 5,
                 'config.networked_edges': 1,
-                'config.networked_rounds': 1,
-                'config.networked_interval': 5,
+                'config.networked_rounds': 5,
+                'config.networked_interval': 10,
+                'config.t_max': 20050000
             }
         },
         'maa2c_ns': {
-            'query_ids': [*range(249, 253 + 1)],
+            # 'query_ids': [*range(249, 253 + 1)],
+            'query_ids': [*range(377, 381 + 1)],
             'query_config': {
                 'config.name': 'maa2c_ns',
+                'config.t_max': 20050000
             }
         },
     }),
@@ -134,20 +142,12 @@ NTWA2C_QUERIES = OrderedDict({
         #         'config.name': 'maa2c_ns',
         #     }
         # },
-
-        'ia2c_ns': {
-            'source': 'remote',
-            'query_ids': [*range(359, 363 + 1)],
-            'query_config': {
-                'config.name': 'ia2c_ns',
-            }
-        },
         'ntwa2c': { # LONG RUN
             'source': 'remote',
             'query_ids': [*range(339, 343 + 1)],
             'query_config': {
                 'config.name': 'ntwa2c',
-                'config.networked_edges': 1,
+                'config.networked_edges': 2,
                 'config.networked_rounds': 10,
                 'config.networked_interval': 5,
                 'config.t_max': 40050000
@@ -256,15 +256,13 @@ NTWA2C_QUERIES = OrderedDict({
 # TAG
 NTWQL_QUERIES = OrderedDict({
     'mpe:SimpleTag-v0': OrderedDict({
-        'iql_ns': {
-            'query_ids': [*range(367, 371 + 1)],
-            # 'source': 'local',
-            'source': 'remote',
-            'query_config': {
-                'config.name': 'iql_ns',
-                'config.t_max': 5050000
-            }
-        },
+        # 'iql_ns': {
+        #     'query_ids': [*range(58, 62 + 1)],
+        #     'source': 'local',
+        #     'query_config': {
+        #         'config.name': 'iql_ns',
+        #     }
+        # },
         'ntwql': OrderedDict({
             # 'query_ids': [*range(63, 67 + 1)],
             # 'source': 'local',
@@ -272,9 +270,9 @@ NTWQL_QUERIES = OrderedDict({
             'source': 'remote',
             'query_config': {
                 'config.name': 'ntwql',
-                'config.networked_edges': 1,
-                'config.networked_rounds': 10,
-                'config.networked_interval': 5,
+                # 'config.networked_edges': 1,
+                # 'config.networked_rounds': 10,
+                # 'config.networked_interval': 5,
                 'config.t_max': 5050000
                 
             }
@@ -326,7 +324,7 @@ NTWQL_QUERIES = OrderedDict({
         },
         'ntwql': {
             # 'query_ids': [*range(63, 67 + 1)],
-            'query_ids': [263, 264, 265, 267, 365], # LONG RUN
+            'query_ids': [263, 264, 265, 267, 352], # LONG RUN
             'source': 'remote',
             'query_config': {
                 'config.name': 'ntwql',
@@ -338,7 +336,7 @@ NTWQL_QUERIES = OrderedDict({
         },
         'vdn_ns': {
             # 'query_ids': [*range(68, 72 + 1)],
-            'query_ids': [313, 314, 315, 316, 366],
+            'query_ids': [313, 314, 315, 316, 353],
             'source': 'remote',
             'query_config': {
                 'config.name': 'vdn_ns',
@@ -359,8 +357,7 @@ def file_processor(environment: str, algo: str,  query: Dict):
     steps = defaultdict(list)
     results = defaultdict(list)
     # max_rollouts = 41  # Required number of tests
-    max_rollouts = 101  # Required number of tests
-    # max_rollouts = 1000  # Required number of tests
+    max_rollouts = 1000  # Required number of tests
 
     taskname = environment.split(":")[-1].split("-v")[0]
     algoname = algo.upper()
@@ -420,8 +417,7 @@ def mongo_parser(environment:str, algo: str, experiments: List[object]) -> Tuple
         algoname = algo.upper()
         taskname = environment
         # max_rollouts = 41
-        # max_rollouts = 1000
-        max_rollouts = 101
+        max_rollouts = 1000
         # title = taskname
         # if len(suptitle) > 1:
         #     title = f"{taskname} ({suptitle})"
@@ -885,10 +881,10 @@ if __name__ == "__main__":
     #     food=5,
     #     coop=False,
     #     dual_x_axis=False)
-    # ENV = 'mpe:SimpleTag-v0'
+    ENV = 'mpe:SimpleTag-v0'
     # ENV = 'rware-tiny-4ag-v1'
     # ENV = 'lbforaging:Foraging-15x15-3p-5f-v1'
-    ENV = 'lbforaging:Foraging-15x15-4p-5f-v1'
+    # ENV = 'lbforaging:Foraging-15x15-4p-5f-v1'
     algonames = list(NTWA2C_QUERIES[ENV].keys())
     sources = [_q.pop('source') if 'source' in _q else 'remote' for _q in NTWA2C_QUERIES[ENV].values()]
     queries = list(NTWA2C_QUERIES[ENV].values())
