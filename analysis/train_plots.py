@@ -36,29 +36,6 @@ SMOOTHING_CURVE_COLOR = (0.33, 0.33, 0.33)
 SEED_PATTERN = r"seed=(.*?)\)"
 M_PATTERN = r"M=(.*?)\,"
 
-## RWARE HYPER_GROUP 
-# RWARE_NTWA2C_QUERIES = OrderedDict({
-#     10: {
-#         'query_ids': [*range(150, 155 + 1)],
-#         'query_config': {
-#             'config.name': 'ntwa2c',
-#             'config.networked_edges': 2,
-#             'config.networked_rounds': 1,
-#             'config.networked_interval': 5,
-#         }
-#     },
-#     21: {
-#         'query_ids': [*range(156, 159 + 1)],
-#         'query_config': {
-#             'config.name': 'ntwa2c',
-#             'config.networked_edges': 3,
-#             'config.networked_rounds': 5,
-#             'config.networked_interval': 1,
-#         }
-#     }
-# })
-
-
 NTWA2C_QUERIES = OrderedDict({
     'mpe:SimpleTag-v0': OrderedDict({
         'ia2c_ns': {
@@ -324,6 +301,37 @@ NTWQL_QUERIES = OrderedDict({
             'query_ids': [*range(220, 224 + 1)],
             'query_config': {
                 'config.name': 'vdn_ns',
+            }
+        }
+    }),
+    'lbforaging:Foraging-15x15-4p-5f-v1': OrderedDict({
+        'iql_ns': {
+            'query_ids': [*range(83, 87 + 1)],
+            'source': 'local',
+            'query_config': {
+                'config.name': 'iql_ns',
+                'config.t_max': 5050000
+            }
+        },
+        'ntwql': {
+            'query_ids': [*range(78, 82 + 1)],
+            'source': 'local',
+            'query_config': {
+                'config.name': 'ntwql',
+                'config.networked_edges': 2,
+                'config.networked_rounds': 1,
+                'config.networked_interval': 5,
+                'config.t_max': 5050000
+            }
+        },
+        'vdn_ns': {
+            'query_ids': [*range(73, 77 + 1)],
+            'source': 'local',
+            'query_config': {
+                'config.name': 'vdn_ns',
+                'config.t_max': 5050000
+
+
             }
         }
     }),
@@ -897,10 +905,10 @@ if __name__ == "__main__":
     #     food=5,
     #     coop=False,
     #     dual_x_axis=False)
-    ENV = 'mpe:SimpleTag-v0'
+    # ENV = 'mpe:SimpleTag-v0'
     # ENV = 'rware-tiny-4ag-v1'
     # ENV = 'lbforaging:Foraging-15x15-3p-5f-v1'
-    # ENV = 'lbforaging:Foraging-15x15-4p-5f-v1'
+    ENV = 'lbforaging:Foraging-15x15-4p-5f-v1'
     algonames = list(NTWQL_QUERIES[ENV].keys())
     sources = [_q.pop('source') if 'source' in _q else 'remote' for _q in NTWQL_QUERIES[ENV].values()]
     queries = list(NTWQL_QUERIES[ENV].values())
