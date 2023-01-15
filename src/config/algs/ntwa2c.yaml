@@ -1,4 +1,7 @@
 # --- NTWA2C specific parameters ---
+hidden_dim: 64  # RWARE
+lr: 0.0005  # RWARE
+
 action_selector: "soft_policies"
 mask_before_softmax: True
 
@@ -11,12 +14,12 @@ env_args:
   state_last_action: False # critic adds last action internally
   joint_rewards: True
   shared_rewards: False
+  time_limit: 500 # RWARE
 
 
 # update the target network every {} training steps
-target_update_interval_or_tau: 0.01
+target_update_interval_or_tau: 0.01 # RWARE
 
-lr: 0.0005
 
 obs_agent_id: False
 obs_last_action: False
@@ -29,14 +32,14 @@ learner: "actor_critic_networked_learner"
 entropy_coef: 0.01
 standardise_rewards: True
 standardise_returns: False
-use_rnn: True
-q_nstep: 5 # 1 corresponds to normal r + gammaV
+use_rnn: False # RWARE
+q_nstep: 5 # True 1 corresponds to normal r + gammaV
 critic_type: "ac_critic_networked" # All weights begin at the same place.
-networked_edges: 1  # maps n_agents: n_edges
-networked_rounds: 1  # At each consensus round try this many consensus matrices.
+networked_edges: 2 # RWARE  # maps n_agents: n_edges
+networked_rounds: 1 # RWARE  # At each consensus round try this many consensus matrices.
 networked_time_varying: True # if False the consensus matrix will be static.
 networked_joint_observations: False # Uses joint observations for training and consensus.
-networked_interval: 30_050_000 # Try consensus at every networked_interval number of training steps.
+networked_interval: 5 # RWARE # Try consensus at every networked_interval number of training steps.
 
 
 name: "ntwa2c"
