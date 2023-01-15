@@ -1,12 +1,11 @@
 #!/bin/bash
-
-envs=(15x15-3p-5f-v2 15x15-4p-3f-v2 15x15-4p-5f-v2 10x10-3p-3f-v2 8x8-2p-2f-coop-v2)
+envs=(rware-tiny-4ag-v1)
 for e in "${envs[@]}"
 do
     for i in {1..5}
     do
-        python src/main.py --config=maa2c_ns --env-config=gymma with env_args.key="lbforaging:Foraging-$e" hidden_dim=128 &
-        echo "Running with maa2c_ns and lbforaging:Foraging-$e"
+        python src/main.py --config=maa2c_ns --env-config=gymma with env_args.key="$e" &
+        echo "Running with maa2c_ns and $e"
         sleep 2s
     done
     wait
