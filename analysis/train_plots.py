@@ -277,7 +277,7 @@ NTWQL_QUERIES = OrderedDict({
         },
         'ntwql': {
             # 'query_ids': [*range(63, 67 + 1)],
-            'query_ids': [263, 264, 265, 267, 352], # LONG RUN
+            'query_ids': [263, 264, 265, 267, 365], # LONG RUN
             'source': 'remote',
             'query_config': {
                 'config.name': 'ntwql',
@@ -289,7 +289,7 @@ NTWQL_QUERIES = OrderedDict({
         },
         'vdn_ns': {
             # 'query_ids': [*range(68, 72 + 1)],
-            'query_ids': [313, 314, 315, 316, 353],
+            'query_ids': [313, 314, 315, 316, 366],
             'source': 'remote',
             'query_config': {
                 'config.name': 'vdn_ns',
@@ -309,8 +309,8 @@ def file_processor(environment: str, algo: str,  query: Dict):
 
     steps = defaultdict(list)
     results = defaultdict(list)
-    # max_rollouts = 41  # Required number of tests
-    max_rollouts = 101  # Required number of tests
+    max_rollouts = 41  # Required number of tests
+    # max_rollouts = 101  # Required number of tests
 
     taskname = environment.split(":")[-1].split("-v")[0]
     algoname = algo.upper()
@@ -369,8 +369,8 @@ def mongo_parser(environment:str, algo: str, experiments: List[object]) -> Tuple
         sample_size = 0
         algoname = algo.upper()
         taskname = environment
-        # max_rollouts = 41
-        max_rollouts = 101
+        max_rollouts = 41
+        # max_rollouts = 101
         # title = taskname
         # if len(suptitle) > 1:
         #     title = f"{taskname} ({suptitle})"
@@ -835,12 +835,12 @@ if __name__ == "__main__":
     #     coop=False,
     #     dual_x_axis=False)
     # ENV = 'mpe:SimpleTag-v0'
-    # ENV = 'rware-tiny-4ag-v1'
-    ENV = 'lbforaging:Foraging-15x15-3p-5f-v1'
+    ENV = 'rware-tiny-4ag-v1'
+    # ENV = 'lbforaging:Foraging-15x15-3p-5f-v1'
     # ENV = 'lbforaging:Foraging-15x15-4p-5f-v1'
-    algonames = list(NTWA2C_QUERIES[ENV].keys())
-    sources = [_q.pop('source') if 'source' in _q else 'remote' for _q in NTWA2C_QUERIES[ENV].values()]
-    queries = list(NTWA2C_QUERIES[ENV].values())
+    algonames = list(NTWQL_QUERIES[ENV].keys())
+    sources = [_q.pop('source') if 'source' in _q else 'remote' for _q in NTWQL_QUERIES[ENV].values()]
+    queries = list(NTWQL_QUERIES[ENV].values())
 
     main(ENV, algonames, sources, queries, '')
 
