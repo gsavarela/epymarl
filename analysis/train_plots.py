@@ -36,6 +36,15 @@ SMOOTHING_CURVE_COLOR = (0.33, 0.33, 0.33)
 SEED_PATTERN = r"seed=(.*?)\)"
 M_PATTERN = r"M=(.*?)\,"
 
+ALGO_ID_TO_ALGO_LBL = {
+        'NTWA2C': 'NTWA2C',
+        'IA2C_NS': 'IA2C',
+        'MAA2C_NS': 'MAA2C',
+        'NTWQL': 'NTWAQL',
+        'IQL_NS': 'IQL',
+        'VDN_NS': 'VDN',
+}
+
 NTWA2C_QUERIES = OrderedDict({
     'mpe:SimpleTag-v0': OrderedDict({
         'ia2c_ns': {
@@ -520,7 +529,7 @@ def task_plot(
         X = timesteps[algo_task_name]
         Y = returns[algo_task_name]
         err = std_errors[algo_task_name]
-        plt.plot(X, Y, label=algoname, marker=marker, linestyle="-", c=color)
+        plt.plot(X, Y, label=ALGO_ID_TO_ALGO_LBL[algoname], marker=marker, linestyle="-", c=color)
         plt.fill_between(X, Y - err, Y + err, facecolor=color, alpha=0.25)
 
     plt.xlabel("Environment Timesteps")
@@ -820,9 +829,9 @@ if __name__ == "__main__":
     # ENV = 'rware-tiny-4ag-v1'
     # ENV = 'lbforaging:Foraging-15x15-3p-5f-v1'
     ENV = 'lbforaging:Foraging-15x15-4p-5f-v1'
-    algonames = list(NTWQL_QUERIES[ENV].keys())
-    sources = [_q.pop('source') if 'source' in _q else 'remote' for _q in NTWQL_QUERIES[ENV].values()]
-    queries = list(NTWQL_QUERIES[ENV].values())
+    algonames = list(NTWA2C_QUERIES[ENV].keys())
+    sources = [_q.pop('source') if 'source' in _q else 'remote' for _q in NTWA2C_QUERIES[ENV].values()]
+    queries = list(NTWA2C_QUERIES[ENV].values())
 
     main(ENV, algonames, sources, queries, '')
 
