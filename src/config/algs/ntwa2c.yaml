@@ -43,5 +43,4 @@ networked_interval: 5 # RWARE # Try consensus at every networked_interval number
 
 
 name: "ntwa2c"
-
-t_max: 30_050_000
+t_max: 40_050_000
