@@ -79,27 +79,36 @@ NTWA2C_QUERIES = OrderedDict({
     }),
     'lbforaging:Foraging-15x15-3p-5f-v1': OrderedDict({
         'ia2c_ns': {
-            'source': 'filesystem',
-            'sub_dir': 'random_seeds',
-            'query_ids': [*range(22, 26 + 1)],
+            # 'source': 'filesystem',
+            # 'sub_dir': 'random_seeds',
+            # 'query_ids': [*range(22, 26 + 1)],
+            'query_ids': [*range(402, 406 + 1)],
+            'source': 'remote',
             'query_config': {
                 'config.name': 'ia2c_ns',
             }
         },
         'ntwa2c': {
-            'source': 'filesystem',
-            'sub_dir': 'random_seeds',
-            'query_ids': [*range(154, 158 + 1)],
+            # 'source': 'filesystem',
+            # 'sub_dir': 'random_seeds',
+            # 'query_ids': [*range(154, 158 + 1)],
+            'query_ids': [*range(392, 396 + 1)],
             'query_config': {
                 'config.name': 'ntwa2c',
+                'config.networked_edges': 1,
+                'config.networked_rounds': 10,
+                'config.networked_interval': 5,
+                'config.t_max': 40050000
             }
         },
         'maa2c_ns': {
             # 'query_ids': [*range(215, 219 + 1)],
-            'query_ids': [*range(195, 199 + 1)],
+            # 'query_ids': [*range(195, 199 + 1)],
+            'query_ids': [*range(372, 376 + 1)],
             'source': 'remote',
             'query_config': {
                 'config.name': 'maa2c_ns',
+                'config.t_max': 40050000
             }
         },
     }),
@@ -827,8 +836,8 @@ if __name__ == "__main__":
     #     dual_x_axis=False)
     # ENV = 'mpe:SimpleTag-v0'
     # ENV = 'rware-tiny-4ag-v1'
-    # ENV = 'lbforaging:Foraging-15x15-3p-5f-v1'
-    ENV = 'lbforaging:Foraging-15x15-4p-5f-v1'
+    ENV = 'lbforaging:Foraging-15x15-3p-5f-v1'
+    # ENV = 'lbforaging:Foraging-15x15-4p-5f-v1'
     algonames = list(NTWA2C_QUERIES[ENV].keys())
     sources = [_q.pop('source') if 'source' in _q else 'remote' for _q in NTWA2C_QUERIES[ENV].values()]
     queries = list(NTWA2C_QUERIES[ENV].values())
