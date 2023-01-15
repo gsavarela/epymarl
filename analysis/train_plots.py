@@ -269,13 +269,16 @@ NTWA2C_QUERIES = OrderedDict({
 # TAG
 NTWQL_QUERIES = OrderedDict({
     'mpe:SimpleTag-v0': OrderedDict({
-        # 'iql_ns': {
-        #     'query_ids': [*range(58, 62 + 1)],
-        #     'source': 'local',
-        #     'query_config': {
-        #         'config.name': 'iql_ns',
-        #     }
-        # },
+        'iql_ns': {
+            # 'query_ids': [*range(58, 62 + 1)],
+            'query_ids': [*range(367, 371 + 1)],
+            # 'source': 'local',
+            'source': 'remote',
+            'query_config': {
+                'config.name': 'iql_ns',
+                'config.t_max': 5050000
+            }
+        },
         'ntwql': OrderedDict({
             # 'query_ids': [*range(63, 67 + 1)],
             # 'source': 'local',
@@ -370,7 +373,7 @@ def file_processor(environment: str, algo: str,  query: Dict):
     steps = defaultdict(list)
     results = defaultdict(list)
     # max_rollouts = 41  # Required number of tests
-    max_rollouts = 1000  # Required number of tests
+    max_rollouts = 101  # Required number of tests
 
     taskname = environment.split(":")[-1].split("-v")[0]
     algoname = algo.upper()
@@ -430,7 +433,7 @@ def mongo_parser(environment:str, algo: str, experiments: List[object]) -> Tuple
         algoname = algo.upper()
         taskname = environment
         # max_rollouts = 41
-        max_rollouts = 1000
+        max_rollouts = 101
         # title = taskname
         # if len(suptitle) > 1:
         #     title = f"{taskname} ({suptitle})"
@@ -894,13 +897,13 @@ if __name__ == "__main__":
     #     food=5,
     #     coop=False,
     #     dual_x_axis=False)
-    # ENV = 'mpe:SimpleTag-v0'
+    ENV = 'mpe:SimpleTag-v0'
     # ENV = 'rware-tiny-4ag-v1'
     # ENV = 'lbforaging:Foraging-15x15-3p-5f-v1'
-    ENV = 'lbforaging:Foraging-15x15-4p-5f-v1'
-    algonames = list(NTWA2C_QUERIES[ENV].keys())
-    sources = [_q.pop('source') if 'source' in _q else 'remote' for _q in NTWA2C_QUERIES[ENV].values()]
-    queries = list(NTWA2C_QUERIES[ENV].values())
+    # ENV = 'lbforaging:Foraging-15x15-4p-5f-v1'
+    algonames = list(NTWQL_QUERIES[ENV].keys())
+    sources = [_q.pop('source') if 'source' in _q else 'remote' for _q in NTWQL_QUERIES[ENV].values()]
+    queries = list(NTWQL_QUERIES[ENV].values())
 
     main(ENV, algonames, sources, queries, '')
 
