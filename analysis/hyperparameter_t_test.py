@@ -16,8 +16,8 @@ from collections import defaultdict, OrderedDict
 import scipy.stats as stats
 from typing import List
 
-from utils import standard_error
-import src.mongo_db as mdb
+from analysis.stats import standard_error
+from src.utils.loaders import loader
 from itertools import combinations
 
 import numpy as np

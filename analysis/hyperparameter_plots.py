@@ -14,8 +14,8 @@ from operator import itemgetter
 from collections import defaultdict, OrderedDict
 from typing import List
 
-from utils import standard_error
-import src.mongo_db as mdb
+from analysis.stats import standard_error
+from src.utils.loaders import loader
 
 import numpy as np
 import matplotlib.pyplot as plt

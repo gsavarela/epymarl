@@ -21,7 +21,7 @@ Proceedings of the Neural Information Processing Systems Track on Datasets and B
 import json
 from pathlib import Path
 
-from utils import standard_error
+from analysis.stats import standard_error
 import numpy as np
 
 # BASE_PATH = Path("results/sacred/ntwa2c/baseline_critic")
