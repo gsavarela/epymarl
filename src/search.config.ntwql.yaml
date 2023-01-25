@@ -30,7 +30,7 @@ grid-search:
   networked_edges: # maps n_agents: n_edges
     - 1
     - 2
-    - 3
+    # - 3
 
   networked_rounds:
     - 1
@@ -47,7 +47,7 @@ grid-search:
   #   - 10
 
   evaluation_epsilon:
-    - 0.0
+  #  - 0.0
     - 0.05
 
   t_max:
@@ -60,7 +60,7 @@ grid-search:
     - 125_000
 
   log_interval:
-    - 10_000
+    - 12_500
 
   save_model_interval:
     - 50_000
