@@ -273,6 +273,221 @@ TAG_HYPERGROUP_NTWQL_QUERIES = OrderedDict({
 })
 
 
+LBF_HYPERGROUP_NTWQL_QUERIES = OrderedDict({
+    0: {
+        'query_ids': [429, 435, 444],
+        'source': 'remote',
+        'query_config': {
+            'config.name': 'ntwql',
+            'config.hypergroup': 'hp_grp_0',
+            'config.networked_edges': 1,
+            'config.networked_rounds': 1,
+            'config.networked_interval': 1,
+        }
+    },
+    1: {
+        'query_ids': [432, 441, 443],
+        'source': 'remote',
+        'query_config': {
+            'config.name': 'ntwql',
+            'config.hypergroup': 'hp_grp_1',
+            'config.networked_edges': 1,
+            'config.networked_rounds': 1,
+            'config.networked_interval': 5,
+        }
+    },
+    2: {
+        'query_ids': [428, 430, 439],
+        'source': 'remote',
+        'query_config': {
+            'config.name': 'ntwql',
+            'config.hypergroup': 'hp_grp_2',
+            'config.networked_edges': 1,
+            'config.networked_rounds': 1,
+            'config.networked_interval': 10,
+        }
+    },
+    3: {
+        'query_ids': [436, 437, 445],
+        'source': 'remote',
+        'query_config': {
+            'config.name': 'ntwql',
+            'config.hypergroup': 'hp_grp_3',
+            'config.networked_edges': 1,
+            'config.networked_rounds': 5,
+            'config.networked_interval': 1,
+        }
+    },
+    4: {
+        'query_ids': [433, 434, 440],
+        'source': 'remote',
+        'query_config': {
+            'config.name': 'ntwql',
+            'config.hypergroup': 'hp_grp_4',
+            'config.networked_edges': 1,
+            'config.networked_rounds': 5,
+            'config.networked_interval': 5,
+        }
+    },
+    5: {
+        'query_ids': [431, 438, 442],
+        'source': 'remote',
+        'query_config': {
+            'config.name': 'ntwql',
+            'config.hypergroup': 'hp_grp_5',
+            'config.networked_edges': 1,
+            'config.networked_rounds': 5,
+            'config.networked_interval': 10,
+        }
+    },
+    6: {
+        'query_ids': [446, 447, 459],
+        'source': 'remote',
+        'query_config': {
+            'config.name': 'ntwql',
+            'config.hypergroup': 'hp_grp_6',
+            'config.networked_edges': 1,
+            'config.networked_rounds': 10,
+            'config.networked_interval': 1,
+        }
+    },
+    7: {
+        'query_ids': [448, 457, 460],
+        'source': 'remote',
+        'query_config': {
+            'config.name': 'ntwql',
+            'config.hypergroup': 'hp_grp_7',
+            'config.networked_edges': 1,
+            'config.networked_rounds': 10,
+            'config.networked_interval': 5,
+        }
+    },
+    8: {
+        'query_ids': [449, 450, 456],
+        'source': 'remote',
+        'query_config': {
+            'config.name': 'ntwql',
+            'config.hypergroup': 'hp_grp_8',
+            'config.networked_edges': 1,
+            'config.networked_rounds': 10,
+            'config.networked_interval': 10,
+        }
+    },
+    9: {
+        'query_ids': [451, 455, 461],
+        'source': 'remote',
+        'query_config': {
+            'config.name': 'ntwql',
+            'config.hypergroup': 'hp_grp_9',
+            'config.networked_edges': 2,
+            'config.networked_rounds': 1,
+            'config.networked_interval': 1,
+        }
+    },
+    10: {
+        'query_ids': [452, 453, 458],
+        'source': 'remote',
+        'query_config': {
+            'config.name': 'ntwql',
+            'config.hypergroup': 'hp_grp_10',
+            'config.networked_edges': 2,
+            'config.networked_rounds': 1,
+            'config.networked_interval': 5,
+        }
+    },
+    11: {
+        'query_ids': [454, 462, 463],
+        'source': 'remote',
+        'query_config': {
+            'config.name': 'ntwql',
+            'config.hypergroup': 'hp_grp_11',
+            'config.networked_edges': 2,
+            'config.networked_rounds': 1,
+            'config.networked_interval': 10,
+        }
+    },
+    12: {
+        'query_ids': [464, 465, 475],
+        'source': 'remote',
+        'query_config': {
+            'config.name': 'ntwql',
+            'config.hypergroup': 'hp_grp_12',
+            'config.networked_edges': 2,
+            'config.networked_rounds': 5,
+            'config.networked_interval': 1,
+        }
+    },
+    13: {
+        'query_ids': [466, 474, 477],
+        'source': 'remote',
+        'query_config': {
+            'config.name': 'ntwql',
+            'config.hypergroup': 'hp_grp_13',
+            'config.networked_edges': 2,
+            'config.networked_rounds': 5,
+            'config.networked_interval': 5,
+        }
+    },
+    14: {
+        'query_ids': [467, 468, 473],
+        'source': 'remote',
+        'query_config': {
+            'config.name': 'ntwql',
+            'config.hypergroup': 'hp_grp_14',
+            'config.networked_edges': 2,
+            'config.networked_rounds': 5,
+            'config.networked_interval': 10,
+        }
+    },
+    15: {
+        'query_ids': [469, 476, 481],
+        'source': 'remote',
+        'query_config': {
+            'config.name': 'ntwql',
+            'config.hypergroup': 'hp_grp_15',
+            'config.networked_edges': 2,
+            'config.networked_rounds': 10,
+            'config.networked_interval': 1,
+        }
+    },
+    16: {
+        'query_ids': [470, 471, 478],
+        'source': 'remote',
+        'query_config': {
+            'config.name': 'ntwql',
+            'config.hypergroup': 'hp_grp_16',
+            'config.networked_edges': 2,
+            'config.networked_rounds': 10,
+            'config.networked_interval': 5,
+        }
+    },
+    17: {
+        'query_ids': [472, 479, 480],
+        'source': 'remote',
+        'query_config': {
+            'config.name': 'ntwql',
+            'config.hypergroup': 'hp_grp_17',
+            'config.networked_edges': 2,
+            'config.networked_rounds': 10,
+            'config.networked_interval': 10,
+        }
+    },
+})
+
+LBF_COMMON_QUERY = {
+    "config.hidden_dim": 64,
+    "config.lr": 0.0003,
+    "config.standardise_rewards": True,
+    "config.use_rnn": True,
+    "config.evaluation_epsilon": 0.05,
+    "config.epsilon_anneal_time": 50_000,
+    "config.target_update_interval_or_tau": 200
+}
+
+for hp_grp, data in LBF_HYPERGROUP_NTWQL_QUERIES.items():
+    data['query_config'] = {**data['query_config'], **LBF_COMMON_QUERY}
+set_trace()
+
 def file_processor(environment: str, algo: str,  query: Dict):
     root_path = Path(f"results/sacred/{algo}")
 
@@ -663,6 +878,7 @@ def main(
             _steps, _results = mongo_processor(environment, algo, source, query)
         else:
             raise ValueError()
+        set_trace()
             
         steps.update(_steps)
         results.update(_results)
@@ -699,7 +915,7 @@ def main(
         title,
         Path.cwd()
         / "plots"
-        / "nonlinear"
+        / "ultimate"
         / "-".join(algonames)
         / title.split(':')[0].upper(),
     )
@@ -806,13 +1022,14 @@ if __name__ == "__main__":
     #     food=5,
     #     coop=False,
     #     dual_x_axis=False)
-    ENV = 'mpe:SimpleTag-v0'
+    # ENV = 'mpe:SimpleTag-v0'
     # ENV = 'rware:rware-tiny-4ag-v1'
-    # ENV = 'lbforaging:Foraging-15x15-3p-5f-v1'
-    for i, tag in TAG_HYPERGROUP_NTWQL_QUERIES.items():
+    ENV = 'lbforaging:Foraging-15x15-3p-5f-v1'
+    for i, tag in LBF_HYPERGROUP_NTWQL_QUERIES.items():
         algonames = [tag['query_config']['config.name']]
         sources = [tag.pop('source')]
         queries = [tag]
+        set_trace()
         suptitle = f'TestHyperparameterGroup {i}'
 
         main(ENV, algonames, sources, queries, suptitle)
