@@ -28,14 +28,14 @@ grid-search:
     - True
 
   networked_edges: # maps n_agents: n_edges
-    # - 1
-    # - 2
+    - 1
+    - 2
     - 3
 
   networked_rounds:
     - 1
-    # - 5
-    # - 10
+    - 5
+    - 10
 
   networked_interval:
     - 1
@@ -44,20 +44,20 @@ grid-search:
 
   # q_nstep:
   #   - 5
-  #   # - 10
+  #   - 10
 
   evaluation_epsilon:
     - 0.0
-  #   - 0.05
+    - 0.05
 
   t_max:
-    - 2_005_000
+    - 5_005_000
 
   test_nepisode:
     - 100
 
   test_interval:
-    - 50_000
+    - 125_000
 
   log_interval:
     - 10_000

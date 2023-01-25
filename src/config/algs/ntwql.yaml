@@ -6,18 +6,19 @@ action_selector: "epsilon_greedy"
 epsilon_start: 1.0
 epsilon_finish: 0.05
 epsilon_anneal_time: 200_000 # MPE
-evaluation_epsilon: 0.0
+evaluation_epsilon: 0.05  # MPE: Reduce generalization gap.
 
 runner: "episode"
 
-buffer_size: 5000
+buffer_size: 5_000
 
 # update the target network every {} episodes
-target_update_interval_or_tau: 0.01 # MPW
+target_update_interval_or_tau: 0.01 # MPE
 
 env_args:
   joint_rewards: True
   shared_rewards: False
+  pretrained_wrapper: "PretrainedTag" # MPE
   time_limit: 25 # MPE
 
 obs_agent_id: False
@@ -42,4 +43,4 @@ networked_joint_observations: False # Uses joint observations for training and c
 networked_interval: 5 # Try consensus at every networked_interval number of training steps.
 
 name: "ntwql"
-t_max: 5_050_000
+t_max: 5_010_000  # MPE
