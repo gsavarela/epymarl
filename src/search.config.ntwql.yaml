@@ -2,7 +2,7 @@ exclude: null
 grid-search:
 
   "--config":
-    - "ntwiql"
+    - "ntwql"
 
   lr:
    # - 0.0001
@@ -42,22 +42,22 @@ grid-search:
     - 5
     - 10
 
-  q_nstep:
-    - 5
-    # - 10
+  # q_nstep:
+  #   - 5
+  #   # - 10
 
-  # evaluation_epsilon:
+  evaluation_epsilon:
   #   - 0.0
-  #   - 0.05
+    - 0.05
 
   t_max:
-    - 20_050_000
+    - 5_050_000
 
   test_nepisode:
     - 100
 
   test_interval:
-    - 500_000
+    - 125_000
 
   log_interval:
     - 10_000

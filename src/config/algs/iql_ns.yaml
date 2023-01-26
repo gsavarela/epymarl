@@ -20,7 +20,6 @@ env_args:
   joint_rewards: True
   shared_rewards: False
   time_limit: 50 # LBF: Max seq_length
-  # time_limit: 500
 
 obs_agent_id: False
 obs_last_action: False
