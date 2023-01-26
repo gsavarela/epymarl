@@ -42,48 +42,6 @@ ALGO_ID_TO_ALGO_LBL = {
         'VDN_NS': 'VDN',
 }
 
-
-def file_processor(environment: str, algo: str,  query: Dict):
-    root_path = Path(f"results/sacred/{algo}")
-
-    if 'sub_dir' in query:
-        root_path = root_path / query.pop('sub_dir')
-    root_path = root_path / environment
-
-    steps = defaultdict(list)
-    results = defaultdict(list)
-    max_rollouts = 41  # Required number of tests
-    # max_rollouts = 101  # Required number of tests
-
-    taskname = environment.split(":")[-1].split("-v")[0]
-    algoname = algo.upper()
-    key = (algoname, taskname)
-    sample_size = 0
-    for experiment_id in query['query_ids']:
-        # Matches every lbforaging task.
-        experiment_path = root_path / str(experiment_id)
-
-        print(algoname, experiment_path)
-        with (experiment_path / 'metrics.json').open("r") as f:
-            data = json.load(f)
-
-        if "test_return_mean" in data:
-            _steps = data["test_return_mean"]["steps"]
-            _values = data["test_return_mean"]["values"]
-            print(f"algo: {algoname}\tsource: {taskname}\tn_points:{len(_values)}")
-
-            # Get at most the 41 first evaluations
-            steps[key].append(_steps[:max_rollouts])
-            results[key].append(_values[:max_rollouts])
-            sample_size += 1
-
-    if sample_size > 0:
-        steps[key] = np.vstack(steps[key])
-        results[key] = np.vstack(
-            results[key]
-        )
-    return steps, results
-
 def task_plot(
     timesteps: Dict,
     returns: Dict,
@@ -300,7 +258,6 @@ def _snakefy(title_case: str) -> str:
 def main(
     environment: str,
     algonames: List[str],
-    sources: Union[str, List[str]],
     suptitle: str = ''
 ):
     """Plots aggregating models by task
@@ -317,33 +274,16 @@ def main(
     algonames:  List[str]
         A N_ALGO sized list of strings each of which matching C Name
         examples: ['ia2c_ns', 'ntwa2c'] or ['iql_ns', 'ntwql']
-    sources: Union[str, List[str]]
-        Either a N_ALGO sized list of strings or string.
-        examples: 'local' or ['remote', 'local']
-        choice:
     suptitle: str, default ''
         The superior title's subtitle
     """
-    if isinstance(sources, str):
-        sources = [sources] * len(algonames)
-    assert len(sources) == len(algonames)
-    assert all([source in ('local', 'remote', 'filesystem') for source in sources])
-
-
     title = ''
     steps = defaultdict(list)
     results = defaultdict(list)
 
     # 1. Queries algos and aggregates runs
-    for algo, source in zip(algonames, sources):
-
-        if source == 'filesystem':
-            raise ValueError()
-            # _steps, _results = file_processor(environment, algo, query)
-        elif source in ('remote', 'local'):
-            _steps, _results = loader(environment, algo, source)
-        else:
-            raise ValueError()
+    for algo in algonames:
+        _steps, _results = loader(environment, algo, hypergroup=False)
             
         steps.update(_steps)
         results.update(_results)
@@ -380,7 +320,7 @@ def main(
         title,
         Path.cwd()
         / "plots"
-        / "supplemental"
+        / "debug"
         / "-".join(algonames)
         / title.split(':')[0].upper(),
     )
@@ -496,5 +436,5 @@ if __name__ == "__main__":
     source = 'remote'
     # sources = [_q.pop('source') if 'source' in _q else 'remote' for _q in NTWQL_QUERIES[ENV].values()]
 
-    main(ENV, algosnames, source)
+    main(ENV, algosnames)
 

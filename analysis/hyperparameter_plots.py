@@ -36,364 +36,6 @@ SMOOTHING_CURVE_COLOR = (0.33, 0.33, 0.33)
 SEED_PATTERN = r"seed=(.*?)\)"
 M_PATTERN = r"M=(.*?)\,"
 
-
-TAG_HYPERGROUP_NTWQL_QUERIES = OrderedDict({
-    0: {
-        'query_ids': [261, 262, 274],
-        'source': 'remote',
-        'query_config': {
-            'config.name': 'ntwql',
-            'config.hypergroup': 'hp_grp_0',
-            'config.networked_edges': 1,
-            'config.networked_rounds': 1,
-            'config.networked_interval': 1,
-        }
-    },
-    1: {
-        'query_ids': [259, 271, 275],
-        'source': 'remote',
-        'query_config': {
-            'config.name': 'ntwql',
-            'config.hypergroup': 'hp_grp_1',
-            'config.networked_edges': 1,
-            'config.networked_rounds': 1,
-            'config.networked_interval': 5,
-        }
-    },
-    2: {
-        'query_ids': [255, 260, 270],
-        'source': 'remote',
-        'query_config': {
-            'config.name': 'ntwql',
-            'config.hypergroup': 'hp_grp_2',
-            'config.networked_edges': 1,
-            'config.networked_rounds': 1,
-            'config.networked_interval': 10,
-        }
-    },
-    3: {
-        'query_ids': [256, 269, 276],
-        'source': 'remote',
-        'query_config': {
-            'config.name': 'ntwql',
-            'config.hypergroup': 'hp_grp_3',
-            'config.networked_edges': 1,
-            'config.networked_rounds': 5,
-            'config.networked_interval': 1,
-        }
-    },
-    4: {
-        'query_ids': [254, 257, 273],
-        'source': 'remote',
-        'query_config': {
-            'config.name': 'ntwql',
-            'config.hypergroup': 'hp_grp_4',
-            'config.networked_edges': 1,
-            'config.networked_rounds': 5,
-            'config.networked_interval': 5,
-        }
-    },
-    5: {
-        'query_ids': [258, 268, 272],
-        'source': 'remote',
-        'query_config': {
-            'config.name': 'ntwql',
-            'config.hypergroup': 'hp_grp_5',
-            'config.networked_edges': 1,
-            'config.networked_rounds': 5,
-            'config.networked_interval': 10,
-        }
-    },
-    6: {
-        'query_ids': [277, 278, 291],
-        'source': 'remote',
-        'query_config': {
-            'config.name': 'ntwql',
-            'config.hypergroup': 'hp_grp_6',
-            'config.networked_edges': 1,
-            'config.networked_rounds': 10,
-            'config.networked_interval': 1,
-        }
-    },
-    7: {
-        'query_ids': [279, 286, 290],
-        'source': 'remote',
-        'query_config': {
-            'config.name': 'ntwql',
-            'config.hypergroup': 'hp_grp_7',
-            'config.networked_edges': 1,
-            'config.networked_rounds': 10,
-            'config.networked_interval': 5,
-        }
-    },
-    8: {
-        'query_ids': [280, 281, 287],
-        'source': 'remote',
-        'query_config': {
-            'config.name': 'ntwql',
-            'config.hypergroup': 'hp_grp_8',
-            'config.networked_edges': 1,
-            'config.networked_rounds': 10,
-            'config.networked_interval': 10,
-        }
-    },
-    9: {
-        'query_ids': [282, 288, 293],
-        'source': 'remote',
-        'query_config': {
-            'config.name': 'ntwql',
-            'config.hypergroup': 'hp_grp_9',
-            'config.networked_edges': 2,
-            'config.networked_rounds': 1,
-            'config.networked_interval': 1,
-        }
-    },
-    10: {
-        'query_ids': [283, 284, 289],
-        'source': 'remote',
-        'query_config': {
-            'config.name': 'ntwql',
-            'config.hypergroup': 'hp_grp_10',
-            'config.networked_edges': 2,
-            'config.networked_rounds': 1,
-            'config.networked_interval': 5,
-        }
-    },
-    11: {
-        'query_ids': [285, 292, 294],
-        'source': 'remote',
-        'query_config': {
-            'config.name': 'ntwql',
-            'config.hypergroup': 'hp_grp_11',
-            'config.networked_edges': 2,
-            'config.networked_rounds': 1,
-            'config.networked_interval': 10,
-        }
-    },
-    12: {
-        'query_ids': [295, 296, 305],
-        'source': 'remote',
-        'query_config': {
-            'config.name': 'ntwql',
-            'config.hypergroup': 'hp_grp_12',
-            'config.networked_edges': 2,
-            'config.networked_rounds': 5,
-            'config.networked_interval': 1,
-        }
-    },
-    13: {
-        'query_ids': [297, 304, 308],
-        'source': 'remote',
-        'query_config': {
-            'config.name': 'ntwql',
-            'config.hypergroup': 'hp_grp_13',
-            'config.networked_edges': 2,
-            'config.networked_rounds': 5,
-            'config.networked_interval': 5,
-        }
-    },
-    14: {
-        'query_ids': [298, 299, 306],
-        'source': 'remote',
-        'query_config': {
-            'config.name': 'ntwql',
-            'config.hypergroup': 'hp_grp_14',
-            'config.networked_edges': 2,
-            'config.networked_rounds': 5,
-            'config.networked_interval': 10,
-        }
-    },
-    15: {
-        'query_ids': [300, 307, 312],
-        'source': 'remote',
-        'query_config': {
-            'config.name': 'ntwql',
-            'config.hypergroup': 'hp_grp_15',
-            'config.networked_edges': 2,
-            'config.networked_rounds': 10,
-            'config.networked_interval': 1,
-        }
-    },
-    16: {
-        'query_ids': [301, 302, 309],
-        'source': 'remote',
-        'query_config': {
-            'config.name': 'ntwql',
-            'config.hypergroup': 'hp_grp_16',
-            'config.networked_edges': 2,
-            'config.networked_rounds': 10,
-            'config.networked_interval': 5,
-        }
-    },
-    17: {
-        'query_ids': [303, 310, 311],
-        'source': 'remote',
-        'query_config': {
-            'config.name': 'ntwql',
-            'config.hypergroup': 'hp_grp_17',
-            'config.networked_edges': 2,
-            'config.networked_rounds': 10,
-            'config.networked_interval': 10,
-        }
-    },
-    # TODO:
-    # 18: {
-    #     'query_ids': [],
-        # 'source': 'remote',
-    #     'query_config': {
-    #         'config.name': 'ntwql',
-    #         'config.hypergroup': 'hp_grp_0',
-    #         'config.networked_edges': 3,
-    #         'config.networked_rounds': 1,
-    #         'config.networked_interval': 1,
-    #     }
-    # },
-    # 19: {
-    #     'query_ids': [],
-        # 'source': 'remote',
-    #     'query_config': {
-    #         'config.name': 'ntwql',
-    #         'config.hypergroup': 'hp_grp_1',
-    #         'config.networked_edges': 3,
-    #         'config.networked_rounds': 1,
-    #         'config.networked_interval': 5,
-    #     }
-    # },
-    # 20: {
-    #     'query_ids': [],
-        # 'source': 'remote',
-    #     'query_config': {
-    #         'config.name': 'ntwql',
-    #         'config.hypergroup': 'hp_grp_2',
-    #         'config.networked_edges': 3,
-    #         'config.networked_rounds': 1,
-    #         'config.networked_interval': 10,
-    #     }
-    # },
-})
-
-
-def file_processor(environment: str, algo: str,  query: Dict):
-    root_path = Path(f"results/sacred/{algo}")
-
-    if 'sub_dir' in query:
-        root_path = root_path / query.pop('sub_dir')
-    root_path = root_path / environment
-
-    steps = defaultdict(list)
-    results = defaultdict(list)
-    max_rollouts = 41  # Required number of tests
-
-    taskname = environment.split(":")[-1].split("-v")[0]
-    algoname = algo.upper()
-    key = (algoname, taskname)
-    sample_size = 0
-    for experiment_id in query['query_ids']:
-        # Matches every lbforaging task.
-        experiment_path = root_path / str(experiment_id)
-
-        print(algoname, experiment_path)
-        with (experiment_path / 'metrics.json').open("r") as f:
-            data = json.load(f)
-
-        if "test_return_mean" in data:
-            _steps = data["test_return_mean"]["steps"]
-            _values = data["test_return_mean"]["values"]
-            print(f"algo: {algoname}\tsource: {taskname}\tn_points:{len(_values)}")
-
-            # Get at most the 41 first evaluations
-            steps[key].append(_steps[:max_rollouts])
-            results[key].append(_values[:max_rollouts])
-            sample_size += 1
-
-    if sample_size > 0:
-        steps[key] = np.vstack(steps[key])
-        results[key] = np.vstack(
-            results[key]
-        )
-    return steps, results
-
-def mongo_processor(environment: str, algo: str, source: str, query: Dict) -> Tuple[Dict]:
-
-    experiments = mongo_loader(environment, algo, source, query)
-
-    steps, results = mongo_parser(environment, algo, experiments)
-
-    return steps, results
-
-
-def mongo_loader(environment: str, algo: str, source: str, query: Dict) -> List[object]:
-    mongo_uri = mdb.build_conn(source)
-
-    loader = ExperimentLoader(mongo_uri=mongo_uri, db_name=mdb.MONGO_DB_NAME)
-
-    mongo_query = mongo_query_builder(environment, algo, query)
-
-    print(mongo_query)
-    experiments = loader.find(mongo_query)
-
-    return experiments
-
-def mongo_parser(environment:str, algo: str, experiments: List[object]) -> Tuple[Dict]:
-
-        steps = defaultdict(list)
-        results = defaultdict(list)
-        max_rollouts = 41
-        sample_size = 0
-        algoname = algo.upper()
-        taskname = environment
-        max_rollouts = 41
-        # title = taskname
-        # if len(suptitle) > 1:
-        #     title = f"{taskname} ({suptitle})"
-        key = (algoname, taskname)
-        for experiment in experiments:
-            ts = experiment.metrics["test_return_mean"]
-            index  =  ts.index.to_list()
-            values = ts.values.tolist()
-            print(f"algoname: {algoname} source: {taskname} n_points:{len(index[:max_rollouts])}")
-
-            steps[key].append(index[:max_rollouts])
-            results[key].append(values[:max_rollouts])
-            sample_size += 1
-
-        if sample_size > 0:
-            steps[key] = np.vstack(steps[key])
-            results[key] = np.vstack(
-                results[key]
-            )
-        return steps, results
-
-def mongo_query_builder(environment: str, algoname: str, query: Dict) -> Dict:
-    """ 
-    Example:
-    --------
-    {
-        'query_config': {
-            'config.env_args.key': ENV,
-            'config.name': ALGO_ID,
-            'config.networked_edges': 2,
-            'config.networked_rounds': 1,
-            'config.networked_interval': 1,
-        },
-        'query_ids': QUERY_IDS,
-    }
-    """
-
-    if 'query_config' not in query:
-        query['query_config'] = {}
-    query['query_config']['config.env_args.key'] = environment
-    query['query_config']['config.name'] = algoname
-
-    if 'query_ids' in query:
-        return {'$and': [
-            {'_id': { "$in": query['query_ids']}},
-            query["query_config"],
-        ]}
-    else:
-        return query["query_config"]
-
-
 def _savefig(suptitle: str, save_directory_path: Path = None) -> None:
     """Saves a figure, named after suptitle, if save_directory_path is provided
 
@@ -610,9 +252,7 @@ def ablation_plot(
 
 def main(
     environment: str,
-    algonames: List[str],
-    sources: Union[str, List[str]],
-    queries: List[Dict],
+    algoname: List[str],
     suptitle: str = ''
 ):
     """Plots aggregating models by task
@@ -626,83 +266,53 @@ def main(
     environment: str
         String that matches a valid env_args.key
         examples:'rware:rware-tiny-4ag-v1' or 'lbforaging:Foraging-15x15-3p-5f-v1'
-    algonames:  List[str]
+    algoname:  str
         A N_ALGO sized list of strings each of which matching C Name
         examples: ['ia2c_ns', 'ntwa2c'] or ['iql_ns', 'ntwql']
-    sources: Union[str, List[str]]
-        Either a N_ALGO sized list of strings or string.
-        examples: 'local' or ['remote', 'local']
-        choice:
-    queries: List[Dict]
-        A list with dicts containg queries for each algoname
     suptitle: str, default ''
         The superior title's subtitle
     """
 
-    # Normalize inputs
-    if (len(queries) == 0):
-        queries = [{} for _ in range(len(algonames))]
-    assert len(queries) == len(algonames)
-
-    if isinstance(sources, str):
-        sources = [sources] * len(algonames)
-    assert len(sources) == len(algonames)
-    assert all([source in ('local', 'remote', 'filesystem') for source in sources])
-
-
     title = ''
     steps = defaultdict(list)
     results = defaultdict(list)
-
-    # 1. Queries algos and aggregates runs
-    for algo, source, query in zip(algonames, sources, queries):
-
-        if source == 'filesystem':
-            _steps, _results = file_processor(environment, algo, query)
-        elif source in ('remote', 'local'):
-            _steps, _results = mongo_processor(environment, algo, source, query)
-        else:
-            raise ValueError()
-            
-        steps.update(_steps)
-        results.update(_results)
-
-        taskname = environment
-        title = taskname
-        if len(suptitle) > 1:
-            title = f"{taskname} ({suptitle})"
+    hypergroups = loader(environment, algoname, hypergroup=True)
         
 
-    # 2. Unite runs and generate group statistics
-    algo_task_names = sorted(sorted([*results.keys()], key=itemgetter(1)), key=itemgetter(0))
+    for i, hypergroup in enumerate(hypergroups):
+        title = f"{suptitle} {i}"
+        steps, results = hypergroup
+        
+        # 2. Unite runs and generate group statistics
+        algo_task_names = sorted(sorted([*results.keys()], key=itemgetter(1)), key=itemgetter(0))
 
-    # Makes a plot per task
-    xs = defaultdict(list)
-    mus = defaultdict(list)
-    std_errors = defaultdict(list)
-    for algo_task_name in algo_task_names:
-        # Computes average returns
-        xs[algo_task_name] = np.mean(steps[algo_task_name], axis=0)
-        mus[algo_task_name] = np.mean(results[algo_task_name], axis=0)
-        std = np.std(results[algo_task_name], axis=0)
-        sample_size = results[algo_task_name].shape[0]
-        std_errors[algo_task_name] = standard_error(std, sample_size, 0.95)
+        # Makes a plot per task
+        xs = defaultdict(list)
+        mus = defaultdict(list)
+        std_errors = defaultdict(list)
+        for algo_task_name in algo_task_names:
+            # Computes average returns
+            xs[algo_task_name] = np.mean(steps[algo_task_name], axis=0)
+            mus[algo_task_name] = np.mean(results[algo_task_name], axis=0)
+            std = np.std(results[algo_task_name], axis=0)
+            sample_size = results[algo_task_name].shape[0]
+            std_errors[algo_task_name] = standard_error(std, sample_size, 0.95)
 
-    algonames, _ = zip(*algo_task_names)
-    algonames = sorted(set(algonames))
+        algonames, _ = zip(*algo_task_names)
+        algonames = sorted(set(algonames))
 
-    # 3. Plots
-    task_plot(
-        xs,
-        mus,
-        std_errors,
-        title,
-        Path.cwd()
-        / "plots"
-        / "nonlinear"
-        / "-".join(algonames)
-        / title.split(':')[0].upper(),
-    )
+        # 3. Plots
+        task_plot(
+            xs,
+            mus,
+            std_errors,
+            title,
+            Path.cwd()
+            / "plots"
+            / "debug"
+            / "-".join(algonames)
+            / title.split(':')[0].upper(),
+        )
 
 def ablation(
     algoname: str = 'ntwa2c',
@@ -806,13 +416,17 @@ if __name__ == "__main__":
     #     food=5,
     #     coop=False,
     #     dual_x_axis=False)
-    ENV = 'mpe:SimpleTag-v0'
+    # ENV = 'mpe:SimpleTag-v0'
     # ENV = 'rware:rware-tiny-4ag-v1'
-    # ENV = 'lbforaging:Foraging-15x15-3p-5f-v1'
-    for i, tag in TAG_HYPERGROUP_NTWQL_QUERIES.items():
-        algonames = [tag['query_config']['config.name']]
-        sources = [tag.pop('source')]
-        queries = [tag]
-        suptitle = f'TestHyperparameterGroup {i}'
+    ENV = 'lbforaging:Foraging-15x15-3p-5f-v1'
+    # for i, tag in TAG_HYPERGROUP_NTWQL_QUERIES.items():
+    #     algonames = [tag['query_config']['config.name']]
+    #     sources = [tag.pop('source')]
+    #     queries = [tag]
+    #     suptitle = f'TestHyperparameterGroup {i}'
+    #
+    #     main(ENV, algonames, sources, queries, suptitle)
 
-        main(ENV, algonames, sources, queries, suptitle)
+    algoname = 'ntwql'
+    suptitle = 'TestHyperparameterGroup'
+    main(ENV, algoname, suptitle)
