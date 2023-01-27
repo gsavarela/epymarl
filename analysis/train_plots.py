@@ -81,20 +81,13 @@ def main(
     )
 
 if __name__ == "__main__":
-    # ablation(
-    #     algoname='ntwa2c',
-    #     size=15,
-    #     players=4,
-    #     food=5,
-    #     coop=False,
-    #     dual_x_axis=False)
-    ENV = 'mpe:SimpleTag-v0'
+    # ENV = 'mpe:SimpleTag-v0'
     # ENV = 'rware-tiny-4ag-v1'
-    # ENV = 'lbforaging:Foraging-15x15-3p-5f-v1'
+    ENV = 'lbforaging:Foraging-15x15-3p-5f-v1'
     # ENV = 'lbforaging:Foraging-15x15-4p-5f-v1'
-    # algosnames = ('iql_ns', 'ntwql', 'vdn_ns')
-    algosnames = ('ia2c_ns', 'ntwa2c', 'maa2c_ns')
-    source = 'remote'
+    algosnames = ('iql_ns', 'ntwql', 'vdn_ns')
+    # algosnames = ('ia2c_ns', 'ntwa2c', 'maa2c_ns')
+    # source = 'remote'
     # sources = [_q.pop('source') if 'source' in _q else 'remote' for _q in NTWQL_QUERIES[ENV].values()]
 
     main(ENV, algosnames)

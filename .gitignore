@@ -254,3 +254,5 @@ plots/
 
 # Sensitive data
 src/utils/loaders.py
+src/utils/query_sets.py
+
