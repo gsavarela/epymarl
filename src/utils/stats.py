@@ -59,3 +59,12 @@ def standard_error(std_dev, n, confidence):
         The standard error.
     """
     return z_table(confidence) * (std_dev / math.sqrt(n))
+
+def confidence_interval_bootstrap(samples: np.ndarray, num_resamples: int=20_000):
+    resampled = np.random.choice(samples,
+                                size=(len(samples), num_resamples),
+                                replace=True)
+    point_estimations = np.mean(resampled, axis=0)
+    confidence_interval = [np.percentile(point_estimations, 2.5),
+                           np.percentile(point_estimations, 97.5)]
+    return confidence_interval

@@ -7,12 +7,19 @@ Proceedings of the Neural Information Processing Systems Track on Datasets and B
 """
 from typing import Dict, Union, Tuple
 from pathlib import Path
+from operator import itemgetter
 import re
 import string
 
 import numpy as np
+import pandas as pd
+
 import matplotlib
 import matplotlib.pyplot as plt
+
+from src.utils.stats import confidence_interval, confidence_interval_bootstrap
+from IPython.core.debugger import set_trace
+# from src.utils.stats import standard_error
 
 FIGURE_X = 6.0
 FIGURE_Y = 4.0
@@ -20,6 +27,7 @@ MEAN_CURVE_COLOR = (0.89, 0.282, 0.192)
 SMOOTHING_CURVE_COLOR = (0.33, 0.33, 0.33)
 SEED_PATTERN = r"seed=(.*?)\)"
 M_PATTERN = r"M=(.*?)\,"
+FIGS_SAVE_DIR = "plots/dataframes"
 
 # legends for multiple x-axis
 # import matplotlib.lines as mlines
@@ -249,3 +257,72 @@ def ablation_plot(
     plt.show()
     plt.close(fig)
 
+################################################################
+# Plot unif. performance (bar chart).
+################################################################
+def hyperparameters_bar_chart(environment: str, algo: str, df: pd.DataFrame, max_returns=True, bootstrap=True):
+    """BarChart: Return vs Hyper Parameter Group"""
+    fig = plt.figure()
+    fig.set_size_inches(7.0, 5.0)
+    fig.tight_layout()
+
+    X = np.arange(df.shape[1])
+    lbls = [*range(df.shape[1])]
+
+    errors = []
+    ys = []
+
+    set_trace()
+    # Iteration columns
+    # TODO: Migrate this block f code to the loader
+    environments = df.columns.get_level_values(0)
+    hypergroups = df.columns.get_level_values(1)
+    keys = {eh for eh in zip(environments, hypergroups)}
+    keys = sorted(sorted(keys, key=itemgetter(1)), key=itemgetter(0))
+    for key in keys:
+        query = [(*key, i) for i in range(3)]
+
+        hp = pd.concat([df.xs(q, level=(0, 1, 2), axis=1) for q in query], axis=1)
+
+        # Here we check the returns
+        if max_returns:
+            idx = hp.values.sum(axis=1).argmax()
+            mub = min(idx + 3, hp.values.shape[0])     # Upper limit
+            mlb = max(idx - 2, 0)   # Lower limit
+            mub, mlb = mub + (2 - (idx - mlb), mlb - (3 - (mub - idx)))  # Adjust limits
+            data = hp.values[mlb:mub, :].flatten()
+
+            ylabel = 'Max Returns'
+        else:
+            data = hp.values.flatten()
+            ylabel = 'Avg. Returns'
+
+        suptitle = f'{environment}[{algo}]'
+        if bootstrap:
+            suptitle += '(Bootstrap)'
+            ci = confidence_interval_bootstrap(data)
+        else:
+            suptitle += '(Standard)'
+            ci = confidence_interval(data, data.shape[0], 0.95)
+
+        # Move this to plots.py
+        error_top = ci[1] - y
+        error_bottom = y - ci[0]
+        errors.append([error_top, error_bottom])
+
+    errors = np.array(errors).T
+    plt.errorbar(X, ys,
+        yerr=errors,
+        fmt='o',
+        capsize=6,
+        zorder=50,
+    )
+    plt.xticks(X, labels=lbls)
+
+    plt.grid()
+    plt.ylabel(ylabel)
+    plt.xlabel('Hyperparameter Groups')
+
+    path = Path.cwd() / 'plots' / 'dataframes' / algo / title.split(':')[0].upper()
+    plt.savefig(path / 'barchart.pdf', bbox_inches='tight', pad_inches=0)
+    plt.show()

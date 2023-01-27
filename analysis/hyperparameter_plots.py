@@ -11,10 +11,11 @@ from collections import defaultdict
 
 from src.utils.stats import standard_error
 from src.utils.loaders import loader
-from src.utils.plots import task_plot
+from src.utils.plots import task_plot, hyperparameters_bar_chart
 
 import numpy as np
 import pandas as pd
+from IPython.core.debugger import set_trace
 Array = np.ndarray
 
 def main(
@@ -44,6 +45,7 @@ def main(
     df = loader(environment, algoname, hypergroup=True)
 
     # Iteration columns
+    # TODO: Migrate this block f code to the loader
     environments = df.columns.get_level_values(0)
     hypergroups = df.columns.get_level_values(1)
     keys = {eh for eh in zip(environments, hypergroups)}
@@ -64,7 +66,9 @@ def main(
         mus = defaultdict(list)
         std_errors = defaultdict(list)
         xs[algo_task_name] = hp.index
+        # TODO: is this doing something
         values = hp.xs(key, level=(0, 1), axis=1)
+        set_trace()
         mus[algo_task_name] = values.mean(axis=1)
         std = values.std(axis=1)
         std_errors[algo_task_name] = standard_error(std, values.shape[1], 0.95)
@@ -90,4 +94,8 @@ if __name__ == "__main__":
 
     algoname = 'ntwql'
     suptitle = 'TestHyperparameterGroup'
-    main(ENV, algoname, suptitle)
+    # main(ENV, algoname, suptitle)
+
+    df = loader(ENV, algoname, hypergroup=True)
+    set_trace()
+    hyperparameters_bar_chart(ENV, algoname, df, max_returns=True, bootstrap=True)
