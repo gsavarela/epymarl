@@ -37,9 +37,9 @@ ALGO_ID_TO_ALGO_LBL = {
 }
 
 def task_plot(
-    timesteps: Dict[int, Array],
-    results: Dict[int, Array],
-    std_errors: Dict[int, Array],
+    timesteps: Dict[Tuple[str], Array],
+    results: Dict[Tuple[str], Array],
+    std_errors: Dict[Tuple[str], Array],
     suptitle: str,
     save_directory_path: Path = None,
 ) -> None:
@@ -50,11 +50,11 @@ def task_plot(
 
     Parameters
     ----------
-    timesteps: Dict[Array]
+    timesteps: Dict[Tuple[str], Array]
         Key is the task and value is the number of timesteps.
-    results:  Dict[Array]
+    results: Dict[Tuple[str], Array]
         Key is the task and value is the return collected during training, e.g, rewards.
-    std_errors: Dict[Array]
+    std_errors: Dict[Tuple[str], Array]
         Key is the task and value is the confidence interval.
     suptitle: str,
         The superior title
