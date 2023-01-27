@@ -8,6 +8,8 @@ from src.utils.loaders import loader
 from src.utils.plots import task_plot
 
 import numpy as np
+import pandas as pd
+from IPython.core.debugger import set_trace
 # legends for multiple x-axis
 
 def main(
@@ -35,22 +37,32 @@ def main(
     title = ''
     steps = defaultdict(list)
     results = defaultdict(list)
+    algo_task_names = [] 
 
     # 1. Queries algos and aggregates runs
+    dataframes = []
     for algo in algonames:
-        _steps, _results = loader(environment, algo, hypergroup=False)
+        # _steps, _results = loader(environment, algo, hypergroup=False)
+        df, _ = loader(environment, algo, hypergroup=False)
+        algo_task_names.append((algo.upper(), environment))
+        dataframes.append(df)
             
-        steps.update(_steps)
-        results.update(_results)
+        # steps.update(_steps)
+        # results.update(_results)
 
         taskname = environment
         title = taskname
         if len(suptitle) > 1:
             title = f"{taskname} ({suptitle})"
         
-
+    # Concatenates by average step
+    # TODO: Find a better way to collapse indexes
+    index = np.mean(np.vstack([df.index for df in dataframes]), axis=0).astype(int)
+    for df in dataframes:
+        df.set_index(index, inplace=True)
+    df = pd.concat(dataframes, axis=1)
     # 2. Unite runs and generate group statistics
-    algo_task_names = sorted(sorted([*results.keys()], key=itemgetter(1)), key=itemgetter(0))
+    algo_task_names = sorted(sorted(algo_task_names, key=itemgetter(1)), key=itemgetter(0))
 
     # Makes a plot per task
     xs = defaultdict(list)
@@ -58,12 +70,16 @@ def main(
     std_errors = defaultdict(list)
     for algo_task_name in algo_task_names:
         # Computes average returns
-        xs[algo_task_name] = np.mean(steps[algo_task_name], axis=0)
-        mus[algo_task_name] = np.mean(results[algo_task_name], axis=0)
-        std = np.std(results[algo_task_name], axis=0)
-        sample_size = results[algo_task_name].shape[0]
-        std_errors[algo_task_name] = standard_error(std, sample_size, 0.95)
+        # xs[algo_task_name] = np.mean(steps[algo_task_name], axis=0)
+        # mus[algo_task_name] = np.mean(results[algo_task_name], axis=0)
 
+        xs[algo_task_name] = df.index
+        values = df.xs(algo_task_name[-1::-1], level=(0, 1), axis=1)
+        mus[algo_task_name] = values.mean(axis=1)
+        std = values.std(axis=1)
+        std_errors[algo_task_name] = standard_error(std, values.shape[1], 0.95)
+
+    set_trace()
     algonames, _ = zip(*algo_task_names)
     algonames = sorted(set(algonames))
 
@@ -75,7 +91,7 @@ def main(
         title,
         Path.cwd()
         / "plots"
-        / "debug"
+        / "dataframes"
         / "-".join(algonames)
         / title.split(':')[0].upper(),
     )

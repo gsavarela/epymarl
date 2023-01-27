@@ -15,11 +15,14 @@ from src.utils.loaders import loader
 from src.utils.plots import task_plot
 
 import numpy as np
+import pandas as pd
 Array = np.ndarray
+
+from IPython.core.debugger import set_trace
 
 def main(
     environment: str,
-    algoname: List[str],
+    algoname: str,
     suptitle: str = ''
 ):
     """Plots aggregating models by task
@@ -41,32 +44,33 @@ def main(
     """
 
     title = ''
-    steps = defaultdict(list)
-    results = defaultdict(list)
-    hypergroups = loader(environment, algoname, hypergroup=True)
-        
+    df = loader(environment, algoname, hypergroup=True)
 
-    for i, hypergroup in enumerate(hypergroups):
-        title = f"{suptitle} {i}"
-        steps, results = hypergroup
-        
+    # Iteration columns
+    environments = df.columns.get_level_values(0)
+    hypergroups = df.columns.get_level_values(1)
+    keys = {eh for eh in zip(environments, hypergroups)}
+    keys = sorted(sorted(keys, key=itemgetter(1)), key=itemgetter(0))
+
+    for key in keys:
+        title = f"{suptitle} {key[-1]}"
+
+        query = [(*key, i) for i in range(3)]
+
+        hp = pd.concat([df.xs(q, level=(0, 1, 2), axis=1) for q in query], axis=1)
+
         # 2. Unite runs and generate group statistics
-        algo_task_names = sorted(sorted([*results.keys()], key=itemgetter(1)), key=itemgetter(0))
+        algo_task_name = (algoname.upper(), environment)
 
         # Makes a plot per task
         xs = defaultdict(list)
         mus = defaultdict(list)
         std_errors = defaultdict(list)
-        for algo_task_name in algo_task_names:
-            # Computes average returns
-            xs[algo_task_name] = np.mean(steps[algo_task_name], axis=0)
-            mus[algo_task_name] = np.mean(results[algo_task_name], axis=0)
-            std = np.std(results[algo_task_name], axis=0)
-            sample_size = results[algo_task_name].shape[0]
-            std_errors[algo_task_name] = standard_error(std, sample_size, 0.95)
-
-        algonames, _ = zip(*algo_task_names)
-        algonames = sorted(set(algonames))
+        xs[algo_task_name] = hp.index
+        values = hp.xs(key, level=(0, 1), axis=1)
+        mus[algo_task_name] = values.mean(axis=1)
+        std = values.std(axis=1)
+        std_errors[algo_task_name] = standard_error(std, values.shape[1], 0.95)
 
         # 3. Plots
         task_plot(
@@ -76,8 +80,8 @@ def main(
             title,
             Path.cwd()
             / "plots"
-            / "debug"
-            / "-".join(algonames)
+            / "dataframes"
+            / algoname
             / title.split(':')[0].upper(),
         )
 
@@ -86,13 +90,6 @@ if __name__ == "__main__":
     # ENV = 'mpe:SimpleTag-v0'
     # ENV = 'rware:rware-tiny-4ag-v1'
     ENV = 'lbforaging:Foraging-15x15-3p-5f-v1'
-    # for i, tag in TAG_HYPERGROUP_NTWQL_QUERIES.items():
-    #     algonames = [tag['query_config']['config.name']]
-    #     sources = [tag.pop('source')]
-    #     queries = [tag]
-    #     suptitle = f'TestHyperparameterGroup {i}'
-    #
-    #     main(ENV, algonames, sources, queries, suptitle)
 
     algoname = 'ntwql'
     suptitle = 'TestHyperparameterGroup'
