@@ -3,14 +3,12 @@ from operator import itemgetter
 from collections import defaultdict
 from typing import List
 
-from analysis.stats import standard_error
+from src.utils.stats import standard_error
 from src.utils.loaders import loader
 from src.utils.plots import task_plot
 
 import numpy as np
 import pandas as pd
-from IPython.core.debugger import set_trace
-# legends for multiple x-axis
 
 def main(
     environment: str,
@@ -35,21 +33,15 @@ def main(
         The superior title's subtitle
     """
     title = ''
-    steps = defaultdict(list)
-    results = defaultdict(list)
-    algo_task_names = [] 
+    algo_task_names = []
 
     # 1. Queries algos and aggregates runs
     dataframes = []
     for algo in algonames:
-        # _steps, _results = loader(environment, algo, hypergroup=False)
-        df, _ = loader(environment, algo, hypergroup=False)
+        df = loader(environment, algo, hypergroup=False)
         algo_task_names.append((algo.upper(), environment))
         dataframes.append(df)
             
-        # steps.update(_steps)
-        # results.update(_results)
-
         taskname = environment
         title = taskname
         if len(suptitle) > 1:
@@ -70,8 +62,6 @@ def main(
     std_errors = defaultdict(list)
     for algo_task_name in algo_task_names:
         # Computes average returns
-        # xs[algo_task_name] = np.mean(steps[algo_task_name], axis=0)
-        # mus[algo_task_name] = np.mean(results[algo_task_name], axis=0)
 
         xs[algo_task_name] = df.index
         values = df.xs(algo_task_name[-1::-1], level=(0, 1), axis=1)
@@ -79,7 +69,6 @@ def main(
         std = values.std(axis=1)
         std_errors[algo_task_name] = standard_error(std, values.shape[1], 0.95)
 
-    set_trace()
     algonames, _ = zip(*algo_task_names)
     algonames = sorted(set(algonames))
 
