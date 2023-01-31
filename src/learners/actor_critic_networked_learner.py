@@ -4,7 +4,7 @@ from operator import itemgetter
 
 import numpy as np
 import torch as th
-from torch.optim import Adam
+from torch.optim import SGD
 
 
 from components.episode_buffer import EpisodeBatch
@@ -24,7 +24,7 @@ class ActorCriticNetworkedLearner:
         self.mac = mac
         self.agent_params = [dict(_a.named_parameters()) for _a in mac.agent.agents]
         self.agent_optimisers = [
-            Adam(params=list(_params.values()), lr=args.lr) for _params in self.agent_params
+            SGD(params=list(_params.values()), lr=args.lr) for _params in self.agent_params
         ]
 
         self.critic = critic_registry[args.critic_type](scheme, args)
@@ -32,7 +32,7 @@ class ActorCriticNetworkedLearner:
 
         self.critic_params = [dict(_c.named_parameters()) for _c in self.critic.critics]
         self.critic_optimisers = [
-            Adam(params=list(_params.values()), lr=args.lr) for _params in self.critic_params
+            SGD(params=list(_params.values()), lr=args.lr) for _params in self.critic_params
         ]
 
         self.last_target_update_step = 0
