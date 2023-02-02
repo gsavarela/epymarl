@@ -1,7 +1,7 @@
 import copy
 from components.episode_buffer import EpisodeBatch
 import torch as th
-from torch.optim import Adam
+from torch.optim import Adam, SGD
 from modules.critics import REGISTRY as critic_registry
 from components.standarize_stream import RunningMeanStd
 
@@ -21,7 +21,7 @@ class ActorCriticLearner:
         self.target_critic = copy.deepcopy(self.critic)
 
         self.critic_params = list(self.critic.parameters())
-        self.critic_optimiser = Adam(params=self.critic_params, lr=args.lr)
+        self.critic_optimiser = SGD(params=self.critic_params, lr=args.lr)
 
         self.last_target_update_step = 0
         self.critic_training_steps = 0
