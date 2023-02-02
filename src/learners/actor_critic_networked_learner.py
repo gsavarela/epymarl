@@ -4,14 +4,17 @@ from operator import itemgetter
 
 import numpy as np
 import torch as th
-from torch.optim import SGD, Adam
+from torch.optim import Adam
+# from torch.optim import SGD
 
 
 from components.episode_buffer import EpisodeBatch
 from components.standarize_stream import RunningMeanStd
 from modules.critics import REGISTRY as critic_registry
+from modules.opts import SSGD
 
 from components.consensus import consensus_matrices
+from IPython.core.debugger import set_trace
 
 
 class ActorCriticNetworkedLearner:
@@ -32,7 +35,7 @@ class ActorCriticNetworkedLearner:
 
         self.critic_params = [dict(_c.named_parameters()) for _c in self.critic.critics]
         self.critic_optimisers = [
-            SGD(params=list(_params.values()), lr=args.lr) for _params in self.critic_params
+            SSGD(params=list(_params.values()), lr=args.lr) for _params in self.critic_params
         ]
 
         self.last_target_update_step = 0
@@ -252,6 +255,7 @@ class ActorCriticNetworkedLearner:
             _grad_norm = th.nn.utils.clip_grad_norm_(
                 list(_params.values()), self.args.grad_norm_clip
             )
+
             _opt.step()
 
             with th.no_grad():
