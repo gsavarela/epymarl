@@ -44,13 +44,14 @@ class CSGD(Optimizer):
         local = self.param_groups[0]['params']
         consensus = self.param_groups[-1]['params']
         prev = self.state['prev_consensus_params']
-        params_with_grad = []
-        d_p_list = []
-        consensus_update = False
+        any_consensus_update = False
         for lcl, cns, prv in zip(local, consensus, prev):
             assert lcl.shape == cns.shape
+            consensus_update = False
+            params_with_grad = []
+            d_p_list = []
             if lcl.grad is not None:
-                consensus_update |= not torch.allclose(cns, prv)
+                consensus_update = not torch.allclose(cns, prv)
                 if consensus_update:  # Update
                     params_with_grad.append(cns)
                 else:
@@ -62,10 +63,11 @@ class CSGD(Optimizer):
                 csgd(params_with_grad, d_p_list,
                      lr=self.defaults['lr'], foreach=self.defaults['foreach'])
 
-                if consensus_update:  # Update
                     # Copy parameters from local to consensus
+                if consensus_update:  # Update
                     lcl.data = cns.data
-        if consensus_update:
+                    any_consensus_update = True
+        if any_consensus_update:
             self.state['prev_consensus_params'] = deepcopy(consensus)
 
         return loss
