@@ -11,7 +11,7 @@ from torch.optim import Adam
 from components.episode_buffer import EpisodeBatch
 from components.standarize_stream import RunningMeanStd
 from modules.critics import REGISTRY as critic_registry
-from modules.opts import SSGD
+from modules.opts import CSGD
 
 from components.consensus import consensus_matrices
 from IPython.core.debugger import set_trace
@@ -34,8 +34,9 @@ class ActorCriticNetworkedLearner:
         self.target_critic = copy.deepcopy(self.critic)
 
         self.critic_params = [dict(_c.named_parameters()) for _c in self.critic.critics]
+        self.consensus_params = [copy.deepcopy(_p) for _p in self.critic_params]
         self.critic_optimisers = [
-            SSGD(params=list(_params.values()), lr=args.lr) for _params in self.critic_params
+            CSGD(local_params=list(_p1.values()), consensus_params=list(_p2.values()), lr=args.lr) for _p1, _p2 in zip(self.critic_params, self.consensus_params)
         ]
 
         self.last_target_update_step = 0
@@ -94,10 +95,14 @@ class ActorCriticNetworkedLearner:
         mask = mask.repeat(1, 1, self.n_agents)
 
         critic_mask = mask.clone()
+        running_log = defaultdict(list)
+        # Before any updates make consensus rounds
+        if self.critic_training_steps % self.consensus_interval == 0:
+            self.consensus_step(batch, critic_mask, running_log, t_env)
 
         # This processes each player sequentially.
         advantages, critic_train_stats = self.train_critic_sequential(
-            self.critic, self.target_critic, batch, rewards, critic_mask
+            self.critic, self.target_critic, batch, rewards, critic_mask, running_log=running_log
         )
 
         self.mac.init_hidden(batch.batch_size)
@@ -158,9 +163,6 @@ class ActorCriticNetworkedLearner:
 
         self.critic_training_steps += 1
 
-        # After all updates perform consensus round.
-        if self.critic_training_steps % self.consensus_interval == 0:
-            self.consensus_step(batch, critic_mask, critic_train_stats, t_env)
         if (
             self.args.target_update_interval_or_tau > 1
             and (self.critic_training_steps - self.last_target_update_step)
@@ -211,7 +213,8 @@ class ActorCriticNetworkedLearner:
             )
             self.log_stats_t = t_env
 
-    def train_critic_sequential(self, critic, target_critic, batch, rewards, mask):
+    def train_critic_sequential(self, critic, target_critic, batch, rewards, mask, running_log=defaultdict(list)):
+        
         # Optimise critic
         with th.no_grad():
             target_vals = th.cat([target_critic(batch, _i) for _i in range(self.n_agents)], dim=2)
@@ -229,7 +232,6 @@ class ActorCriticNetworkedLearner:
                 self.ret_ms.var
             )
 
-        running_log = defaultdict(list)
         t_max = batch.max_seq_length - 1
         total_loss = th.tensor(0.0)
         total_grad_norm = th.tensor(0.0)
@@ -354,9 +356,11 @@ class ActorCriticNetworkedLearner:
                     consensus_parameters_logs[_key + f'_{k + 1}'] = [_w]
 
                 # update parameters after consensus
-                for _i, _critic in enumerate(self.critic.critics):
-                    for _key, _value in _critic.named_parameters():
+                for _i, _consensus in enumerate(self.consensus_params):
+                    for _key, _value in _consensus.items():
+                        # print(f'Before: {_key}: {_value.data}')
                         _value.data = th.nn.parameter.Parameter(consensus_parameters[_key][0][_i, :])
+                        # print(f'After: {_key}: {_value.data}')
 
                 if t_env - self.log_stats_t >= self.args.learner_log_interval:
                     vs = []

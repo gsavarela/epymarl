@@ -3,14 +3,13 @@ from torch import Tensor
 from torch.optim import Optimizer
 from torch.optim.optimizer import required, _use_grad_for_differentiable
 from typing import List, Optional
-from IPython.core.debugger import set_trace
 
 
 __all__ = ['DSGD', 'dsgd']
 
 
-class DSGD(Optimizer):
-    r"""Implements distributed stochastic gradient descent (optionally with momentum).
+class SGD(Optimizer):
+    r"""Implements stochastic gradient descent (optionally with momentum).
 
     .. math::
        \begin{aligned}
