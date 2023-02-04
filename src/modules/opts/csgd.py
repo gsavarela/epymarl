@@ -63,7 +63,7 @@ class CSGD(Optimizer):
                 csgd(params_with_grad, d_p_list,
                      lr=self.defaults['lr'], foreach=self.defaults['foreach'])
 
-                    # Copy parameters from local to consensus
+                # Copy parameters from local to consensus
                 if consensus_update:  # Update
                     lcl.data = cns.data
                     any_consensus_update = True

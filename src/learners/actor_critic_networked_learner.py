@@ -11,7 +11,8 @@ from torch.optim import Adam
 from components.episode_buffer import EpisodeBatch
 from components.standarize_stream import RunningMeanStd
 from modules.critics import REGISTRY as critic_registry
-from modules.opts import CSGD
+# from modules.opts import CSGD
+from modules.opts import CAdam
 
 from components.consensus import consensus_matrices
 from IPython.core.debugger import set_trace
@@ -36,7 +37,7 @@ class ActorCriticNetworkedLearner:
         self.critic_params = [dict(_c.named_parameters()) for _c in self.critic.critics]
         self.consensus_params = [copy.deepcopy(_p) for _p in self.critic_params]
         self.critic_optimisers = [
-            CSGD(local_params=list(_p1.values()), consensus_params=list(_p2.values()), lr=args.lr) for _p1, _p2 in zip(self.critic_params, self.consensus_params)
+            CAdam(local_params=list(_p1.values()), consensus_params=list(_p2.values()), lr=args.lr) for _p1, _p2 in zip(self.critic_params, self.consensus_params)
         ]
 
         self.last_target_update_step = 0
