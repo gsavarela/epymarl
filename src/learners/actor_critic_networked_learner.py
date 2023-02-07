@@ -15,7 +15,6 @@ from modules.critics import REGISTRY as critic_registry
 from modules.opts import CAdam
 
 from components.consensus import consensus_matrices
-from IPython.core.debugger import set_trace
 
 
 class ActorCriticNetworkedLearner:
@@ -48,11 +47,7 @@ class ActorCriticNetworkedLearner:
         if self.args.standardise_returns:
             self.ret_ms = RunningMeanStd(shape=(self.n_agents,), device=device)
         if self.args.standardise_rewards:
-            joint_rewards = self.args.env_args.get("joint_rewards", True)
-            if joint_rewards:
-                self.rew_ms = RunningMeanStd(shape=(1,), device=device)
-            else:
-                self.rew_ms = RunningMeanStd(shape=(self.n_agents,), device=device)
+            self.rew_ms = RunningMeanStd(shape=(1,), device=device)
 
         # consensus evaluations
         def fn(x):

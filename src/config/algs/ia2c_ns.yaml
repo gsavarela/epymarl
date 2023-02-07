@@ -12,8 +12,6 @@ batch_size: 10
 
 env_args:
   state_last_action: False # critic adds last action internally
-  joint_rewards: True
-  shared_rewards: False
   pretrained_wrapper: "PretrainedTag" # MPE
   time_limit: 25 # MPE
   

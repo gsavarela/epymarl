@@ -3,7 +3,6 @@ from torch import Tensor
 from torch.optim.optimizer import Optimizer, required, _use_grad_for_differentiable 
 from typing import List, Optional
 from copy import deepcopy
-from IPython.core.debugger import set_trace
 
 __all__ = ['CSGD', 'csgd']
 
@@ -113,5 +112,4 @@ def _multi_tensor_sgd(
 
     if len(params) == 0:
         return
-    set_trace()
     torch._foreach_add_(params, grads, alpha=-lr)

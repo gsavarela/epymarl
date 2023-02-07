@@ -27,7 +27,6 @@ matplotlib.use('QtCairo')
 # matplotlib.use('Cairo')
 
 from incense import ExperimentLoader
-from IPython.core.debugger import set_trace
 
 Array = np.ndarray
 FIGURE_X = 6.0

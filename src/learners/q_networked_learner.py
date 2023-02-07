@@ -42,11 +42,7 @@ class QNetworkedLearner:
         if self.args.standardise_returns:
             self.ret_ms = RunningMeanStd(shape=(self.n_agents,), device=device)
         if self.args.standardise_rewards:
-            self.joint_rewards = self.args.env_args.get("joint_rewards", True)
-            if self.joint_rewards:
-                self.rew_ms = RunningMeanStd(shape=(1,), device=device)
-            else:
-                self.rew_ms = RunningMeanStd(shape=(self.n_agents,), device=device)
+            self.rew_ms = RunningMeanStd(shape=(1,), device=device)
 
         # consensus evaluations
         def fn(x):
@@ -133,10 +129,7 @@ class QNetworkedLearner:
                 target_max_qvals = target_max_qvals * th.sqrt(self.ret_ms.var) + self.ret_ms.mean
 
             # Calculate 1-step Q-Learning targets
-            if self.joint_rewards:
-                targets = rewards[:, :, 0] + self.args.gamma * (1 - terminated.squeeze(-1)) * target_max_qvals.detach()
-            else:
-                targets = rewards[:, :, _i] + self.args.gamma * (1 - terminated.squeeze(-1)) * target_max_qvals.detach()
+            targets = rewards[:, :, 0] + self.args.gamma * (1 - terminated.squeeze(-1)) * target_max_qvals.detach()
 
             if self.args.standardise_returns:
                 self.ret_ms.update(targets)

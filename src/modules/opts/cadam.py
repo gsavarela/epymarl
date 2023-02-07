@@ -6,7 +6,6 @@ from typing import cast, List, Optional, Dict, Tuple
 import torch
 from torch import Tensor
 from torch.optim.optimizer import Optimizer, _use_grad_for_differentiable
-from IPython.core.debugger import set_trace
 import numpy as np
 
 __all__ = ['CAdam', 'cadam']

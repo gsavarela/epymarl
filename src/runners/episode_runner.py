@@ -52,6 +52,7 @@ class EpisodeRunner:
         episode_return = 0
         self.mac.init_hidden(batch_size=self.batch_size)
 
+        trajectory = []
         while not terminated:
 
             pre_transition_data = {
@@ -67,7 +68,8 @@ class EpisodeRunner:
             actions = self.mac.select_actions(self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode)
 
             reward, terminated, env_info = self.env.step(actions[0])
-            episode_return += sum(reward)
+            trajectory.append(reward)
+            episode_return += reward
 
             post_transition_data = {
                 "actions": actions,
@@ -89,7 +91,6 @@ class EpisodeRunner:
         # Select actions in the last stored state
         actions = self.mac.select_actions(self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode)
         self.batch.update({"actions": actions}, ts=self.t)
-
         cur_stats = self.test_stats if test_mode else self.train_stats
         cur_returns = self.test_returns if test_mode else self.train_returns
         log_prefix = "test_" if test_mode else ""

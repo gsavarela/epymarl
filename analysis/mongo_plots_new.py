@@ -25,7 +25,6 @@ import matplotlib
 matplotlib.use('QtCairo')
 
 from incense import ExperimentLoader
-from IPython.core.debugger import set_trace
 
 Array = np.ndarray
 FIGURE_X = 6.0
@@ -409,7 +408,6 @@ def main(
     steps = defaultdict(list)
     results = defaultdict(list)
 
-    set_trace()
     # 1. Queries algos and aggregates runs
     for algo, source, query in zip(algonames, sources, queries):
         mongo_uri = mdb.build_conn(source)
