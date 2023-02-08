@@ -1,0 +1,62 @@
+exclude: null
+grid-search:
+
+  "--config":
+    - "maa2c_ns"
+
+  lr:
+   - 0.0003
+
+  standardise_rewards:
+    - True
+
+  use_rnn:
+    - True
+
+  target_update_interval_or_tau:
+    - 0.01
+
+  hidden_dim:
+    - 128
+
+  entropy_coef: 
+    - 0.01
+
+  q_nstep:
+    - 5
+
+  weight_decay:
+    - 0.000001
+    - 0.000003
+    - 0.000005
+    - 0.00001
+    - 0.00003 
+    - 0.00005 
+    - 0.0001
+    - 0.0003
+    - 0.0005
+    - 0.001
+
+  t_max:
+    - 20_050_000
+
+  test_nepisode:
+    - 100
+
+  test_interval:
+    - 500_000
+
+  log_interval:
+    - 10_000
+
+  save_model_interval:
+    - 50_000
+
+  save_model:
+    - False
+    
+grid-search-groups:
+  env0:
+    - "--env-config": "gymma"
+    - env_args.key: mpe:SimpleTag-v0
+    - env_args.time_limit: 25
