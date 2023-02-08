@@ -52,6 +52,7 @@ class EpisodeRunner:
         episode_return = 0
         self.mac.init_hidden(batch_size=self.batch_size)
 
+        trajectory = []
         while not terminated:
 
             pre_transition_data = {
@@ -67,6 +68,7 @@ class EpisodeRunner:
             actions = self.mac.select_actions(self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode)
 
             reward, terminated, env_info = self.env.step(actions[0])
+            trajectory.append(reward)
             episode_return += reward
 
             post_transition_data = {

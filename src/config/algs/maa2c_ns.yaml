@@ -1,7 +1,6 @@
 # --- Central-V specific parameters ---
 hidden_dim: 128 # MPE
 lr: 0.0003 # MPE
-weight_decay: 0 # MPE
 
 action_selector: "soft_policies"
 mask_before_softmax: True
