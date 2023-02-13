@@ -38,7 +38,6 @@ class TimeLimit(GymTimeLimit):
             self._elapsed_steps is not None
         ), "Cannot call env.step() before calling reset()"
         observation, reward, done, info = self.env.step(action)
-        reward = reward / 3
         self._elapsed_steps += 1
         if self._elapsed_steps >= self._max_episode_steps:
             info["TimeLimit.truncated"] = not all(done)
@@ -110,7 +109,7 @@ class _GymmaWrapper(MultiAgentEnv):
             for o in self._obs
         ]
 
-        return float(sum(reward)), all(done), {}
+        return float(sum(reward)) / 3.0, all(done), {}
 
     def get_obs(self):
         """ Returns all agent observations in a list """
