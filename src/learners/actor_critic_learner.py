@@ -1,8 +1,11 @@
 import copy
 from components.episode_buffer import EpisodeBatch
+from modules.critics.coma import COMACritic
+from modules.critics.centralV import CentralVCritic
+from utils.rl_utils import build_td_lambda_targets
 import torch as th
 from torch.optim import Adam
-from modules.critics import REGISTRY as critic_registry
+from modules.critics import REGISTRY as critic_resigtry
 from components.standarize_stream import RunningMeanStd
 
 
@@ -17,7 +20,7 @@ class ActorCriticLearner:
         self.agent_params = list(mac.parameters())
         self.agent_optimiser = Adam(params=self.agent_params, lr=args.lr)
 
-        self.critic = critic_registry[args.critic_type](scheme, args)
+        self.critic = critic_resigtry[args.critic_type](scheme, args)
         self.target_critic = copy.deepcopy(self.critic)
 
         self.critic_params = list(self.critic.parameters())
@@ -93,9 +96,7 @@ class ActorCriticLearner:
 
         if t_env - self.log_stats_t >= self.args.learner_log_interval:
             ts_logged = len(critic_train_stats["critic_loss"])
-            for key in ["critic_loss", "critic_grad_norm", "td_error_abs",
-                    "q_taken_mean", "target_mean", "reward_mean", "target_value_mean",
-                    "truncated_sampled_returns"]:
+            for key in ["critic_loss", "critic_grad_norm", "td_error_abs", "q_taken_mean", "target_mean"]:
                 self.logger.log_stat(key, sum(critic_train_stats[key])/ts_logged, t_env)
 
             self.logger.log_stat("advantage_mean", (advantages * mask).sum().item() / mask.sum().item(), t_env)
@@ -113,9 +114,7 @@ class ActorCriticLearner:
         if self.args.standardise_returns:
             target_vals = target_vals * th.sqrt(self.ret_ms.var) + self.ret_ms.mean
 
-        nstep_returns, nstep_values = self.nstep_returns(rewards, mask, target_vals, self.args.q_nstep)
-        
-        target_returns = nstep_returns + nstep_values
+        target_returns = self.nstep_returns(rewards, mask, target_vals, self.args.q_nstep)
 
         if self.args.standardise_returns:
             self.ret_ms.update(target_returns)
@@ -127,9 +126,6 @@ class ActorCriticLearner:
             "td_error_abs": [],
             "target_mean": [],
             "q_taken_mean": [],
-            "reward_mean": [],
-            "target_value_mean": [],
-            "truncated_sampled_returns": []
         }
 
         v = critic(batch)[:, :-1].squeeze(3)
@@ -148,33 +144,25 @@ class ActorCriticLearner:
         running_log["td_error_abs"].append((masked_td_error.abs().sum().item() / mask_elems))
         running_log["q_taken_mean"].append((v * mask).sum().item() / mask_elems)
         running_log["target_mean"].append((target_returns * mask).sum().item() / mask_elems)
-        # New critic logging
-        running_log["reward_mean"].append((rewards * mask).sum().item() / mask_elems)
-        running_log["target_value_mean"].append((nstep_values * mask).sum().item() / mask_elems)
-        running_log["truncated_sampled_returns"].append((nstep_returns * mask).sum().item() / mask_elems)
         return masked_td_error, running_log
 
     def nstep_returns(self, rewards, mask, values, nsteps):
         nstep_values = th.zeros_like(values[:, :-1])
-        nstep_returns = th.zeros_like(values[:, :-1])
         for t_start in range(rewards.size(1)):
-
-            nstep_value_t = th.zeros_like(values[:, 0])
             nstep_return_t = th.zeros_like(values[:, 0])
             for step in range(nsteps + 1):
                 t = t_start + step
                 if t >= rewards.size(1):
                     break
                 elif step == nsteps:
-                    nstep_value_t += self.args.gamma ** step * values[:, t] * mask[:, t]
+                    nstep_return_t += self.args.gamma ** step * values[:, t] * mask[:, t]
                 elif t == rewards.size(1) - 1 and self.args.add_value_last_step:
                     nstep_return_t += self.args.gamma ** step * rewards[:, t] * mask[:, t]
                     nstep_return_t += self.args.gamma ** (step + 1) * values[:, t+1]
                 else:
                     nstep_return_t += self.args.gamma ** step * rewards[:, t] * mask[:, t]
-            nstep_values[:, t_start, :] = nstep_value_t
-            nstep_returns[:, t_start, :] = nstep_return_t
-        return nstep_values, nstep_returns
+            nstep_values[:, t_start, :] = nstep_return_t
+        return nstep_values
 
     def _update_targets(self):
         self.target_critic.load_state_dict(self.critic.state_dict())
