@@ -1,6 +1,6 @@
 from functools import partial
 import pretrained
-from smac.env import MultiAgentEnv, StarCraft2Env
+from smac.env import MultiAgentEnv #, StarCraft2Env
 import sys
 import os
 import gym
@@ -9,19 +9,18 @@ from gym.envs import registry as gym_registry
 from gym.spaces import flatdim
 import numpy as np
 from gym.wrappers import TimeLimit as GymTimeLimit
-# import robotic_warehouse
 
 def env_fn(env, **kwargs) -> MultiAgentEnv:
     return env(**kwargs)
 
 
 REGISTRY = {}
-REGISTRY["sc2"] = partial(env_fn, env=StarCraft2Env)
+# REGISTRY["sc2"] = partial(env_fn, env=StarCraft2Env)
 
-if sys.platform == "linux":
-    os.environ.setdefault(
-        "SC2PATH", os.path.join(os.getcwd(), "3rdparty", "StarCraftII")
-    )
+# if sys.platform == "linux":
+#     os.environ.setdefault(
+#         "SC2PATH", os.path.join(os.getcwd(), "3rdparty", "StarCraftII")
+#     )
 
 
 class TimeLimit(GymTimeLimit):
@@ -94,8 +93,6 @@ class _GymmaWrapper(MultiAgentEnv):
         )
 
         self._seed = kwargs["seed"]
-        self._joint_rewards = kwargs.get('joint_rewards', True)
-        self._shared_rewards = kwargs.get('shared_rewards', True)
         self._env.seed(self._seed)
 
     def step(self, actions):
@@ -111,11 +108,8 @@ class _GymmaWrapper(MultiAgentEnv):
             )
             for o in self._obs
         ]
-        if self._shared_rewards and not self._joint_rewards:
-            reward = [float(np.mean(reward))] * self.n_agents
-        if self._joint_rewards:
-            reward = [float(sum(reward))]
-        return reward, all(done), {}
+
+        return float(sum(reward)), all(done), {}
 
     def get_obs(self):
         """ Returns all agent observations in a list """
@@ -150,12 +144,6 @@ class _GymmaWrapper(MultiAgentEnv):
     def get_state_size(self):
         """ Returns the shape of the state"""
         return self.n_agents * flatdim(self.longest_observation_space)
-
-    def get_reward_size(self):
-        if self._joint_rewards:
-            return 1
-        else:
-            return self.n_agents
 
     def get_avail_actions(self):
         avail_actions = []
@@ -203,15 +191,6 @@ class _GymmaWrapper(MultiAgentEnv):
 
     def get_stats(self):
         return {}
-
-    def get_env_info(self):
-        env_info = super(_GymmaWrapper, self).get_env_info()
-        if hasattr(self, 'get_reward_size'):
-            env_info['n_rewards'] = self.get_reward_size()
-        else:
-            env_info['n_rewards'] = 1
-        return env_info
-
 
 
 REGISTRY["gymma"] = partial(env_fn, env=_GymmaWrapper)

@@ -17,8 +17,6 @@ target_update_interval_or_tau: 0.01 # MPE
 
 
 env_args:
-  joint_rewards: True
-  shared_rewards: False
   pretrained_wrapper: "PretrainedTag" # MPE
   time_limit: 25 # MPE
 
@@ -38,5 +36,5 @@ use_rnn: False # MPE
 mixer: # Mixer becomes None
 
 name: "iql_ns"
-t_max: 5_010_000 # MPE
+t_max: 2_010_000 # MPE
 

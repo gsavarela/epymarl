@@ -4,13 +4,12 @@ env_args:
   key: null
   time_limit: 25
   pretrained_wrapper: "PretrainedTag"
-  joint_rewards: False
 
 test_greedy: True
 test_nepisode: 100
-test_interval: 125_000
+test_interval: 50_000
 log_interval: 5_000
-runner_log_interval: 12_500
-learner_log_interval: 12_500
-t_max: 5_010_000
+learner_log_interval: 10_000
+runner_log_interval: 10_000
+t_max: 2_010_000 # MPE
 
