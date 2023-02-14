@@ -6,7 +6,7 @@ action_selector: "epsilon_greedy"
 epsilon_start: 1.0
 epsilon_finish: 0.05
 epsilon_anneal_time: 200_000 # MPE
-evaluation_epsilon: 0.05 # MPE Reduce generalization gap.
+evaluation_epsilon: 0.00 # MPE Reproducibility
 
 runner: "episode"
 
