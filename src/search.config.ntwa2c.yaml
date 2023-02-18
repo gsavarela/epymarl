@@ -64,7 +64,7 @@ grid-search:
     - 500_000
 
   log_interval:
-    - 10_000
+    - 50_000
 
   save_model_interval:
     - 50_000
