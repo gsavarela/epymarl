@@ -42,13 +42,12 @@ grid-search:
     - 5
     - 10
 
-  # q_nstep:
-  #   - 5
-  #   - 10
+  epsilon_anneal_time: 
+    - 200_000 # MPE
 
   evaluation_epsilon:
-  #  - 0.0
-    - 0.05
+    - 0.0
+    # - 0.05
 
   t_max:
     - 5_005_000
@@ -60,7 +59,7 @@ grid-search:
     - 125_000
 
   log_interval:
-    - 12_500
+    - 62_500
 
   save_model_interval:
     - 50_000

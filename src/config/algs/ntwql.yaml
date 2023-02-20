@@ -6,7 +6,7 @@ action_selector: "epsilon_greedy"
 epsilon_start: 1.0
 epsilon_finish: 0.05
 epsilon_anneal_time: 200_000 # MPE
-evaluation_epsilon: 0.05  # MPE: Reduce generalization gap.
+evaluation_epsilon: 0.00  # MPE 
 
 runner: "episode"
 
@@ -16,8 +16,6 @@ buffer_size: 5_000
 target_update_interval_or_tau: 0.01 # MPE
 
 env_args:
-  joint_rewards: True
-  shared_rewards: False
   pretrained_wrapper: "PretrainedTag" # MPE
   time_limit: 25 # MPE
 
