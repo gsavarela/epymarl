@@ -1,0 +1,80 @@
+exclude: null
+grid-search:
+
+  "--config":
+    - "ntwa2c"
+
+  lr:
+   # - 0.0001
+   # - 0.0003
+   - 0.0005
+
+  standardise_rewards:
+    - True
+
+  use_rnn:
+    # - True
+    - False
+
+  target_update_interval_or_tau:
+  #   - 200
+    - 0.01
+
+  hidden_dim:
+    # - 64
+    - 128
+
+  entropy_coef: 
+    - 0.01
+    # - 0.001
+
+  networked_time_varying: 
+    - True
+
+  networked_edges: # maps n_agents: n_edges
+    - 0
+    # - 1
+    # - 2
+    # - 3
+
+  networked_rounds:
+    - 1
+    # - 5
+    # - 10
+
+  networked_interval:
+    - 1
+    # - 5
+    # - 10
+
+  q_nstep:
+    # - 5
+    - 10
+
+  # evaluation_epsilon:
+  #   - 0.0
+  #   - 0.05
+
+  t_max:
+    - 20_050_000
+
+  test_nepisode:
+    - 100
+
+  test_interval:
+    - 500_000
+
+  log_interval:
+    - 50_000
+
+  save_model_interval:
+    - 50_000
+
+  save_model:
+    - False
+    
+grid-search-groups:
+  env0:
+    - "--env-config": "gymma"
+    - env_args.key: mpe:SimpleTag-v0
+    - env_args.time_limit: 25
