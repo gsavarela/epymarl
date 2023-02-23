@@ -1,10 +1,12 @@
-# --- QMIX specific parameters ---
+# --- VDN specific parameters ---
+hidden_dim: 128   # MPE
+lr: 0.0005    # MPE
 
 # use epsilon greedy action selector
 action_selector: "epsilon_greedy"
 epsilon_start: 1.0
 epsilon_finish: 0.05
-epsilon_anneal_time: 50000
+epsilon_anneal_time: 50_000
 evaluation_epsilon: 0.0
 
 runner: "episode"
@@ -14,11 +16,13 @@ buffer_size: 5000
 # update the target network every {} episodes
 target_update_interval_or_tau: 200
 
+env_args:
+  pretrained_wrapper: "PretrainedTag" # MPE
+  time_limit: 25 # MPE: Max seq_length
 
 obs_agent_id: True
 obs_last_action: False
 obs_individual_obs: False
-use_rnn: False
 
 # use the Q_Learner to train
 standardise_returns: False
@@ -26,7 +30,8 @@ standardise_rewards: True
 agent_output_type: "q"
 learner: "q_learner"
 double_q: True
-use_rnn: False
+use_rnn: False    # MPE
 mixer: "vdn"
 
 name: "vdn"
+t_max: 5_010_000 # MPE
