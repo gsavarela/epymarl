@@ -34,11 +34,11 @@ double_q: True
 use_rnn: False # MPE
 mixer: # Mixer becomes None
 
-networked_edges: 1  # maps n_agents: n_edges
-networked_rounds: 10  # At each consensus round try this many consensus matrices.
+networked_edges: 0  # maps n_agents: n_edges
+networked_rounds: 1  # At each consensus round try this many consensus matrices.
 networked_time_varying: True # if False the consensus matrix will be static.
 networked_joint_observations: False # Uses joint observations for training and consensus.
-networked_interval: 5 # Try consensus at every networked_interval number of training steps.
+networked_interval: 1  # Try consensus at every networked_interval number of training steps.
 
 name: "ntwql"
 t_max: 5_010_000  # MPE
