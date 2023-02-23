@@ -36,4 +36,4 @@ double_q: True
 mixer: "vdn"
 
 name: "vdn_ns"
-t_max: 2_010_000 # MPE
+t_max: 5_010_000 # MPE

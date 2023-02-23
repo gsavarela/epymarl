@@ -6,7 +6,7 @@ action_selector: "epsilon_greedy"
 epsilon_start: 1.0
 epsilon_finish: 0.05
 epsilon_anneal_time: 200_000 # MPE
-evaluation_epsilon: 0.00 # MPE Reproducibility
+evaluation_epsilon: 0.00 # MPE
 
 runner: "episode"
 
@@ -36,5 +36,5 @@ use_rnn: False # MPE
 mixer: # Mixer becomes None
 
 name: "iql_ns"
-t_max: 2_010_000 # MPE
+t_max: 5_010_000 # MPE
 
