@@ -17,7 +17,7 @@ target_update_interval_or_tau: 200 # LBF
 
 
 env_args:
-  joint_rewards: True
+  
   shared_rewards: False
   time_limit: 50 # LBF: Max seq_length
 

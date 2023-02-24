@@ -38,11 +38,7 @@ class ActorCriticDecentralizedLearner:
         if self.args.standardise_returns:
             self.ret_ms = RunningMeanStd(shape=(self.n_agents,), device=device)
         if self.args.standardise_rewards:
-            joint_rewards = self.args.env_args.get("joint_rewards", True)
-            if joint_rewards:
-                self.rew_ms = RunningMeanStd(shape=(1,), device=device)
-            else:
-                self.rew_ms = RunningMeanStd(shape=(self.n_agents,), device=device)
+            self.rew_ms = RunningMeanStd(shape=(1,), device=device)
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
         # Get the relevant quantities
