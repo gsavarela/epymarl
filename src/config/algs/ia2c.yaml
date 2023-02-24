@@ -1,10 +1,10 @@
 # --- IA2C specific parameters ---
-
+lr: 0.0005  # LBF
+hidden_dim: 128 # LBF
 action_selector: "soft_policies"
 mask_before_softmax: True
 
 runner: "parallel"
-
 buffer_size: 10
 batch_size_run: 10
 batch_size: 10
@@ -13,11 +13,8 @@ env_args:
   state_last_action: False # critic adds last action internally
 
 # update the target network every {} training steps
-target_update_interval_or_tau: 0.01
+target_update_interval_or_tau: 0.01   # LBF
 
-
-lr: 0.0005
-hidden_dim: 128
 
 obs_agent_id: True
 obs_last_action: False
@@ -26,13 +23,14 @@ obs_individual_obs: False
 # use IA2C
 agent_output_type: "pi_logits"
 learner: "actor_critic_learner"
-entropy_coef: 0.001
+entropy_coef: 0.001   # LBF
 standardise_returns: False
-standardise_rewards: True
-use_rnn: True
+standardise_rewards: True  # LBF
+use_rnn: True # LBF
 q_nstep: 5 # 1 corresponds to normal r + gammaV
 critic_type: "ac_critic"
 
 name: "ia2c"
 
-t_max: 20500000
+# t_max: 20500000
+t_max: 40_050_000

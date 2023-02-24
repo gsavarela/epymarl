@@ -1,13 +1,11 @@
 # --- Central-V specific parameters ---
-# LBF config.
-lr: 0.0005
-hidden_dim: 128
+lr: 0.0005  # LBF
+hidden_dim: 128 # LBF
 
 action_selector: "soft_policies"
 mask_before_softmax: True
 
 runner: "parallel"
-
 buffer_size: 10
 batch_size_run: 10
 batch_size: 10
