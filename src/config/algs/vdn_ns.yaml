@@ -1,7 +1,7 @@
 # --- VDN_NS specific parameters ---
-lr: 0.0001 # LBF: Learning rate for agents
+lr: 0.0001 # LBF
 # use epsilon greedy action selector
-hidden_dim: 64 # LBF: Size of hidden state for default rnn agent
+hidden_dim: 64 # LBF
 action_selector: "epsilon_greedy"
 epsilon_start: 1.0
 epsilon_finish: 0.05
@@ -15,8 +15,6 @@ buffer_size: 5000
 target_update_interval_or_tau: 200
 
 env_args:
-  
-  shared_rewards: False
   time_limit: 50 # LBF: Max seq_length
 
 obs_agent_id: False
@@ -36,4 +34,4 @@ double_q: True
 mixer: "vdn"
 
 name: "vdn_ns"
-t_max: 5_050_000
+t_max: 2_010_000

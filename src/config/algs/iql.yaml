@@ -1,5 +1,6 @@
 # --- IQL specific parameters ---
-
+lr: 0.0003 # LBF: Learning rate for agents
+hidden_dim: 64 # LBF: Size of hidden state for default rnn agent
 # use epsilon greedy action selector
 action_selector: "epsilon_greedy"
 epsilon_start: 1.0

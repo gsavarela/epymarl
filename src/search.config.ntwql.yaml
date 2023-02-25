@@ -28,14 +28,14 @@ grid-search:
     - True
 
   networked_edges: # maps n_agents: n_edges
-    - 1
-    - 2
-    # - 3
+    # - 1
+    # - 2
+    - 3
 
   networked_rounds:
     - 1
-    - 5
-    - 10
+    # - 5
+    # - 10
 
   networked_interval:
     - 1
