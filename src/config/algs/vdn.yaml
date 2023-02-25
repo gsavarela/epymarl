@@ -1,32 +1,33 @@
-# --- QMIX specific parameters ---
-
+# --- VDN specific parameters ---
+hidden_dim: 128 # LBF
+lr: 0.0003 # LBF
 # use epsilon greedy action selector
 action_selector: "epsilon_greedy"
 epsilon_start: 1.0
 epsilon_finish: 0.05
-epsilon_anneal_time: 50000
-evaluation_epsilon: 0.0
+epsilon_anneal_time: 50_000
+evaluation_epsilon: 0.0 # LBF
 
 runner: "episode"
 
 buffer_size: 5000
 
 # update the target network every {} episodes
-target_update_interval_or_tau: 200
+target_update_interval_or_tau: 0.01 # LBF
 
 
 obs_agent_id: True
 obs_last_action: False
 obs_individual_obs: False
-use_rnn: False
 
 # use the Q_Learner to train
 standardise_returns: False
-standardise_rewards: True
+standardise_rewards: True   # LBF
 agent_output_type: "q"
 learner: "q_learner"
 double_q: True
-use_rnn: False
+use_rnn: True   # LBF
 mixer: "vdn"
 
 name: "vdn"
+t_max: 2_050_000
