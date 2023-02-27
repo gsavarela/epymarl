@@ -24,7 +24,7 @@ obs_individual_obs: False
 
 agent_output_type: "pi_logits"
 learner: "actor_critic_learner"
-entropy_coef: 0.01
+entropy_coef: 0.01  # MPE
 use_rnn: True   # MPE
 standardise_returns: False
 standardise_rewards: True

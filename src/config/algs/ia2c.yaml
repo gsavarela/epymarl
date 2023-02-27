@@ -15,7 +15,7 @@ env_args:
   time_limit: 25 # MPE
 
 # update the target network every {} training steps
-target_update_interval_or_tau: 0.01
+target_update_interval_or_tau: 0.01 # MPE
 
 
 obs_agent_id: True
@@ -27,11 +27,10 @@ agent_output_type: "pi_logits"
 learner: "actor_critic_learner"
 entropy_coef: 0.01  # MPE
 standardise_returns: False
-standardise_rewards: True
+standardise_rewards: True # MPE
 use_rnn: True   # MPE
 q_nstep: 5 # 1 corresponds to normal r + gammaV
 critic_type: "ac_critic"
 
 name: "ia2c"
-
 t_max: 20_050_000
