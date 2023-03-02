@@ -1,23 +1,23 @@
 # --- IQL NS specific parameters ---
-hidden_dim: 128 # MPE
 lr: 0.0005 # MPE
-standardise_rewards: True # MPE
-use_rnn: False # MPE
-evaluation_epsilon: 0.00 # MPE
-epsilon_anneal_time: 200_000 # MPE
-# update the target network every {} episodes
-target_update_interval_or_tau: 0.01 # MPE
-
+hidden_dim: 128 # MPE
 # use epsilon greedy action selector
 action_selector: "epsilon_greedy"
 epsilon_start: 1.0
 epsilon_finish: 0.05
+epsilon_anneal_time: 200_000 # MPE
+evaluation_epsilon: 0.00 # MPE
 
 runner: "episode"
 
 buffer_size: 5_000
 
+# update the target network every {} episodes
+target_update_interval_or_tau: 0.01 # MPE
+
+
 env_args:
+  pretrained_wrapper: "PretrainedTag" # MPE
   time_limit: 25 # MPE
 
 obs_agent_id: False
@@ -30,7 +30,9 @@ agent: "rnn_ns"
 agent_output_type: "q"
 learner: "q_learner"
 standardise_returns: False
+standardise_rewards: True
 double_q: True
+use_rnn: False # MPE
 mixer: # Mixer becomes None
 
 name: "iql_ns"
