@@ -1,6 +1,13 @@
 # --- IA2C NS specific parameters ---
-lr: 0.0005  # LBF
 hidden_dim: 64 # LBF
+lr: 0.0005  # LBF
+standardise_rewards: True
+use_rnn: True
+entropy_coef: 0.01
+# update the target network every {} training steps
+target_update_interval_or_tau: 0.01 # LBF
+q_nstep: 5 # 1 corresponds to normal r + gammaV
+
 action_selector: "soft_policies"
 mask_before_softmax: True
 
@@ -12,11 +19,6 @@ batch_size: 10
 env_args:
   state_last_action: False # critic adds last action internally
   
-  
-
-# update the target network every {} training steps
-target_update_interval_or_tau: 0.01 # LBF
-
 
 obs_agent_id: False
 obs_last_action: False
@@ -26,13 +28,8 @@ mac: "non_shared_mac"
 agent: "rnn_ns"
 agent_output_type: "pi_logits"
 learner: "actor_critic_learner"
-entropy_coef: 0.01
 standardise_returns: False
-standardise_rewards: True
-use_rnn: True
-q_nstep: 5 # 1 corresponds to normal r + gammaV
 critic_type: "ac_critic_ns"
-name: "ia2c_ns"
 
-# t_max: 20_050_000
+name: "ia2c_ns"
 t_max: 40_050_000
