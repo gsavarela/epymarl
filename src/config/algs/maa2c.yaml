@@ -1,4 +1,12 @@
 # --- Central-V specific parameters ---
+hidden_dim: 64 # RWARE 
+lr: 0.0005 # RWARE 
+standardise_rewards: True # RWARE 
+use_rnn: False # RWARE 
+entropy_coef: 0.01 # RWARE 
+# update the target network every {} training steps
+target_update_interval_or_tau: 0.01 # RWARE 
+q_nstep: 5 # RWARE 1 corresponds to normal r + gammaV
 
 action_selector: "soft_policies"
 mask_before_softmax: True
@@ -11,11 +19,8 @@ batch_size: 10
 
 env_args:
   state_last_action: False # critic adds last action internally
-
-# update the target network every {} training steps
-target_update_interval_or_tau: 0.01
-
-lr: 0.0005
+  joint_rewards: True
+  shared_rewards: False
 
 obs_agent_id: True
 obs_last_action: False
@@ -23,13 +28,9 @@ obs_individual_obs: False
 
 agent_output_type: "pi_logits"
 learner: "actor_critic_learner"
-entropy_coef: 0.01
-use_rnn: True
 standardise_returns: False
-standardise_rewards: True
-q_nstep: 10 # 1 corresponds to normal r + gammaV
 critic_type: "cv_critic"
 
 name: "maa2c"
 
-t_max: 20050000
+t_max: 40_050_000

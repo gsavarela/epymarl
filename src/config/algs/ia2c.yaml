@@ -1,4 +1,12 @@
 # --- IA2C specific parameters ---
+hidden_dim: 64    # RWARE
+lr: 0.0005        # RWARE
+standardise_rewards: True  # RWARE
+use_rnn: True   # RWARE
+entropy_coef: 0.01  # RWARE
+# update the target network every {} training steps
+target_update_interval_or_tau: 0.01   # RWARE
+q_nstep: 5 # 1 corresponds to normal r + gammaV 
 
 action_selector: "soft_policies"
 mask_before_softmax: True
@@ -11,28 +19,19 @@ batch_size: 10
 
 env_args:
   state_last_action: False # critic adds last action internally
+  joint_reward: True
+  shared_reward: False
 
-# update the target network every {} training steps
-target_update_interval_or_tau: 0.01
-
-
-lr: 0.0005
-hidden_dim: 128
 
 obs_agent_id: True
 obs_last_action: False
 obs_individual_obs: False
 
-# use IA2C
 agent_output_type: "pi_logits"
 learner: "actor_critic_learner"
-entropy_coef: 0.001
 standardise_returns: False
-standardise_rewards: True
-use_rnn: True
-q_nstep: 5 # 1 corresponds to normal r + gammaV
 critic_type: "ac_critic"
 
 name: "ia2c"
 
-t_max: 20500000
+t_max: 40_050_000
