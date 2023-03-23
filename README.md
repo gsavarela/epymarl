@@ -179,6 +179,8 @@ In BibTeX format:
 | ntwa2c   | rnn_ns    | dac              | ac_critic_dec | actor_critic_networked     | individual    |
 | dsta2c   | rnn_ns    | dac              | ac_critic_dec | actor_critic_decentralized | shared        |
 | sgla2c   | rnn       | sac              | cv_critic     | actor_critic_single        | shared        |
+| dqa2c    | rnn_ns    | dac              | ac_critic_dec | actor_critic_networked     | individual    |
+
 
 
 
@@ -194,6 +196,7 @@ Developed models.
         <th colspan=2>NTWA2C</th>
         <th colspan=2>DSTA2C</th>
         <!-- <<th colspan=2>SGLA2C</th> -->
+        <th colspan=2>DQA2C</th>
     </tr>
     <tr>
         <th>Critic</th>
@@ -301,6 +304,7 @@ Developed models.
         <!-- <th colspan=2>No</th> -->
     </tr>
 </table>
+
 
 
 

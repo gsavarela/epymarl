@@ -4,6 +4,7 @@ import numpy as np
 import torch as th
 import torch.nn as nn
 from modules.critics.mlp import MLP
+from IPython.core.debugger import set_trace
 
 class ACCriticNetworked(nn.Module):
     def __init__(self, scheme, args):
@@ -13,8 +14,9 @@ class ACCriticNetworked(nn.Module):
         self.args = args
         self.n_actions = args.n_actions
         self.n_agents = args.n_agents
-
         input_shape = self._get_input_shape(scheme)
+
+        print('input_shape', input_shape)
         self.output_type = "v"
 
         # Set up network layers
@@ -53,11 +55,16 @@ class ACCriticNetworked(nn.Module):
         max_t = batch.max_seq_length if t is None else 1
         ts = slice(None) if t is None else slice(t, t+1)
 
+        inputs = []
         if self._joint_observations():
-            inputs = batch["state"][:, ts].clone()
+            inputs.append(batch["state"][:, ts].clone())
         else:
-            inputs = batch["obs"][:, ts, i].clone()
+            inputs.append(batch["obs"][:, ts, i].clone())
 
+        if self.args.obs_last_action:   # btam --> btk (k=a*m)
+            inputs.append(batch["actions_onehot"][:, ts].flatten(start_dim=2))
+
+        inputs = th.cat([x for x in inputs], dim=-1)
         return inputs, bs, max_t
 
     def _get_input_shape(self, scheme):
@@ -66,24 +73,11 @@ class ACCriticNetworked(nn.Module):
             input_shape = scheme["state"]["vshape"]
         else:
             input_shape = scheme["obs"]["vshape"]
+
+        if self.args.obs_last_action:
+            input_shape += self.n_agents * scheme["actions_onehot"]["vshape"][0]
         return input_shape
 
-
-    # Aligns observations for lbforaging where
-    # current agent is the first agent triplet.
-    def _align_inputs(self, inputs, nswaps):
-        wo = inputs.shape[-1] - 3 * self.n_agents     # write offset
-        ro = wo + 3
-        for _ in range(nswaps): # perform number of swaps
-            aux = inputs[:, :, wo: wo + 3].clone()
-
-            inputs[:, :, wo: wo + 3] = inputs[:, :, ro: ro + 3].clone()
-            inputs[:, :, ro: ro + 3] = aux
-            
-            wo += 3
-            ro += 3
-        return inputs
-
     def _joint_observations(self):
-        return hasattr(self.args, 'networked') and self.args.networked and \
-            hasattr(self.args, 'networked_joint_observations') and self.args.networked_joint_observations
+        return hasattr(self.args, 'networked_joint_observations') and \
+                self.args.networked_joint_observations

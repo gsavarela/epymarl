@@ -1,6 +1,7 @@
 from modules.agents import REGISTRY as agent_REGISTRY
 from components.action_selectors import REGISTRY as action_REGISTRY
 import torch as th
+from IPython.core.debugger import set_trace
 
 
 class DAC:
@@ -31,7 +32,6 @@ class DAC:
                 ep_batch["avail_actions"][:, t_ep], self.n_agents, dim=1
             )
         ]
-
         agent_outputs = [
             self.forward(ep_batch, t_ep, i, test_mode=test_mode)
             for i in range(self.n_agents)
@@ -45,6 +45,7 @@ class DAC:
         return th.cat([_a.unsqueeze(1) for _a in chosen_actions], dim=1)
 
     def forward(self, ep_batch, t, i=None, j=None, test_mode=False):
+
         j = i if j is None else j
         inputs = self._build_inputs(ep_batch, t, j)
         avail = ep_batch["avail_actions"][:, t, i]
@@ -101,13 +102,11 @@ class DAC:
         # Other MACs might want to e.g. delegate building inputs to each agent
         bs = batch.batch_size
         inputs = []
-        inputs.append(batch["obs"][:, t, i])  # b1av
 
-        if self.args.obs_last_action:
-            if t == 0:
-                inputs.append(th.zeros_like(batch["actions_onehot"][:, t, i]))
-            else:
-                inputs.append(batch["actions_onehot"][:, t - 1, i])
+        if self._joint_observations():
+            inputs.append(batch["state"][:, t])  # b1v
+        else:
+            inputs.append(batch["obs"][:, t, i])  # b1av
 
         if self.args.obs_agent_id:
             inputs.append(
@@ -120,9 +119,18 @@ class DAC:
         return inputs
 
     def _get_input_shape(self, scheme):
-        input_shape = scheme["obs"]["vshape"]
-        if self.args.obs_last_action:
-            input_shape += scheme["actions_onehot"]["vshape"][0]
+        if self._joint_observations():
+            input_shape = scheme["state"]["vshape"]
+        else:
+            input_shape = scheme["obs"]["vshape"]
+
+        # if self.args.obs_last_action:
+        #     input_shape += scheme["actions_onehot"]["vshape"][0]
         if self.args.obs_agent_id:
             input_shape += self.n_agents
         return input_shape
+
+    def _joint_observations(self):
+        if hasattr(self.args,'networked_joint_observations'):
+            return self.args.networked_joint_observations
+        return False
