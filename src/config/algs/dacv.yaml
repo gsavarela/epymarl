@@ -1,4 +1,4 @@
-# --- INDA2C specific parameters ---
+# ---DACV specific parameters ---
 action_selector: "soft_policies"
 mask_before_softmax: True
 
@@ -11,6 +11,7 @@ env_args:
   state_last_action: False # critic adds last action internally
   joint_rewards: False
   shared_rewards: False
+  time_limit: 25
 
 
 # update the target network every {} training steps
@@ -25,15 +26,20 @@ obs_individual_obs: False
 mac: "dac"
 agent: "rnn_ns"
 agent_output_type: "pi_logits"
-learner: "actor_critic_decentralized_learner"
+learner: "actor_critic_distributed_v_learner"
 entropy_coef: 0.01
 standardise_rewards: True
 standardise_returns: False
 use_rnn: True
 q_nstep: 5 # 1 corresponds to normal r + gammaV
-critic_type: "ac_critic_dec"
+critic_type: "ac_critic_networked" # All weights begin at the same place.
+networked_edges: 1  # maps n_agents: n_edges
+networked_rounds: 10  # At each consensus round try this many consensus matrices.
+networked_time_varying: True # if False the consensus matrix will be static.
+networked_joint_observations: False # Uses joint observations for training and consensus.
+networked_interval: 5 # Try consensus at every networked_interval number of training steps.
 
-name: "inda2c"
+
+name: "dacv"
 
 t_max: 20_050_000
-

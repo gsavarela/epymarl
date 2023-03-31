@@ -87,6 +87,8 @@ class _GymmaWrapper(MultiAgentEnv):
 
         self.n_agents = self._env.n_agents
         self._obs = None
+        if 'mpe' in key:
+            self.adjust_rewards = self.n_agents
 
         self.longest_action_space = max(self._env.action_space, key=lambda x: x.n)
         self.longest_observation_space = max(
@@ -115,6 +117,9 @@ class _GymmaWrapper(MultiAgentEnv):
             reward = [float(np.mean(reward))] * self.n_agents
         if self._joint_rewards:
             reward = [float(sum(reward))]
+        if self.adjust_rewards > 1:
+            reward = [r / self.adjust_rewards for r in reward]
+
         return reward, all(done), {}
 
     def get_obs(self):

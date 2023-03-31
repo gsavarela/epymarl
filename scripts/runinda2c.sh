@@ -1,12 +1,12 @@
 #!/bin/bash
-envs=(15x15-3p-5f-v1 2s-10x10-3p-3f-v1 10x10-2p-2f-coop-v1)
+envs=(mpe:SimpleSpread-v0)
 
 for e in "${envs[@]}"
 do
-    for i in {1..5}
+    for i in {1..3}
     do
-        python src/main.py --config=inda2c --env-config=gymma with env_args.key="lbforaging:Foraging-$e" hidden_dim=128 &
-        echo "Running with inda2c and lbforaging:Foraging-$e"
+        python src/main.py --config=inda2c --env-config=gymma with env_args.key="$e" hidden_dim=128 &
+        echo "Running with inda2c and $e"
         sleep 2s
     done
     wait
