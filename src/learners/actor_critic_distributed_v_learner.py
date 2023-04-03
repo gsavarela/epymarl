@@ -417,13 +417,14 @@ class ActorCriticDistributedVLearner:
 
             # Each critic has many fully connected layers each of which with
             # weight and bias tensors
-            keys = {_k for _keys in map(lambda x: x.keys(), self.critic_params) for _k in _keys}
-            for _key in keys:
+            if self.args.networked_consensus_critic:
+                keys = {_k for _keys in map(lambda x: x.keys(), self.critic_params) for _k in _keys}
+                for _key in keys:
 
-                consensus_critic_parameters[_key] = [
-                    th.stack([*map(itemgetter(_key), self.critic_params)], dim=0)
-                ]
-                # consensus_parameters_logs[_key + f'_0'] = copy.deepcopy(consensus_critic_parameters[_key])
+                    consensus_critic_parameters[_key] = [
+                        th.stack([*map(itemgetter(_key), self.critic_params)], dim=0)
+                    ]
+                    # consensus_parameters_logs[_key + f'_0'] = copy.deepcopy(consensus_critic_parameters[_key])
 
             keys = {_k for _keys in map(lambda x: x.keys(), self.joint_reward_params) for _k in _keys}
             for _key in keys:
@@ -450,18 +451,20 @@ class ActorCriticDistributedVLearner:
                 cwm = self.cwms[idx]
                 # consensus_metropolis_logs[k] = cwm.clone()
 
-                for _key, _weights in consensus_critic_parameters.items():
-                    # [n_agents, features_in, features_out]
-                    _w = _weights[0].clone()
-                    if 'weight' in _key:
-                        _w = th.einsum('nm, mij-> nij', cwm, _w)
-                    elif 'bias' in _key:
-                        _w = th.einsum('nm, mi-> ni', cwm, _w)
-                    else:
-                        raise ValueError(f'Unknwon parameter type {_key}')
 
-                    consensus_critic_parameters[_key] = [_w]
-                    # consensus_parameters_logs[_key + f'_{k + 1}'] = [_w]
+                if self.args.networked_consensus_critic:
+                    for _key, _weights in consensus_critic_parameters.items():
+                        # [n_agents, features_in, features_out]
+                        _w = _weights[0].clone()
+                        if 'weight' in _key:
+                            _w = th.einsum('nm, mij-> nij', cwm, _w)
+                        elif 'bias' in _key:
+                            _w = th.einsum('nm, mi-> ni', cwm, _w)
+                        else:
+                            raise ValueError(f'Unknwon parameter type {_key}')
+
+                        consensus_critic_parameters[_key] = [_w]
+                        # consensus_parameters_logs[_key + f'_{k + 1}'] = [_w]
 
                 for _key, _weights in consensus_reward_parameters.items():
                     # [n_agents, features_in, features_out]
@@ -486,10 +489,11 @@ class ActorCriticDistributedVLearner:
                             else:
                                 consensus_reward_logs[f'{_key}_{k + 1}_{_a}'] = [float(_w[_a, 0])] # w.l.g
 
-                # update parameters after consensus
-                for _i, _critic in enumerate(self.critic.critics):
-                    for _key, _value in _critic.named_parameters():
-                        _value.data = th.nn.parameter.Parameter(consensus_critic_parameters[_key][0][_i, :])
+                if self.args.networked_consensus_critic:
+                    # update parameters after consensus
+                    for _i, _critic in enumerate(self.critic.critics):
+                        for _key, _value in _critic.named_parameters():
+                            _value.data = th.nn.parameter.Parameter(consensus_critic_parameters[_key][0][_i, :])
 
                 # update parameters after consensus
                 for _i, _predictor in enumerate(self.joint_reward_predictors):
