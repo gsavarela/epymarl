@@ -31,4 +31,4 @@ standardise_returns: False
 critic_type: "cv_critic_ns"
 
 name: "maa2c_ns"
-t_max: 40_050_000
+t_max: 20_050_000
