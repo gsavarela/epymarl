@@ -1,6 +1,12 @@
 # --- NTWA2C specific parameters ---
 hidden_dim: 128 # MPE
 lr: 0.0005 # MPE
+standardise_rewards: True # MPE
+entropy_coef: 0.01  # MPE
+q_nstep: 10 # MPE: 1 corresponds to normal r + gammaV
+# update the target network every {} training steps
+target_update_interval_or_tau: 0.01 # MPE
+use_rnn: False # MPE
 
 action_selector: "soft_policies"
 mask_before_softmax: True
@@ -12,13 +18,8 @@ batch_size: 10
 
 env_args:
   state_last_action: False # critic adds last action internally
-  pretrained_wrapper: "PretrainedTag" # MPE
+  # pretrained_wrapper: "PretrainedTag" # MPE
   time_limit: 25 # MPE
-
-
-# update the target network every {} training steps
-target_update_interval_or_tau: 0.01 # MPE
-
 
 obs_agent_id: False
 obs_last_action: False
@@ -28,18 +29,14 @@ mac: "dac"
 agent: "rnn_ns"
 agent_output_type: "pi_logits"
 learner: "actor_critic_networked_learner"
-entropy_coef: 0.01
 standardise_returns: False
-standardise_rewards: True
-use_rnn: False # MPE
-q_nstep: 10 # MPE: 1 corresponds to normal r + gammaV
 critic_type: "ac_critic_networked" # All weights begin at the same place.
 
-networked_edges: 2  # maps n_agents: n_edges
-networked_rounds: 10  # At each consensus round try this many consensus matrices.
+networked_edges: 3  # maps n_agents: n_edges
+networked_rounds: 1  # At each consensus round try this many consensus matrices.
 networked_time_varying: True # if False the consensus matrix will be static.
 networked_joint_observations: False # Uses joint observations for training and consensus.
-networked_interval: 1 # Try consensus at every networked_interval number of training steps.
+networked_interval: 10 # Try consensus at every networked_interval number of training steps.
 
 
 name: "ntwa2c"
