@@ -18,7 +18,7 @@ batch_size: 10
 
 env_args:
   state_last_action: False # critic adds last action internally
-  # pretrained_wrapper: "PretrainedTag" # MPE
+  pretrained_wrapper: "PretrainedAdversary" # MPE
   time_limit: 25 # MPE
 
 obs_agent_id: False
@@ -32,7 +32,7 @@ learner: "actor_critic_networked_learner"
 standardise_returns: False
 critic_type: "ac_critic_networked" # All weights begin at the same place.
 
-networked_edges: 3  # maps n_agents: n_edges
+networked_edges: 1  # maps n_agents: n_edges
 networked_rounds: 1  # At each consensus round try this many consensus matrices.
 networked_time_varying: True # if False the consensus matrix will be static.
 networked_joint_observations: False # Uses joint observations for training and consensus.

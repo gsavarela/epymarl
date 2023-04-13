@@ -18,7 +18,7 @@ batch_size: 10
 
 env_args:
   state_last_action: False # critic adds last action internally
-  # pretrained_wrapper: "PretrainedTag" # MPE
+  pretrained_wrapper: "PretrainedAdversary" # MPE
   time_limit: 25 # MPE
 
 obs_agent_id: False
