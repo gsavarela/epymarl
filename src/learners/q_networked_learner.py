@@ -202,10 +202,7 @@ class QNetworkedLearner:
             for _i in range(self.n_agents):
                 mac_i_out = []
                 for t in range(batch.max_seq_length):
-                    if self._joint_observations(): # full observability
-                        agent_outs = self.mac.forward(batch, t=t, i=_i)  # [b, a]
-                    else: # Assume state is perceived by agent 0
-                        agent_outs = self.mac.forward(batch, t=t, i=_i, j=0)  # [b, a]
+                    agent_outs = self.mac.forward(batch, t=t, i=_i, j=0)  # [b, a]
                     mac_i_out.append(agent_outs)
                 mac_out.append(th.stack(mac_i_out, dim=1))  # [b, t, a]
             mac_out = th.stack(mac_out, dim=2)  # Concat over agents [b, t, n, a]
@@ -267,10 +264,7 @@ class QNetworkedLearner:
                     for _i in range(self.n_agents):
                         mac_i_out = []
                         for t in range(batch.max_seq_length):
-                            if self._joint_observations():  # full observability
-                                agent_outs = self.mac.forward(batch, t=t, i=_i)  # [b, a]
-                            else: # Assume state is perceived by agent 0
-                                agent_outs = self.mac.forward(batch, t=t, i=_i, j=0)  # [b, a]
+                            agent_outs = self.mac.forward(batch, t=t, i=_i, j=0)  # [b, a]
                             mac_i_out.append(agent_outs)
                         mac_out.append(th.stack(mac_i_out, dim=1))  # [b, t, a]
                     mac_out = th.stack(mac_out, dim=2)  # Concat over agents [b, t, n, a]
@@ -344,6 +338,3 @@ class QNetworkedLearner:
 
     def _lftr(self, x):
         return ('fc1.' in x[0])
-
-    def _joint_observations(self):
-        return self.args.networked_joint_observations

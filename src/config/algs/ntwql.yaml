@@ -37,7 +37,6 @@ mixer: # Mixer becomes None
 # Networked agents
 networked_edges: 2  # maps n_agents: n_edges
 networked_rounds: 1  # At each consensus round try this many consensus matrices.
-networked_joint_observations: False # Uses joint observations for training and consensus.
 networked_interval: 10 # Try consensus at every networked_interval number of training steps.
 
 name: "ntwql"

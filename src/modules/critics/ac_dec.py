@@ -44,10 +44,7 @@ class ACCriticDecentralized(ACCriticNS):
         max_t = batch.max_seq_length if t is None else 1
         ts = slice(None) if t is None else slice(t, t+1)
 
-        if self._joint_observations():
-            inputs = batch["state"][:, ts].clone()
-        else:
-            inputs = batch["obs"][:, ts, i].clone()
+        inputs = batch["obs"][:, ts, i].clone()
 
         # TODO: Complete fruits
         if self.standardize_observations and i > 0:
@@ -63,10 +60,7 @@ class ACCriticDecentralized(ACCriticNS):
 
     def _get_input_shape(self, scheme):
         # observations
-        if self._joint_observations():
-            input_shape = scheme["state"]["vshape"]
-        else:
-            input_shape = scheme["obs"]["vshape"]
+        input_shape = scheme["obs"]["vshape"]
         return input_shape
 
 
@@ -84,7 +78,3 @@ class ACCriticDecentralized(ACCriticNS):
             wo += 3
             ro += 3
         return inputs
-
-    def _joint_observations(self):
-        return hasattr(self.args, 'networked') and self.args.networked and \
-            hasattr(self.args, 'networked_joint_observations') and self.args.networked_joint_observations

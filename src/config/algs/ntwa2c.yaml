@@ -29,11 +29,11 @@ agent_output_type: "pi_logits"
 learner: "actor_critic_networked_learner"
 standardise_returns: False
 critic_type: "ac_critic_networked" # All weights begin at the same place.
+
+# Networked agents
 networked_edges: 1  # maps n_agents: n_edges
 networked_rounds: 10  # At each consensus round try this many consensus matrices.
 networked_interval: 5 # Try consensus at every networked_interval number of training steps.
-networked_joint_observations: False # Uses joint observations for training and consensus.
-
 
 name: "ntwa2c"
 t_max: 20_050_000
