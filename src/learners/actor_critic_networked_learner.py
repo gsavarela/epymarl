@@ -12,6 +12,7 @@ from components.standarize_stream import RunningMeanStd
 from modules.critics import REGISTRY as critic_registry
 
 from components.consensus import consensus_matrices
+from IPython.core.debugger import set_trace
 
 
 class ActorCriticNetworkedLearner:
@@ -20,6 +21,10 @@ class ActorCriticNetworkedLearner:
         self.n_agents = args.n_agents
         self.n_actions = args.n_actions
         self.logger = logger
+
+        if self.is_adversarial:
+            assert self.n_agents < self.n_adversaries
+            assert self.n_adversaries == 1 # Not validated
 
         self.mac = mac
         self.agent_params = [dict(_a.named_parameters()) for _a in mac.agent.agents]
@@ -43,8 +48,7 @@ class ActorCriticNetworkedLearner:
         if self.args.standardise_returns:
             self.ret_ms = RunningMeanStd(shape=(self.n_agents,), device=device)
         if self.args.standardise_rewards:
-            joint_rewards = self.args.env_args.get("joint_rewards", True)
-            if joint_rewards:
+            if self.joint_rewards:
                 self.rew_ms = RunningMeanStd(shape=(1,), device=device)
             else:
                 self.rew_ms = RunningMeanStd(shape=(self.n_agents,), device=device)
@@ -62,6 +66,25 @@ class ActorCriticNetworkedLearner:
     @property
     def joint_rewards(self):
         return self.args.env_args.get("joint_rewards", True)
+
+    @property
+    def is_adversarial(self):
+        return (hasattr(self.args, 'networked_adversaries') and
+                getattr(self.args, 'networked_adversaries') > 0)
+
+
+    @property
+    def n_adversaries(self):
+        if self.is_adversarial:
+            return getattr(self.args, 'networked_adversaries')
+        return 0
+
+    @property
+    def adversarial_pertubation(self):
+        if self.is_adversarial:
+            return getattr(self.args, 'networked_adversarial_noise')
+        return self.args.get('networked_adversarial_noise', 0)
+
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
         # Get the relevant quantities
@@ -214,7 +237,7 @@ class ActorCriticNetworkedLearner:
         target_returns = self.nstep_returns(
             rewards, mask, target_vals, self.args.q_nstep
         )
-
+        
         if self.args.standardise_returns:
             self.ret_ms.update(target_returns)
             target_returns = (target_returns - self.ret_ms.mean) / th.sqrt(
@@ -284,6 +307,7 @@ class ActorCriticNetworkedLearner:
 
         consensus_parameters = {}
         consensus_parameters_logs = {}
+        # TODO: Segregate into adversary and team
         with th.no_grad():
 
             vs = []
@@ -311,16 +335,23 @@ class ActorCriticNetworkedLearner:
                     running_log[key].append(float(v_mean_batch_player[_i]))
 
 
-            # Each critic has many fully connected layers each of which with
-            # weight and bias tensors
+            # 1) Emit parameters for consensus
+            # dict_keys(['fc1.weight', 'fc1.bias', 'fc2.weight', 'fc2.bias', 'fc3.weight', 'fc3.bias'])
             keys = {_k for _keys in map(lambda x: x.keys(), self.critic_params) for _k in _keys}
             for _key in keys:
-
-                consensus_parameters[_key] = [
+                # gets each of agents parameters by layer _key
+                # 'fc1.weight': [a, input, hidden], 'fc2.weight': [a, hidden, hidden], ..
+                # consensus_parameters[_key] =  \ # [
+                #     th.stack([*map(itemgetter(_key), self.critic_params)], dim=0)
+                # #] 
+                consensus_parameters[_key] =  \
                     th.stack([*map(itemgetter(_key), self.critic_params)], dim=0)
-                ]
+                tests = self._emit_parameter_for_consensus(_key)
+
+                assert th.allclose(consensus_parameters[_key], tests)
                 consensus_parameters_logs[_key + f'_0'] = copy.deepcopy(consensus_parameters[_key])
 
+            # 2) Perform consensus rounds
             consensus_metropolis_logs = {}
             for k in range(self.consensus_rounds):
                 idx = np.random.randint(0, high=len(self.cwms))
@@ -328,8 +359,7 @@ class ActorCriticNetworkedLearner:
                 consensus_metropolis_logs[k] = cwm.clone()
 
                 for _key, _weights in consensus_parameters.items():
-                    # [n_agents, features_in, features_out]
-                    _w = _weights[0].clone()
+                    _w = _weights.clone() # [n_agents, features_in, features_out]
                     if 'weight' in _key:
                         _w = th.einsum('nm, mij-> nij', cwm, _w)
                     elif 'bias' in _key:
@@ -337,13 +367,16 @@ class ActorCriticNetworkedLearner:
                     else:
                         raise ValueError(f'Unknwon parameter type {_key}')
 
-                    consensus_parameters[_key] = [_w]
-                    consensus_parameters_logs[_key + f'_{k + 1}'] = [_w]
+                    # consensus_parameters[_key] = [_w]
+                    # consensus_parameters_logs[_key + f'_{k + 1}'] = [_w]
+                    consensus_parameters[_key] = _w
+                    consensus_parameters_logs[_key + f'_{k + 1}'] = _w
 
-                # update parameters after consensus
+                # 3) Update parameters after consensus
                 for _i, _critic in enumerate(self.critic.critics):
-                    for _key, _value in _critic.named_parameters():
-                        _value.data = th.nn.parameter.Parameter(consensus_parameters[_key][0][_i, :])
+                    if _i >=  self.n_adversaries: # do not update adversaries
+                        for _key, _value in _critic.named_parameters():
+                            _value.data = th.nn.parameter.Parameter(consensus_parameters[_key][_i, :])
 
                 if t_env - self.log_stats_t >= self.args.learner_log_interval:
                     vs = []
@@ -395,25 +428,39 @@ class ActorCriticNetworkedLearner:
         # R^5_0 = r_0 + (gamma*r_1) + (gamma**2*r_2) + (gamma**3*r_3) + (gamma**4*r_4) + (gamma**5*v_5)
         # example 2: nsteps = 5, t_start = 1
         # R^5_1 = r_1 + (gamma*r_2) + (gamma**2*r_3) + (gamma**3*r_4) + (gamma**4*r_5) + (gamma**5*v_6)
+        rewards1 = rewards.detach().clone()
+        if self.is_adversarial:
+            # Build adversary
+            # adversary agents are the first self.n_adversaries
+            rws = [] 
+            rws.append(th.ones_like(rewards1[:, :self.n_adversaries]))
+            rws.append(th.zeros_like(rewards1[:, self.n_adversaries:]))
+            amask = th.cat(rws, dim=2).astype(bool)
+
+            rws = []
+            rws.append(rewards1[amask] - rewards1[~amask].sum(dim=2).tile((1, 1, self.n_adversaries)))
+            rws.append(rewards1[~amask].sum(dim=2).tile((1, 1, self.n_agents - self.n_adversaries)))
+            rewards1 = th.cat(rws, dim=2)
+
         nstep_values = th.zeros_like(values[:, :-1])
-        for t_start in range(rewards.size(1)):
+        for t_start in range(rewards1.size(1)):
             nstep_return_t = th.zeros_like(values[:, 0])
             for step in range(nsteps + 1):
                 t = t_start + step
-                if t >= rewards.size(1):
+                if t >= rewards1.size(1):
                     break
                 elif step == nsteps:
                     nstep_return_t += (
                         self.args.gamma**step * values[:, t] * mask[:, t]
                     )
-                elif t == rewards.size(1) - 1 and self.args.add_value_last_step:
+                elif t == rewards1.size(1) - 1 and self.args.add_value_last_step:
                     nstep_return_t += (
-                        self.args.gamma**step * rewards[:, t] * mask[:, t]
+                        self.args.gamma**step * rewards1[:, t] * mask[:, t]
                     )
                     nstep_return_t += self.args.gamma ** (step + 1) * values[:, t + 1]
                 else:
                     nstep_return_t += (
-                        self.args.gamma**step * rewards[:, t] * mask[:, t]
+                        self.args.gamma**step * rewards1[:, t] * mask[:, t]
                     )
             nstep_values[:, t_start, :] = nstep_return_t
         return nstep_values
@@ -429,6 +476,30 @@ class ActorCriticNetworkedLearner:
             self.target_critic.parameters(), self.critic.parameters()
         ):
             target_param.data.copy_(target_param.data * (1.0 - tau) + param.data * tau)
+
+    def _emit_parameter_for_consensus(self, key):
+        """Converts a list agents parameters (tensors) into a list of parameters
+
+        Be aware of running this function under th.no_grad
+
+        Params:
+        -------
+        self: NetworkedActorCritic object instance
+        key: str, {'fc1.weight', 'fc1.bias', 'fc2.weight', 'fc2.bias', 'fc3.weight', 'fc3.bias'}
+            <layer>.<parameter> identifier
+
+        Returns:
+        --------
+        params: torch.nn.parameter.Parameter<n_agents, features_in, features_out>
+        """
+        def fn(iy): # 'i' is an agent order, 'y' is a dictionary of parameters
+            i, y = iy
+            ret = itemgetter(key)(y)
+            if self.is_adversarial and i < self.n_adversaries:
+                per = self.adversarial_pertubation
+                ret = (ret + per * ret.grad.sign()).clone().detach()
+            return ret
+        return th.stack([*map(fn, enumerate(self.critic_params))], dim=0)
 
     def cuda(self):
         self.mac.cuda()
