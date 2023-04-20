@@ -15,6 +15,8 @@ from components.consensus import consensus_matrices
 from IPython.core.debugger import set_trace
 
 
+# TODO: Segragate this model into networked_adversarial_actor_critic
+# TODO: Partition log variables into adversarial and team mates.
 class ActorCriticNetworkedLearner:
     def __init__(self, mac, scheme, logger, args):
         self.args = args
@@ -23,7 +25,7 @@ class ActorCriticNetworkedLearner:
         self.logger = logger
 
         if self.is_adversarial:
-            assert self.n_agents < self.n_adversaries
+            assert self.n_agents > self.n_adversaries
             assert self.n_adversaries == 1 # Not validated
 
         self.mac = mac
@@ -78,6 +80,10 @@ class ActorCriticNetworkedLearner:
         if self.is_adversarial:
             return getattr(self.args, 'networked_adversaries')
         return 0
+
+    @property
+    def n_teamates(self):
+        return self.n_agents - self.n_adversaries
 
     @property
     def adversarial_pertubation(self):
@@ -341,14 +347,8 @@ class ActorCriticNetworkedLearner:
             for _key in keys:
                 # gets each of agents parameters by layer _key
                 # 'fc1.weight': [a, input, hidden], 'fc2.weight': [a, hidden, hidden], ..
-                # consensus_parameters[_key] =  \ # [
-                #     th.stack([*map(itemgetter(_key), self.critic_params)], dim=0)
-                # #] 
-                consensus_parameters[_key] =  \
-                    th.stack([*map(itemgetter(_key), self.critic_params)], dim=0)
-                tests = self._emit_parameter_for_consensus(_key)
+                consensus_parameters[_key] = self._emit_parameter_for_consensus(_key)
 
-                assert th.allclose(consensus_parameters[_key], tests)
                 consensus_parameters_logs[_key + f'_0'] = copy.deepcopy(consensus_parameters[_key])
 
             # 2) Perform consensus rounds
@@ -367,8 +367,6 @@ class ActorCriticNetworkedLearner:
                     else:
                         raise ValueError(f'Unknwon parameter type {_key}')
 
-                    # consensus_parameters[_key] = [_w]
-                    # consensus_parameters_logs[_key + f'_{k + 1}'] = [_w]
                     consensus_parameters[_key] = _w
                     consensus_parameters_logs[_key + f'_{k + 1}'] = _w
 
@@ -378,24 +376,24 @@ class ActorCriticNetworkedLearner:
                         for _key, _value in _critic.named_parameters():
                             _value.data = th.nn.parameter.Parameter(consensus_parameters[_key][_i, :])
 
-                if t_env - self.log_stats_t >= self.args.learner_log_interval:
-                    vs = []
-
-                    for _i in range(self.n_agents):
-                        vs.append(self.critic(batch, _i, j=0)[:, :t_max])
-                    v = th.cat(vs, dim=2)
-
-                    # Computes the loss for the current iteration.
-                    v[mask==0] = 0
-                    td_error = v[:, :t_max] - consensus_values[:, :t_max]
-                    loss = (td_error**2).sum() / mask.sum()
-                    running_log[f"critic_loss_mse_{k + 1}"].append(float(loss.item()))
-                    running_log[f"v_mean_batch_target_{k + 1}"].append(float((consensus_values.sum() / th.clamp(mask.sum(), min=1)).item()))
-                    # consolidates episode segregating by player
-                    v_mean_batch_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
-                    for _i in range(self.n_agents):
-                        key = f"v_mean_batch_player_{k + 1}_{_i}"
-                        running_log[key].append(float(v_mean_batch_player[_i]))
+                # if t_env - self.log_stats_t >= self.args.learner_log_interval:
+                #     vs = []
+                #
+                #     for _i in range(self.n_agents):
+                #         vs.append(self.critic(batch, _i, j=0)[:, :t_max])
+                #     v = th.cat(vs, dim=2)
+                #
+                #     # Computes the loss for the current iteration.
+                #     v[mask==0] = 0
+                #     td_error = v[:, :t_max] - consensus_values[:, :t_max]
+                #     loss = (td_error**2).sum() / mask.sum()
+                #     running_log[f"critic_loss_mse_{k + 1}"].append(float(loss.item()))
+                #     running_log[f"v_mean_batch_target_{k + 1}"].append(float((consensus_values.sum() / th.clamp(mask.sum(), min=1)).item()))
+                #     # consolidates episode segregating by player
+                #     v_mean_batch_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
+                #     for _i in range(self.n_agents):
+                #         key = f"v_mean_batch_player_{k + 1}_{_i}"
+                #         running_log[key].append(float(v_mean_batch_player[_i]))
 
             # debugging log report consensus weights.
             # saving all weights takes way too long.
@@ -432,15 +430,10 @@ class ActorCriticNetworkedLearner:
         if self.is_adversarial:
             # Build adversary
             # adversary agents are the first self.n_adversaries
-            rws = [] 
-            rws.append(th.ones_like(rewards1[:, :self.n_adversaries]))
-            rws.append(th.zeros_like(rewards1[:, self.n_adversaries:]))
-            amask = th.cat(rws, dim=2).astype(bool)
-
-            rws = []
-            rws.append(rewards1[amask] - rewards1[~amask].sum(dim=2).tile((1, 1, self.n_adversaries)))
-            rws.append(rewards1[~amask].sum(dim=2).tile((1, 1, self.n_agents - self.n_adversaries)))
-            rewards1 = th.cat(rws, dim=2)
+            adv, team = rewards1.split([self.n_adversaries, self.n_teamates], dim=2)
+            adv = adv - team.sum(dim=2, keepdims=True)
+            team = team.sum(dim=2, keepdims=True).tile((1, 1, self.n_teamates))
+            rewards1 = th.cat([adv, team], dim=2)
 
         nstep_values = th.zeros_like(values[:, :-1])
         for t_start in range(rewards1.size(1)):
