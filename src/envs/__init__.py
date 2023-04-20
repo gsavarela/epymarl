@@ -94,8 +94,7 @@ class _GymmaWrapper(MultiAgentEnv):
         )
 
         self._seed = kwargs["seed"]
-        self._joint_rewards = kwargs.get('joint_rewards', True)
-        self._shared_rewards = kwargs.get('shared_rewards', True)
+        self.joint_rewards = kwargs.get('joint_rewards', True)
         self._env.seed(self._seed)
 
     def step(self, actions):
@@ -111,9 +110,7 @@ class _GymmaWrapper(MultiAgentEnv):
             )
             for o in self._obs
         ]
-        if self._shared_rewards and not self._joint_rewards:
-            reward = [float(np.mean(reward))] * self.n_agents
-        if self._joint_rewards:
+        if self.joint_rewards:
             reward = [float(sum(reward))]
         return reward, all(done), {}
 
@@ -152,7 +149,7 @@ class _GymmaWrapper(MultiAgentEnv):
         return self.n_agents * flatdim(self.longest_observation_space)
 
     def get_reward_size(self):
-        if self._joint_rewards:
+        if self.joint_rewards:
             return 1
         else:
             return self.n_agents

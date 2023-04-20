@@ -8,20 +8,14 @@ epsilon_start: 1.0
 epsilon_finish: 0.05
 epsilon_anneal_time: 50000
 evaluation_epsilon: 0.05
-
 runner: "episode"
-
 buffer_size: 5000
-
 # update the target network every {} episodes
 # target_update_interval_or_tau: 200 # LBF
 target_update_interval_or_tau: 0.01 # RWARE
-
-
 obs_agent_id: False
 obs_last_action: False
 obs_individual_obs: False
-
 # use the Q_Learner to train
 mac: "non_shared_mac"
 agent: "rnn_ns"
@@ -32,5 +26,4 @@ standardise_rewards: True
 double_q: True
 use_rnn: False
 mixer: # Mixer becomes None
-
 name: "iql_ns"
