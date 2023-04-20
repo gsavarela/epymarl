@@ -24,9 +24,6 @@ grid-search:
     - 64
     # - 128
 
-  networked_time_varying: 
-    - True
-
   networked_edges: # maps n_agents: n_edges
     - 1
     - 2
