@@ -42,7 +42,6 @@ class QNetworkedLearner:
         if self.args.standardise_returns:
             self.ret_ms = RunningMeanStd(shape=(self.n_agents,), device=device)
         if self.args.standardise_rewards:
-            self.joint_rewards = self.args.env_args.get("joint_rewards", True)
             if self.joint_rewards:
                 self.rew_ms = RunningMeanStd(shape=(1,), device=device)
             else:
@@ -57,6 +56,10 @@ class QNetworkedLearner:
 
         self.consensus_rounds = self.args.networked_rounds
         self.consensus_interval = self.args.networked_interval
+
+    @property
+    def joint_rewards(self):
+        return self.args.env_args.get("joint_rewards", True)
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
         # Get the relevant quantities
@@ -284,7 +287,7 @@ class QNetworkedLearner:
                     loss = (td_error**2).sum() / mask.sum()
                     running_log[f"consensus_loss_{k + 1}"] = float(loss.item())
 
-            # # debugging log j
+            # # debugging log
             # # saving all weights takes way too long.
             # if t_env - self.log_stats_t >= self.args.learner_log_interval:
             #     for _k, _w in self._logfilter(consensus_parameters_logs):
@@ -334,7 +337,4 @@ class QNetworkedLearner:
             _opt.load_state_dict(_states)
 
     def _logfilter(self, params):
-        return filter(self._lftr, params.items())
-
-    def _lftr(self, x):
-        return ('fc1.' in x[0])
+        return filter(lambda x: 'fc1.' in x[0], params.items())

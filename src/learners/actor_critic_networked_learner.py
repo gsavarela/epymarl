@@ -59,6 +59,10 @@ class ActorCriticNetworkedLearner:
         self.consensus_rounds = self.args.networked_rounds
         self.consensus_interval = self.args.networked_interval
 
+    @property
+    def joint_rewards(self):
+        return self.args.env_args.get("joint_rewards", True)
+
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
         # Get the relevant quantities
         rewards = batch["reward"][:, :-1]
@@ -362,28 +366,28 @@ class ActorCriticNetworkedLearner:
 
             # debugging log report consensus weights.
             # saving all weights takes way too long.
-            if t_env - self.log_stats_t >= self.args.learner_log_interval:
-                for _k, _w in self._logfilter(consensus_parameters_logs):
-                    for _i in range(self.n_agents):
-                        _wi = _w[0][_i]
-                        # row tensor -- squeeze.
-                        if _wi.shape[0] == 1 and len(_wi.shape) == 2:
-                            _wi.squeeze_(0)
-                        n = len(_wi.shape)
-                        if n == 1: # 1D tensors OK
-                            if _wi.shape[0] > 1:
-                                # samples weights
-                                for _n in (7,):
-                                    _key = f'{_k}_{_i}_{_n}'
-                                    running_log[_key].append(float(_wi[_n]))
-                            else:
-                                _key = f'{_k}_{_i}_0'
-                                running_log[_key].append(float(_wi))
-                        else:
-                            # samples weights
-                            for _n in (7,):
-                                _key = f'{_k}_{_i}_{_n}'
-                                running_log[_key].append(float(_wi[_n, 0]))
+            # if t_env - self.log_stats_t >= self.args.learner_log_interval:
+            #     for _k, _w in self._logfilter(consensus_parameters_logs):
+            #         for _i in range(self.n_agents):
+            #             _wi = _w[0][_i]
+            #             # row tensor -- squeeze.
+            #             if _wi.shape[0] == 1 and len(_wi.shape) == 2:
+            #                 _wi.squeeze_(0)
+            #             n = len(_wi.shape)
+            #             if n == 1: # 1D tensors OK
+            #                 if _wi.shape[0] > 1:
+            #                     # samples weights
+            #                     for _n in (7,):
+            #                         _key = f'{_k}_{_i}_{_n}'
+            #                         running_log[_key].append(float(_wi[_n]))
+            #                 else:
+            #                     _key = f'{_k}_{_i}_0'
+            #                     running_log[_key].append(float(_wi))
+            #             else:
+            #                 # samples weights
+            #                 for _n in (7,):
+            #                     _key = f'{_k}_{_i}_{_n}'
+            #                     running_log[_key].append(float(_wi[_n, 0]))
 
     def nstep_returns(self, rewards, mask, values, nsteps):
         # nstep is a hyperparameter that regulates the number of look aheads
@@ -469,7 +473,4 @@ class ActorCriticNetworkedLearner:
             _opt.load_state_dict(_states)
 
     def _logfilter(self, params):
-        return filter(self._lftr, params.items())
-
-    def _lftr(self, x):
-        return 'fc1.' in x[0] or self.args.critic_type == 'ac_critic_baseline'
+        return filter(lambda x: 'fc1.' in x[0], params.items())
