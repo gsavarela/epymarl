@@ -40,4 +40,4 @@ networked_adversaries: 1
 networked_adversarial_noise: 0.001
 
 name: "ntwa2c_adv"
-t_max: 20_050_000
+t_max: 40_050_000
