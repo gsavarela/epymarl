@@ -12,11 +12,8 @@ from components.standarize_stream import RunningMeanStd
 from modules.critics import REGISTRY as critic_registry
 
 from components.consensus import consensus_matrices
-from IPython.core.debugger import set_trace
 
 
-# TODO: Segragate this model into networked_adversarial_actor_critic
-# TODO: Partition log variables into adversarial and team mates.
 class ActorCriticAdversarialNetworkedLearner:
     def __init__(self, mac, scheme, logger, args):
         self.args = args
@@ -60,7 +57,6 @@ class ActorCriticAdversarialNetworkedLearner:
 
         n_edges = self.args.networked_edges
         self.cwms = [*map(fn, consensus_matrices(self.n_agents, n_edges))]
-
         self.consensus_rounds = self.args.networked_rounds
         self.consensus_interval = self.args.networked_interval
 
@@ -107,9 +103,13 @@ class ActorCriticAdversarialNetworkedLearner:
         )
 
         self.mac.init_hidden(batch.batch_size)
-        pg_loss_acum = th.tensor(0.0)
-        grad_norm_acum = th.tensor(0.0)
-        joint_pi = []
+        # pg_loss_acum = th.tensor(0.0)
+        # grad_norm_acum = th.tensor(0.0)
+        # joint_pi = []
+
+        pg_losses = []
+        grad_norms = []
+        pis = []
 
         # initialize hidden states before new batch arrives.
         for _i, _opt, _params, _actions, _advantages, _mask in zip(
@@ -158,9 +158,13 @@ class ActorCriticAdversarialNetworkedLearner:
             )
             _opt.step()
             with th.no_grad():
-                pg_loss_acum += _pg_loss.detach()
-                grad_norm_acum += _grad_norm.detach()
-                joint_pi.append(_pi.detach())
+                pg_losses.append(float(_pg_loss.detach().item()))
+                grad_norms.append(float(_grad_norm.detach().item()))
+                pis.append(_pi.detach())
+
+        # pg_losses_acum = []
+        # grad_norms_acum = []
+        # joint_pi = []
 
         self.critic_training_steps += 1
 
@@ -180,41 +184,48 @@ class ActorCriticAdversarialNetworkedLearner:
 
         if t_env - self.log_stats_t >= self.args.learner_log_interval:
 
-            ts_logged = len(critic_train_stats["critic_loss"])
-            for key in [
-                "critic_loss",
-                "critic_grad_norm",
-                "td_error_abs",
-                "q_taken_mean",
-                "target_mean",
-            ]:
+            ts_logged = len(critic_train_stats['critic_loss'])
+            for prefix in ('', 'adv_', 'team_'):
+                for suffix in [
+                    'critic_loss',
+                    'critic_grad_norm',
+                    'td_error_abs',
+                    'q_taken_mean',
+                    'target_mean',
+                ]:
+                    key = f'{prefix}{suffix}'
+                    self.logger.log_stat(
+                        key, float(sum(critic_train_stats[key]) / ts_logged), t_env
+                    )
+
+            # def keep(x):  # keep keys
+            #     return 'v_' in x or 'weight' in x or 'bias' in x or 'cwm' in x or '_mse_' in x
+            #
+            # # debugging critic
+            # for key in filter(keep, critic_train_stats.keys()):
+            #     self.logger.log_stat(
+            #         key, float(sum(critic_train_stats[key])), t_env
+            #     )
+
+            na, nd = self.n_agents, self.n_adversaries
+            for owner, ids in zip(
+                ('', 'adv_', 'team_'),
+                (slice(0, na), slice(0, nd), slice(nd, na))
+                ):
+                # debugging consensus
                 self.logger.log_stat(
-                    key, float(sum(critic_train_stats[key]) / ts_logged), t_env
+                    f"{owner}advantage_mean",
+                    float((advantages[:, :, ids] * mask[:, :, ids]).sum().item() / mask[:, :, ids].sum().item()),
+                    t_env,
                 )
-
-            def keep(x):  # keep keys
-                return 'v_' in x or 'weight' in x or 'bias' in x or 'cwm' in x or '_mse_' in x
-
-            # debugging critic
-            for key in filter(keep, critic_train_stats.keys()):
+                self.logger.log_stat(f"{owner}pg_loss", sum(pg_losses[ids]), t_env)
+                self.logger.log_stat(f"{owner}agent_grad_norm", sum(grad_norms[ids]), t_env)
                 self.logger.log_stat(
-                    key, float(sum(critic_train_stats[key])), t_env
+                    "pi_max",
+                    float((th.stack(pis[ids], dim=2).max(dim=-1)[0] * mask[:, :, ids]).sum().item()
+                        / mask[:, :, ids].sum().item()),
+                    t_env,
                 )
-
-            # debugging consensus
-            self.logger.log_stat(
-                "advantage_mean",
-                float((advantages * mask).sum().item() / mask.sum().item()),
-                t_env,
-            )
-            self.logger.log_stat("pg_loss", float(pg_loss_acum), t_env)
-            self.logger.log_stat("agent_grad_norm", float(grad_norm_acum), t_env)
-            self.logger.log_stat(
-                "pi_max",
-                float((th.stack(joint_pi, dim=2).max(dim=-1)[0] * mask).sum().item()
-                / mask.sum().item()),
-                t_env,
-            )
             self.log_stats_t = t_env
 
     def train_critic_sequential(self, critic, target_critic, batch, rewards, mask):
@@ -237,8 +248,10 @@ class ActorCriticAdversarialNetworkedLearner:
 
         running_log = defaultdict(list)
         t_max = batch.max_seq_length - 1
-        total_loss = th.tensor(0.0)
-        total_grad_norm = th.tensor(0.0)
+        # total_loss = th.tensor(0.0)
+        # total_grad_norm = th.tensor(0.0)
+        losses = []
+        grad_norms = []
         masked_td_errors = []
         vs = []
 
@@ -264,31 +277,39 @@ class ActorCriticAdversarialNetworkedLearner:
             _opt.step()
 
             with th.no_grad():
-                total_loss += _loss
-                total_grad_norm += _grad_norm
+                losses.append(float(_loss.item()))
+                grad_norms.append(float(_grad_norm.item()))
                 masked_td_errors.append(_masked_td_error)
                 vs.append(_v[:, :t_max])
 
         with th.no_grad():
             masked_td_error = th.cat(masked_td_errors, dim=2)
             v = th.cat(vs, dim=2)
-        running_log["critic_loss"].append(float(total_loss.item()))
-        running_log["critic_grad_norm"].append(float(total_grad_norm.item()))
-        mask_elems = mask.sum().item()
-        running_log["td_error_abs"].append(
-            float(masked_td_error.abs().sum().item() / mask_elems)
-        )
-        running_log["q_taken_mean"].append(float((v * mask).sum().item() / mask_elems))
+
+
+            na, nd = self.n_agents, self.n_adversaries
+            for owner, ids in zip(
+                ('', 'adv_', 'team_'),
+                (slice(0, na), slice(0, nd), slice(nd, na))
+                ):
+                running_log[f"{owner}critic_grad_norm"].append(sum(grad_norms[ids]))
+                running_log[f"{owner}critic_loss"].append(sum(losses[ids]))
+                mask_elems = mask[:, :, ids].sum().item()
+                running_log[f"{owner}td_error_abs"].append(
+                    float(masked_td_error[:, :, ids].abs().sum().item() / mask_elems)
+                )
+                running_log[f"{owner}q_taken_mean"].append(float((v[:, :, ids] * mask[:, :, ids]).sum().item() / mask_elems))
+
+                running_log[f"{owner}target_mean"].append(
+                    float((target_returns[:, :, ids] * mask[:, :, ids]).sum().item() / mask_elems)
+                )
 
         # consolidates episode segregating by player
-        v_taken_mean_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
-        for _i in range(self.n_agents):
-            key = f"v_taken_mean_player_{_i}"
-            running_log[key].append(float(v_taken_mean_player[_i]))
-
-        running_log["target_mean"].append(
-            float((target_returns * mask).sum().item() / mask_elems)
-        )
+        # v_taken_mean_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
+        # for _i in range(self.n_agents):
+        #     key = f"v_taken_mean_player_{_i}"
+        #     running_log[key].append(float(v_taken_mean_player[_i]))
+        #
 
         return masked_td_error, running_log
 
@@ -298,41 +319,60 @@ class ActorCriticAdversarialNetworkedLearner:
 
         consensus_parameters = {}
         consensus_parameters_logs = {}
+
+        # auxiliary function
+        def emit(x):
+            # 'x' is the parameter id
+            def fn(iy):
+                # 'i' is an agent order
+                # 'y' is a dictionary of parameters
+                i, y = iy
+                ret = itemgetter(x)(y)
+                if i < self.n_adversaries:
+                    per = self.adversarial_pertubation
+                    ret = (ret + per * ret.grad.sign()).clone().detach()
+                return ret
+            return fn
+
+        def broadcast(x):
+            return th.stack([*map(emit(x), enumerate(self.critic_params))], dim=0)
+
         # TODO: Segregate into adversary and team
         with th.no_grad():
 
-            vs = []
-            for _i in range(self.n_agents):
-                vs.append(self.critic(batch, _i)[:, :t_max])
-            v = th.cat(vs, dim=2)
-            v[mask==0] = 0
-            consensus_values = (v.sum(dim=-1, keepdims=True) / th.clamp(mask.sum(dim=-1, keepdims=True), min=1))
-            consensus_values = consensus_values.repeat(1, 1, self.n_agents)
+            # vs = []
+            # for _i in range(self.n_agents):
+            #     vs.append(self.critic(batch, _i)[:, :t_max])
+            # v = th.cat(vs, dim=2)
+            # v[mask==0] = 0
+            # consensus_values = (v.sum(dim=-1, keepdims=True) / th.clamp(mask.sum(dim=-1, keepdims=True), min=1))
+            # consensus_values = consensus_values.repeat(1, 1, self.n_agents)
 
 
-            if t_env - self.log_stats_t >= self.args.learner_log_interval: # LOG.
-                running_log["v_mean_batch_target_0"].append(float(((v * mask).sum() / mask.sum()).item()))
-
-                # consolidates episode segregating by player
-                vs = []
-                for _i in range(self.n_agents):
-                    vs.append(self.critic(batch, _i, j=0)[:, :t_max])
-                v = th.cat(vs, dim=2)
-                v[mask==0] = 0
-                v_mean_batch_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
-
-                for _i in range(self.n_agents):
-                    key = f"v_mean_batch_player_{0}_{_i}"
-                    running_log[key].append(float(v_mean_batch_player[_i]))
+            # if t_env - self.log_stats_t >= self.args.learner_log_interval: # LOG.
+            #     running_log["v_mean_batch_target_0"].append(float(((v * mask).sum() / mask.sum()).item()))
+            #
+            #     # consolidates episode segregating by player
+            #     vs = []
+            #     for _i in range(self.n_agents):
+            #         vs.append(self.critic(batch, _i, j=0)[:, :t_max])
+            #     v = th.cat(vs, dim=2)
+            #     v[mask==0] = 0
+            #     v_mean_batch_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
+            #
+            #     for _i in range(self.n_agents):
+            #         key = f"v_mean_batch_player_{0}_{_i}"
+            #         running_log[key].append(float(v_mean_batch_player[_i]))
 
 
             # 1) Emit parameters for consensus
             # dict_keys(['fc1.weight', 'fc1.bias', 'fc2.weight', 'fc2.bias', 'fc3.weight', 'fc3.bias'])
             keys = {_k for _keys in map(lambda x: x.keys(), self.critic_params) for _k in _keys}
             for _key in keys:
+
                 # gets each of agents parameters by layer _key
                 # 'fc1.weight': [a, input, hidden], 'fc2.weight': [a, hidden, hidden], ..
-                consensus_parameters[_key] = self._emit_parameter_for_consensus(_key)
+                consensus_parameters[_key] = broadcast(_key)
 
                 consensus_parameters_logs[_key + f'_0'] = copy.deepcopy(consensus_parameters[_key])
 
@@ -454,29 +494,29 @@ class ActorCriticAdversarialNetworkedLearner:
         ):
             target_param.data.copy_(target_param.data * (1.0 - tau) + param.data * tau)
 
-    def _emit_parameter_for_consensus(self, key):
-        """Converts a list agents parameters (tensors) into a list of parameters
-
-        Be aware of running this function under th.no_grad
-
-        Params:
-        -------
-        self: NetworkedActorCritic object instance
-        key: str, {'fc1.weight', 'fc1.bias', 'fc2.weight', 'fc2.bias', 'fc3.weight', 'fc3.bias'}
-            <layer>.<parameter> identifier
-
-        Returns:
-        --------
-        params: torch.nn.parameter.Parameter<n_agents, features_in, features_out>
-        """
-        def fn(iy): # 'i' is an agent order, 'y' is a dictionary of parameters
-            i, y = iy
-            ret = itemgetter(key)(y)
-            if self.is_adversarial and i < self.n_adversaries:
-                per = self.adversarial_pertubation
-                ret = (ret + per * ret.grad.sign()).clone().detach()
-            return ret
-        return th.stack([*map(fn, enumerate(self.critic_params))], dim=0)
+    # def _emit_parameter_for_consensus(self, key):
+    #     """Converts a list agents parameters (tensors) into a list of parameters
+    #
+    #     Be aware of running this function under th.no_grad
+    #
+    #     Params:
+    #     -------
+    #     self: NetworkedActorCritic object instance
+    #     key: str, {'fc1.weight', 'fc1.bias', 'fc2.weight', 'fc2.bias', 'fc3.weight', 'fc3.bias'}
+    #         <layer>.<parameter> identifier
+    #
+    #     Returns:
+    #     --------
+    #     params: torch.nn.parameter.Parameter<n_agents, features_in, features_out>
+    #     """
+    #     def fn(iy): # 'i' is an agent order, 'y' is a dictionary of parameters
+    #         i, y = iy
+    #         ret = itemgetter(key)(y)
+    #         if i < self.n_adversaries:
+    #             per = self.adversarial_pertubation
+    #             ret = (ret + per * ret.grad.sign()).clone().detach()
+    #         return ret
+    #     return th.stack([*map(fn, enumerate(self.critic_params))], dim=0)
 
     def cuda(self):
         self.mac.cuda()
@@ -520,5 +560,5 @@ class ActorCriticAdversarialNetworkedLearner:
         for _opt, _states in zip(self.critic_optimisers, critic_optimizers):
             _opt.load_state_dict(_states)
 
-    def _logfilter(self, params):
-        return filter(lambda x: 'fc1.' in x[0], params.items())
+    # def _logfilter(self, params):
+    #     return filter(lambda x: 'fc1.' in x[0], params.items())

@@ -2,6 +2,7 @@ from envs import REGISTRY as env_REGISTRY
 from functools import partial
 from components.episode_buffer import EpisodeBatch
 import numpy as np
+from IPython.core.debugger import set_trace
 
 
 class EpisodeRunner:
@@ -11,6 +12,8 @@ class EpisodeRunner:
         self.logger = logger
         self.batch_size = self.args.batch_size_run
         assert self.batch_size == 1
+        self.n_adversaries = getattr(self.args, 'networked_adversaries', 0)
+        self.is_adversarial = (self.n_adversaries > 0)
 
         self.env = env_REGISTRY[self.args.env](**self.args.env_args)
         self.episode_limit = self.env.episode_limit
@@ -49,7 +52,8 @@ class EpisodeRunner:
         self.reset()
 
         terminated = False
-        episode_return = 0
+        # episode_return = 0
+        episode_return = []
         self.mac.init_hidden(batch_size=self.batch_size)
 
         while not terminated:
@@ -67,7 +71,7 @@ class EpisodeRunner:
             actions = self.mac.select_actions(self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode)
 
             reward, terminated, env_info = self.env.step(actions[0])
-            episode_return += sum(reward)
+            episode_return.append(reward) # reward [t, n]
 
             post_transition_data = {
                 "actions": actions,
@@ -100,7 +104,8 @@ class EpisodeRunner:
         if not test_mode:
             self.t_env += self.t
 
-        cur_returns.append(episode_return)
+        # Sums over time [(n,)] if joint_reward=False else [(1,n)]
+        cur_returns.append(np.stack(episode_return).sum(axis=0)) 
 
         if test_mode and (len(self.test_returns) == self.args.test_nepisode):
             self._log(cur_returns, cur_stats, log_prefix)
@@ -113,11 +118,19 @@ class EpisodeRunner:
         return self.batch
 
     def _log(self, returns, stats, prefix):
-        self.logger.log_stat(prefix + "return_mean", np.mean(returns), self.t_env)
-        self.logger.log_stat(prefix + "return_std", np.std(returns), self.t_env)
-        returns.clear()
+        if self.is_adversarial:
+            na, nd = self.args.n_agents, self.n_adversaries
+            for own, ids in zip(('', 'adv_', 'team_'), (slice(0, na), slice(0, nd), slice(nd, na))):
+                self.logger.log_stat(prefix + own + "return_mean", np.mean(np.stack(returns)[:, ids].sum(axis=1)), self.t_env)
+                self.logger.log_stat(prefix + own + "return_std", np.std(np.stack(returns)[:, ids].sum(axis=1)), self.t_env)
+
+        else:
+            self.logger.log_stat(prefix + "return_mean", np.mean(np.stack(returns).sum(axis=1)), self.t_env)
+            self.logger.log_stat(prefix + "return_std", np.std(np.stack(returns).sum(axis=1)), self.t_env)
 
         for k, v in stats.items():
             if k != "n_episodes":
                 self.logger.log_stat(prefix + k + "_mean" , v/stats["n_episodes"], self.t_env)
+
+        returns.clear()
         stats.clear()
