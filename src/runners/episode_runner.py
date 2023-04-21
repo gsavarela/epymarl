@@ -2,8 +2,6 @@ from envs import REGISTRY as env_REGISTRY
 from functools import partial
 from components.episode_buffer import EpisodeBatch
 import numpy as np
-from IPython.core.debugger import set_trace
-
 
 class EpisodeRunner:
 
@@ -104,7 +102,7 @@ class EpisodeRunner:
         if not test_mode:
             self.t_env += self.t
 
-        # Sums over time [(n,)] if joint_reward=False else [(1,n)]
+        # Sums over time [(n,)] if joint_reward=False else [(1,)]
         cur_returns.append(np.stack(episode_return).sum(axis=0)) 
 
         if test_mode and (len(self.test_returns) == self.args.test_nepisode):
