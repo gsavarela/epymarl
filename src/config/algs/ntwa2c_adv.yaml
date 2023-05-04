@@ -37,7 +37,7 @@ networked_interval: 5 # Try consensus at every networked_interval number of trai
 
 # Adversarial agents
 networked_adversaries: 1
-networked_adversarial_noise: 0.001
+networked_adversarial_noise: 0
 
 name: "ntwa2c_adv"
 t_max: 40_050_000

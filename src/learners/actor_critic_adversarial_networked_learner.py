@@ -1,3 +1,9 @@
+"""Adversarial Attack on NetworkedActorCritic
+
+"Adversarial attacks in consensus-based multi-agent reinforcement learning,"
+M. Figura, K. C. Kosaraju and V. Gupta, 2021 American Control Conference (ACC),
+New Orleans, LA, USA, 2021, pp. 3050-3055, doi: 10.23919/ACC50511.2021.9483080.
+"""
 from collections import defaultdict
 import copy
 from operator import itemgetter
@@ -302,6 +308,7 @@ class ActorCriticAdversarialNetworkedLearner:
                 i, y = iy
                 ret = itemgetter(x)(y)
                 if i < self.n_adversaries:
+                    # According to figura 2021 it suffaces per = 0.0
                     per = self.adversarial_pertubation
                     ret = (ret + per * ret.grad.sign()).clone().detach()
                 return ret
@@ -348,40 +355,31 @@ class ActorCriticAdversarialNetworkedLearner:
                         for _key, _value in _critic.named_parameters():
                             _value.data = th.nn.parameter.Parameter(consensus_parameters[_key][_i, :])
 
-
     def nstep_returns(self, rewards, mask, values, nsteps):
         # nstep is a hyperparameter that regulates the number of look aheads
         # example 1: nsteps = 5, t_start = 0
         # R^5_0 = r_0 + (gamma*r_1) + (gamma**2*r_2) + (gamma**3*r_3) + (gamma**4*r_4) + (gamma**5*v_5)
         # example 2: nsteps = 5, t_start = 1
         # R^5_1 = r_1 + (gamma*r_2) + (gamma**2*r_3) + (gamma**3*r_4) + (gamma**4*r_5) + (gamma**5*v_6)
-        rewards1 = rewards.detach().clone()
-        # Build adversary
-        # adversary agents are the first self.n_adversaries
-        adv, team = rewards1.split([self.n_adversaries, self.n_teamates], dim=2)
-        adv = adv - team.sum(dim=2, keepdims=True)
-        team = team.sum(dim=2, keepdims=True).tile((1, 1, self.n_teamates))
-        rewards1 = th.cat([adv, team], dim=2)
-
         nstep_values = th.zeros_like(values[:, :-1])
-        for t_start in range(rewards1.size(1)):
+        for t_start in range(rewards.size(1)):
             nstep_return_t = th.zeros_like(values[:, 0])
             for step in range(nsteps + 1):
                 t = t_start + step
-                if t >= rewards1.size(1):
+                if t >= rewards.size(1):
                     break
                 elif step == nsteps:
                     nstep_return_t += (
                         self.args.gamma**step * values[:, t] * mask[:, t]
                     )
-                elif t == rewards1.size(1) - 1 and self.args.add_value_last_step:
+                elif t == rewards.size(1) - 1 and self.args.add_value_last_step:
                     nstep_return_t += (
-                        self.args.gamma**step * rewards1[:, t] * mask[:, t]
+                        self.args.gamma**step * rewards[:, t] * mask[:, t]
                     )
                     nstep_return_t += self.args.gamma ** (step + 1) * values[:, t + 1]
                 else:
                     nstep_return_t += (
-                        self.args.gamma**step * rewards1[:, t] * mask[:, t]
+                        self.args.gamma**step * rewards[:, t] * mask[:, t]
                     )
             nstep_values[:, t_start, :] = nstep_return_t
         return nstep_values
