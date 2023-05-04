@@ -4,7 +4,7 @@ from components.episode_buffer import EpisodeBatch
 from multiprocessing import Pipe, Process
 import numpy as np
 import torch as th
-
+from IPython.core.debugger import set_trace
 
 # Based (very) heavily on SubprocVecEnv from OpenAI Baselines
 # https://github.com/openai/baselines/blob/master/baselines/common/vec_env/subproc_vec_env.py
@@ -14,6 +14,9 @@ class ParallelRunner:
         self.args = args
         self.logger = logger
         self.batch_size = self.args.batch_size_run
+
+        self.n_adversaries = getattr(self.args, 'networked_adversaries', 0)
+        self.is_adversarial = (self.n_adversaries > 0)
 
         # Make subprocesses for the envs
         self.parent_conns, self.worker_conns = zip(*[Pipe() for _ in range(self.batch_size)])
@@ -90,7 +93,7 @@ class ParallelRunner:
         self.reset()
 
         all_terminated = False
-        episode_returns = [0 for _ in range(self.batch_size)]
+        episode_returns = [list() for _ in range(self.batch_size)]
         episode_lengths = [0 for _ in range(self.batch_size)]
         self.mac.init_hidden(batch_size=self.batch_size)
         terminated = [False for _ in range(self.batch_size)]
@@ -143,7 +146,9 @@ class ParallelRunner:
                     # Remaining data for this current timestep
                     post_transition_data["reward"].append((data["reward"],))
 
-                    episode_returns[idx] += sum(data["reward"])
+                    # reward [t, n] if joint_rewards else [t, 1]
+                    # episode_returns[idx] += sum(data["reward"])
+                    episode_returns[idx].append(data["reward"])
                     episode_lengths[idx] += 1
                     if not test_mode:
                         self.env_steps_this_run += 1
@@ -190,7 +195,10 @@ class ParallelRunner:
         cur_stats["n_episodes"] = self.batch_size + cur_stats.get("n_episodes", 0)
         cur_stats["ep_length"] = sum(episode_lengths) + cur_stats.get("ep_length", 0)
 
-        cur_returns.extend(episode_returns)
+        # Sums over time:
+        # [[[] * n] * t] * b] if joint_reward=False else [[[[] * 1] * t] * b]
+        # cur_returns.extend(np.stack(episode_returns.sum(axis=0))
+        cur_returns.extend([*map(lambda x: np.stack(x).sum(axis=0), episode_returns)])
 
         n_test_runs = max(1, self.args.test_nepisode // self.batch_size) * self.batch_size
         if test_mode and (len(self.test_returns) == n_test_runs):
@@ -204,8 +212,15 @@ class ParallelRunner:
         return self.batch
 
     def _log(self, returns, stats, prefix):
-        self.logger.log_stat(prefix + "return_mean", np.mean(returns), self.t_env)
-        self.logger.log_stat(prefix + "return_std", np.std(returns), self.t_env)
+
+        if self.is_adversarial:
+            na, nd = self.args.n_agents, self.n_adversaries
+            for own, ids in zip(('', 'adv_', 'team_'), (slice(0, na), slice(0, nd), slice(nd, na))):
+                self.logger.log_stat(prefix + own + "return_mean", np.mean(np.stack(returns)[:, ids].sum(axis=1)), self.t_env)
+                self.logger.log_stat(prefix + own + "return_std", np.std(np.stack(returns)[:, ids].sum(axis=1)), self.t_env)
+        else:
+            self.logger.log_stat(prefix + "return_mean", np.mean(np.stack(returns).sum(axis=1)), self.t_env)
+            self.logger.log_stat(prefix + "return_std", np.std(np.stack(returns).sum(axis=1)), self.t_env)
         returns.clear()
 
         for k, v in stats.items():

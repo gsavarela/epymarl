@@ -18,7 +18,7 @@ batch_size: 10
 
 env_args:
   state_last_action: False # critic adds last action internally
-  joint_rewards: True
+  joint_rewards: False
   
 obs_agent_id: False
 obs_last_action: False
@@ -26,7 +26,7 @@ obs_individual_obs: False
 mac: "dac"
 agent: "rnn_ns"
 agent_output_type: "pi_logits"
-learner: "actor_critic_networked_learner"
+learner: "actor_critic_adversarial_networked_learner"
 standardise_returns: False
 critic_type: "ac_critic_networked" # All weights begin at the same place.
 
@@ -35,5 +35,9 @@ networked_edges: 1  # maps n_agents: n_edges
 networked_rounds: 10  # At each consensus round try this many consensus matrices.
 networked_interval: 5 # Try consensus at every networked_interval number of training steps.
 
-name: "ntwa2c"
-t_max: 20_050_000
+# Adversarial agents
+networked_adversaries: 1
+networked_adversarial_noise: 0
+
+name: "ntwa2c_adv"
+t_max: 40_050_000

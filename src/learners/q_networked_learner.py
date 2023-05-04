@@ -42,7 +42,6 @@ class QNetworkedLearner:
         if self.args.standardise_returns:
             self.ret_ms = RunningMeanStd(shape=(self.n_agents,), device=device)
         if self.args.standardise_rewards:
-            self.joint_rewards = self.args.env_args.get("joint_rewards", True)
             if self.joint_rewards:
                 self.rew_ms = RunningMeanStd(shape=(1,), device=device)
             else:
@@ -55,16 +54,12 @@ class QNetworkedLearner:
         n_edges = self.args.networked_edges
         self.cwms = [*map(fn, consensus_matrices(self.n_agents, n_edges))]
 
-        if not self.args.networked_time_varying:
-            # test if consensus graph is fully connected
-            if  n_edges < (self.n_agents - 1):
-                raise ValueError("For fully_connected graphs n_edges >= (n_agents - 1)")
-
-            idx = np.random.randint(0, high=len(self.cwms))
-            self.cwms = [self.cwms[idx]]
-
         self.consensus_rounds = self.args.networked_rounds
         self.consensus_interval = self.args.networked_interval
+
+    @property
+    def joint_rewards(self):
+        return self.args.env_args.get("joint_rewards", True)
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
         # Get the relevant quantities
@@ -210,10 +205,7 @@ class QNetworkedLearner:
             for _i in range(self.n_agents):
                 mac_i_out = []
                 for t in range(batch.max_seq_length):
-                    if self._joint_observations(): # full observability
-                        agent_outs = self.mac.forward(batch, t=t, i=_i)  # [b, a]
-                    else: # Assume state is perceived by agent 0
-                        agent_outs = self.mac.forward(batch, t=t, i=_i, j=0)  # [b, a]
+                    agent_outs = self.mac.forward(batch, t=t, i=_i, j=0)  # [b, a]
                     mac_i_out.append(agent_outs)
                 mac_out.append(th.stack(mac_i_out, dim=1))  # [b, t, a]
             mac_out = th.stack(mac_out, dim=2)  # Concat over agents [b, t, n, a]
@@ -246,10 +238,7 @@ class QNetworkedLearner:
 
             # Consensus Loop
             for k in range(self.consensus_rounds):
-                if self.args.networked_time_varying:
-                    idx = np.random.randint(0, high=len(self.cwms))
-                else:
-                    idx = 0
+                idx = np.random.randint(0, high=len(self.cwms))
                 cwm = self.cwms[idx]
                 consensus_metropolis_logs[k] = cwm.clone()
 
@@ -278,10 +267,7 @@ class QNetworkedLearner:
                     for _i in range(self.n_agents):
                         mac_i_out = []
                         for t in range(batch.max_seq_length):
-                            if self._joint_observations():  # full observability
-                                agent_outs = self.mac.forward(batch, t=t, i=_i)  # [b, a]
-                            else: # Assume state is perceived by agent 0
-                                agent_outs = self.mac.forward(batch, t=t, i=_i, j=0)  # [b, a]
+                            agent_outs = self.mac.forward(batch, t=t, i=_i, j=0)  # [b, a]
                             mac_i_out.append(agent_outs)
                         mac_out.append(th.stack(mac_i_out, dim=1))  # [b, t, a]
                     mac_out = th.stack(mac_out, dim=2)  # Concat over agents [b, t, n, a]
@@ -301,7 +287,7 @@ class QNetworkedLearner:
                     loss = (td_error**2).sum() / mask.sum()
                     running_log[f"consensus_loss_{k + 1}"] = float(loss.item())
 
-            # # debugging log j
+            # # debugging log
             # # saving all weights takes way too long.
             # if t_env - self.log_stats_t >= self.args.learner_log_interval:
             #     for _k, _w in self._logfilter(consensus_parameters_logs):
@@ -351,10 +337,4 @@ class QNetworkedLearner:
             _opt.load_state_dict(_states)
 
     def _logfilter(self, params):
-        return filter(self._lftr, params.items())
-
-    def _lftr(self, x):
-        return ('fc1.' in x[0])
-
-    def _joint_observations(self):
-        return self.args.networked_joint_observations
+        return filter(lambda x: 'fc1.' in x[0], params.items())
