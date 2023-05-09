@@ -10,6 +10,7 @@ from gym.spaces import flatdim
 import numpy as np
 from gym.wrappers import TimeLimit as GymTimeLimit
 # import robotic_warehouse
+import adversarial_navigation
 
 def env_fn(env, **kwargs) -> MultiAgentEnv:
     return env(**kwargs)
@@ -87,8 +88,8 @@ class _GymmaWrapper(MultiAgentEnv):
 
         self.n_agents = self._env.n_agents
         self._obs = None
-        if 'mpe' in key:
-            self.adjust_rewards = self.n_agents
+        self.adjust_rewards = self.n_agents if 'mpe' in key else 1
+           
 
         self.longest_action_space = max(self._env.action_space, key=lambda x: x.n)
         self.longest_observation_space = max(
@@ -112,6 +113,7 @@ class _GymmaWrapper(MultiAgentEnv):
             )
             for o in self._obs
         ]
+
         if self.joint_rewards:
             reward = [float(sum(reward))]
         if self.adjust_rewards > 1:
