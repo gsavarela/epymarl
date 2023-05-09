@@ -26,8 +26,6 @@ matplotlib.use('QtCairo')
 
 from incense import ExperimentLoader
 
-from IPython.core.debugger import set_trace
-
 Array = np.ndarray
 FIGURE_X = 6.0
 FIGURE_Y = 4.0
@@ -486,7 +484,6 @@ LBF_COMMON_QUERY = {
 
 for hp_grp, data in LBF_HYPERGROUP_NTWQL_QUERIES.items():
     data['query_config'] = {**data['query_config'], **LBF_COMMON_QUERY}
-set_trace()
 
 def file_processor(environment: str, algo: str,  query: Dict):
     root_path = Path(f"results/sacred/{algo}")
@@ -878,7 +875,6 @@ def main(
             _steps, _results = mongo_processor(environment, algo, source, query)
         else:
             raise ValueError()
-        set_trace()
             
         steps.update(_steps)
         results.update(_results)
@@ -1029,7 +1025,6 @@ if __name__ == "__main__":
         algonames = [tag['query_config']['config.name']]
         sources = [tag.pop('source')]
         queries = [tag]
-        set_trace()
         suptitle = f'TestHyperparameterGroup {i}'
 
         main(ENV, algonames, sources, queries, suptitle)

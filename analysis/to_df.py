@@ -56,7 +56,6 @@ def convert_tb_data(root_dir, sort_by=None):
 if __name__ == "__main__":
     dir_path = "/home/gvarela/ilu/epymarl/results/tb_logs/search"
     exp_name = "ntwa2c_seed2_lbforaging:Foraging-15x15-3p-4f-v1_2022-12-04 07:57:03.097215"
-    import ipdb; ipdb.set_trace()
     df = convert_tb_data(f"{dir_path}/{exp_name}")
     print(df.head())
 

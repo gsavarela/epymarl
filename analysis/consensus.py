@@ -60,7 +60,6 @@ def get_opt() -> Tuple[Path, Dict, Dict]:
     def mwb(x):      # map weight or bias step
         return (x[0], {kx: vx[step] for kx, vx in x[1].items()})
     weights = dict(map(mwb, filter(fw, metrics.items())))
-    import ipdb; ipdb.set_trace()
     
     def fb(x):      # filter bias
         return 'bias' in x[0]
