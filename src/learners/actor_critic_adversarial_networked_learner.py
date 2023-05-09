@@ -16,11 +16,27 @@ from torch.optim import Adam
 from components.episode_buffer import EpisodeBatch
 from components.standarize_stream import RunningMeanStd
 from modules.critics import REGISTRY as critic_registry
+from modules.critics.mlp import MLP
 
 from components.consensus import consensus_matrices
 
+class JointRewardPredictor(MLP):
+    '''Forecast the joint rewards using the private reward'''
+    def __init__(self, scheme, args):
+        input_shape = self._get_input_shape(scheme, args)
+        hidden_dim = args.hidden_dim
+        super(JointRewardPredictor, self).__init__(input_shape, hidden_dim, 1)
+
+
+    def _get_input_shape(self, scheme, args):
+        # observations
+        input_shape = scheme["obs"]["vshape"]
+        # actions
+        input_shape += scheme["avail_actions"]["vshape"][0] * args.n_agents
+        return input_shape
 
 class ActorCriticAdversarialNetworkedLearner:
+
     def __init__(self, mac, scheme, logger, args):
         self.args = args
         self.n_agents = args.n_agents
@@ -45,6 +61,15 @@ class ActorCriticAdversarialNetworkedLearner:
         self.critic_params = [dict(_c.named_parameters()) for _c in self.critic.critics]
         self.critic_optimisers = [
             Adam(params=list(_params.values()), lr=args.lr) for _params in self.critic_params
+        ]
+        # Distributed V
+        jrp = JointRewardPredictor(scheme, args)
+        self.joint_reward_predictors = [
+            copy.deepcopy(jrp) for _ in range(args.n_agents)
+        ]
+        self.joint_reward_params = [dict(_c.named_parameters()) for _c in self.joint_reward_predictors]
+        self.joint_reward_optimisers = [
+            Adam(params=list(_params.values()), lr=args.lr) for _params in self.joint_reward_params
         ]
 
         self.last_target_update_step = 0
@@ -104,15 +129,19 @@ class ActorCriticAdversarialNetworkedLearner:
         critic_mask = mask.clone()
 
         # This processes each player sequentially.
-        advantages, critic_train_stats = self.train_critic_sequential(
+        td_error, critic_train_stats = self.train_critic_sequential(
             self.critic, self.target_critic, batch, rewards, critic_mask
         )
 
+        j_rewards, critic_train_stats = self.joint_reward_prediction_step(
+            rewards, batch, mask, critic_train_stats
+        )
         self.mac.init_hidden(batch.batch_size)
 
         pg_losses = []
         grad_norms = []
         pis = []
+        advantages = j_rewards + td_error.detach()
 
         # initialize hidden states before new batch arrives.
         for _i, _opt, _params, _actions, _advantages, _mask in zip(
@@ -169,6 +198,7 @@ class ActorCriticAdversarialNetworkedLearner:
 
         # After all updates perform consensus round.
         if self.critic_training_steps % self.consensus_interval == 0:
+            # Assert that the adversary's critic network weights are the same after consensus.
             self.consensus_step()
         if (
             self.args.target_update_interval_or_tau > 1
@@ -196,6 +226,12 @@ class ActorCriticAdversarialNetworkedLearner:
                     self.logger.log_stat(
                         key, float(sum(critic_train_stats[key]) / ts_logged), t_env
                     )
+
+            # debugging critic
+            for key in filter(lambda x: 'joint_reward' in x, critic_train_stats.keys()):
+                self.logger.log_stat(
+                    key, float(sum(critic_train_stats[key])), t_env
+                )
 
             na, nd = self.n_agents, self.n_adversaries
             for owner, ids in zip(
@@ -293,6 +329,67 @@ class ActorCriticAdversarialNetworkedLearner:
                 )
 
         return masked_td_error, running_log
+
+    def joint_reward_prediction_step(self, rewards, batch, mask, running_log):
+
+        # receives actions from all agents
+        with th.no_grad():
+            all_actions_onehot = batch["actions_onehot"].reshape(
+                (batch.batch_size, batch.max_seq_length, -1)
+            ).unsqueeze(dim=2).tile((1, 1, self.n_agents, 1))
+            inputs = th.cat((batch["obs"], all_actions_onehot), dim=-1)
+        t_max = batch.max_seq_length - 1
+
+        total_loss = th.tensor(0.0)
+        total_grad_norm = th.tensor(0.0)
+        masked_errors = []
+        joint_rewards = []
+
+        for _i, _input, _opt, _params, _target, _mask in zip(
+            range(self.n_agents),
+            th.tensor_split(inputs, self.n_agents, dim=2),
+            self.joint_reward_optimisers,
+            self.joint_reward_params,
+            th.tensor_split(rewards, self.n_agents, dim=2),
+            th.tensor_split(mask, self.n_agents, dim=2),
+        ):
+            _input.squeeze_(dim=2)
+
+            _output = self.joint_reward_predictors[_i](_input)
+            # FIXME: Remove this t_max
+            _error = _target - _output[:, :t_max]
+            _masked_error = _error * _mask
+            _loss = (_error**2).sum() / mask.sum()
+
+            _opt.zero_grad()
+            _loss.backward()
+            _grad_norm = th.nn.utils.clip_grad_norm_(
+                list(_params.values()), self.args.grad_norm_clip
+            )
+            _opt.step()
+
+            with th.no_grad():
+                total_loss += _loss
+                total_grad_norm += _grad_norm
+                masked_errors.append(_masked_error)
+                joint_rewards.append(_output[:, :t_max])
+
+        with th.no_grad():
+            masked_error = th.cat(masked_errors, dim=2)
+            joint_rewards = th.cat(joint_rewards, dim=2)
+            
+        running_log["joint_reward_loss"].append(float(total_loss.item()))
+        running_log["joint_reward_grad_norm"].append(float(total_grad_norm.item()))
+        mask_elems = mask.sum().item()
+        running_log["joint_reward_error_abs"].append(
+            float(masked_error.abs().sum().item() / mask_elems)
+        )
+        # TODO: Sum agent axis
+        running_log["joint_reward_mean"].append(float((joint_rewards * mask).sum().item() / mask_elems))
+        running_log["reward_mean"].append(
+            float((rewards * mask).sum().item() / mask_elems)
+        )
+        return joint_rewards, running_log
 
     def consensus_step(self):
 
