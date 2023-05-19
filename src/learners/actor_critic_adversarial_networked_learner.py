@@ -45,7 +45,7 @@ class ActorCriticAdversarialNetworkedLearner:
 
         assert hasattr(self.args, 'networked_adversaries')
         assert self.n_agents > self.n_adversaries
-        assert self.n_adversaries == 1 # Not validated
+        assert self.n_adversaries <= 1 # Not validated
 
         self.is_adversarial = True
         self.joint_rewards = False
