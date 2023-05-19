@@ -83,14 +83,6 @@ class ActorCriticDistributedVLearner:
         n_edges = self.args.networked_edges
         self.cwms = [*map(fn, consensus_matrices(self.n_agents, n_edges))]
 
-        if not self.args.networked_time_varying:
-            # test if consensus graph is fully connected
-            if  n_edges < (self.n_agents - 1):
-                raise ValueError("For fully_connected graphs n_edges >= (n_agents - 1)")
-
-            idx = np.random.randint(0, high=len(self.cwms))
-            self.cwms = [self.cwms[idx]]
-
         self.consensus_rounds = self.args.networked_rounds
         self.consensus_interval = self.args.networked_interval
 
@@ -444,10 +436,7 @@ class ActorCriticDistributedVLearner:
 
             # consensus_metropolis_logs = {}
             for k in range(self.consensus_rounds):
-                if self.args.networked_time_varying:
-                    idx = np.random.randint(0, high=len(self.cwms))
-                else:
-                    idx = 0
+                idx = np.random.randint(0, high=len(self.cwms))
                 cwm = self.cwms[idx]
                 # consensus_metropolis_logs[k] = cwm.clone()
 
@@ -636,5 +625,5 @@ class ActorCriticDistributedVLearner:
     def _lftr(self, x):
         return 'fc1.' in x[0] or self.args.critic_type == 'ac_critic_baseline'
 
-    def _joint_observations(self):
-        return self.args.networked_joint_observations
+    # def _joint_observations(self):
+    #     return self.args.networked_joint_observations
