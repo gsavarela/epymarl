@@ -20,15 +20,17 @@ use_rnn: False # MPE
 action_selector: "soft_policies"
 mask_before_softmax: True
 
-runner: "episode"
-buffer_size: 1
-batch_size_run: 1
-batch_size: 1
+
+runner: "parallel"
+buffer_size: 10
+batch_size_run: 10
+batch_size: 10
 
 env_args:
   state_last_action: False # critic adds last action internally
   joint_rewards: False
-  time_limit: 25 # MPE
+  # time_limit: 25 # MPE
+  time_limit: 1000 # AdversarialNavigation
   
 obs_agent_id: False
 obs_last_action: False
@@ -42,18 +44,19 @@ standardise_returns: False
 critic_type: "ac_critic_networked" # All weights begin at the same place.
 
 # Networked agents
-networked_edges: 1  # maps n_agents: n_edges
-networked_rounds: 1  # At each consensus round try this many consensus matrices.
+networked_edges: 1
+networked_rounds: 10
 networked_interval: 10 # Try consensus at every networked_interval number of training steps.
 
-# networked_edges: 1  # maps n_agents: n_edges
+# networked_edges: 0
 # networked_rounds: 10  # At each consensus round try this many consensus matrices.
 # networked_interval: 5 # Try consensus at every networked_interval number of training steps.
 
 # Adversarial agents
-networked_adversaries: 1
+networked_adversaries: 0
 networked_adversarial_noise: 0
 
 name: "ntwa2c_adv"
+t_max: 5_005_000  # ADVNAV
 #  t_max: 40_050_000 # LBF
-t_max: 20_050_000 # MPE
+# t_max: 20_050_000 # MPE

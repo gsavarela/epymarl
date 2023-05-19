@@ -2,18 +2,18 @@ env: "gymma"
 
 env_args:
   key: null
-  time_limit: 25  # MPE
+  time_limit: 1000  # AdvNav 
+  # time_limit: 25  # MPE
   # time_limit: 50  # LBF
   pretrained_wrapper: null
-  joint_rewards: True
+  joint_rewards: False
 
 test_greedy: True
 test_nepisode: 100
-test_interval: 500_000
-log_interval: 500_000
+test_interval: 250_000
+log_interval: 250_000
 runner_log_interval: 10_000
 learner_log_interval: 10_000
 
-t_max: 20_050_000
+t_max: 5_005_000
 # t_max: 40_500_000 LBF
-
