@@ -53,20 +53,15 @@ class ActorCriticNetworkedLearner:
         def fn(x):
             return th.from_numpy(x.astype(np.float32))
 
-        # n_edges = self.args.networked_edges[self.n_agents]
         n_edges = self.args.networked_edges
         self.cwms = [*map(fn, consensus_matrices(self.n_agents, n_edges))]
 
-        if not self.args.networked_time_varying:
-            # test if consensus graph is fully connected
-            if  n_edges < (self.n_agents - 1):
-                raise ValueError("For fully_connected graphs n_edges >= (n_agents - 1)")
-
-            idx = np.random.randint(0, high=len(self.cwms))
-            self.cwms = [self.cwms[idx]]
-
         self.consensus_rounds = self.args.networked_rounds
         self.consensus_interval = self.args.networked_interval
+
+    @property
+    def joint_rewards(self):
+        return self.args.env_args.get("joint_rewards", True)
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
         # Get the relevant quantities
@@ -184,8 +179,7 @@ class ActorCriticNetworkedLearner:
                 )
 
             def keep(x):  # keep keys
-                # return 'v_' in x or 'weight' in x or 'bias' in x or 'cwm' in x or '_mse_' in x
-                return 'reward_' in x
+                return 'v_' in x or 'weight' in x or 'bias' in x or 'cwm' in x or '_mse_' in x
 
             # debugging critic
             for key in filter(keep, critic_train_stats.keys()):
@@ -264,7 +258,6 @@ class ActorCriticNetworkedLearner:
         with th.no_grad():
             masked_td_error = th.cat(masked_td_errors, dim=2)
             v = th.cat(vs, dim=2)
-
         running_log["critic_loss"].append(float(total_loss.item()))
         running_log["critic_grad_norm"].append(float(total_grad_norm.item()))
         mask_elems = mask.sum().item()
@@ -285,33 +278,36 @@ class ActorCriticNetworkedLearner:
 
         return masked_td_error, running_log
 
+     
     def consensus_step(self, batch, mask, running_log, t_env):
+        self._consensus_step(batch, mask, running_log, t_env, self.critic, self.critic_params, enumerate(self.critic.critics), log=True)
+        if self.args.networked_policy:  # Consensus w.r.t actor
+            self._consensus_step(batch, mask, running_log, t_env, self.mac, self.agent_params, enumerate(self.mac.agent.agents), log=False)
+
+    def _consensus_step(self, batch, mask, running_log, t_env, mas, mas_params, delegates, log=False):
 
         t_max = batch.max_seq_length - 1
 
         consensus_parameters = {}
         consensus_parameters_logs = {}
         with th.no_grad():
+            if log and (t_env - self.log_stats_t >= self.args.learner_log_interval): # LOG.
+                vs = []
+                for _i in range(self.n_agents):
+                    vs.append(mas(batch, _i)[:, :t_max])
+                v = th.cat(vs, dim=2)
+                v[mask==0] = 0
+                consensus_values = (v.sum(dim=-1, keepdims=True) / th.clamp(mask.sum(dim=-1, keepdims=True), min=1))
+                consensus_values = consensus_values.repeat(1, 1, self.n_agents)
 
-            vs = []
-            for _i in range(self.n_agents):
-                vs.append(self.critic(batch, _i)[:, :t_max])
-            v = th.cat(vs, dim=2)
-            v[mask==0] = 0
-            consensus_values = (v.sum(dim=-1, keepdims=True) / th.clamp(mask.sum(dim=-1, keepdims=True), min=1))
-            consensus_values = consensus_values.repeat(1, 1, self.n_agents)
-
-
-            if t_env - self.log_stats_t >= self.args.learner_log_interval: # LOG.
                 running_log["v_mean_batch_target_0"].append(float(((v * mask).sum() / mask.sum()).item()))
 
                 # consolidates episode segregating by player
-                if not self._joint_observations():
-                    vs = []
-                    for _i in range(self.n_agents):
-                        vs.append(self.critic(batch, _i, j=0)[:, :t_max])
-                    v = th.cat(vs, dim=2)
-                    v[mask==0] = 0
+                vs = []
+                for _i in range(self.n_agents):
+                    vs.append(mas(batch, _i, j=0)[:, :t_max])
+                v = th.cat(vs, dim=2)
+                v[mask==0] = 0
                 v_mean_batch_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
 
                 for _i in range(self.n_agents):
@@ -321,20 +317,17 @@ class ActorCriticNetworkedLearner:
 
             # Each critic has many fully connected layers each of which with
             # weight and bias tensors
-            keys = {_k for _keys in map(lambda x: x.keys(), self.critic_params) for _k in _keys}
+            keys = {_k for _keys in map(lambda x: x.keys(), mas_params) for _k in _keys}
             for _key in keys:
 
                 consensus_parameters[_key] = [
-                    th.stack([*map(itemgetter(_key), self.critic_params)], dim=0)
+                    th.stack([*map(itemgetter(_key), mas_params)], dim=0)
                 ]
                 consensus_parameters_logs[_key + f'_0'] = copy.deepcopy(consensus_parameters[_key])
 
             consensus_metropolis_logs = {}
             for k in range(self.consensus_rounds):
-                if self.args.networked_time_varying:
-                    idx = np.random.randint(0, high=len(self.cwms))
-                else:
-                    idx = 0
+                idx = np.random.randint(0, high=len(self.cwms))
                 cwm = self.cwms[idx]
                 consensus_metropolis_logs[k] = cwm.clone()
 
@@ -352,18 +345,15 @@ class ActorCriticNetworkedLearner:
                     consensus_parameters_logs[_key + f'_{k + 1}'] = [_w]
 
                 # update parameters after consensus
-                for _i, _critic in enumerate(self.critic.critics):
-                    for _key, _value in _critic.named_parameters():
+                for _i, _delegate in delegates:
+                    for _key, _value in _delegate.named_parameters():
                         _value.data = th.nn.parameter.Parameter(consensus_parameters[_key][0][_i, :])
 
-                if t_env - self.log_stats_t >= self.args.learner_log_interval:
+                if log and (t_env - self.log_stats_t >= self.args.learner_log_interval):
                     vs = []
 
                     for _i in range(self.n_agents):
-                        if self._joint_observations():
-                            vs.append(self.critic(batch, _i)[:, :t_max])
-                        else:
-                            vs.append(self.critic(batch, _i, j=0)[:, :t_max])
+                        vs.append(mas(batch, _i, j=0)[:, :t_max])
                     v = th.cat(vs, dim=2)
 
                     # Computes the loss for the current iteration.
@@ -378,30 +368,6 @@ class ActorCriticNetworkedLearner:
                         key = f"v_mean_batch_player_{k + 1}_{_i}"
                         running_log[key].append(float(v_mean_batch_player[_i]))
 
-            # debugging log report consensus weights.
-            # saving all weights takes way too long.
-            if t_env - self.log_stats_t >= self.args.learner_log_interval:
-                for _k, _w in self._logfilter(consensus_parameters_logs):
-                    for _i in range(self.n_agents):
-                        _wi = _w[0][_i]
-                        # row tensor -- squeeze.
-                        if _wi.shape[0] == 1 and len(_wi.shape) == 2:
-                            _wi.squeeze_(0)
-                        n = len(_wi.shape)
-                        if n == 1: # 1D tensors OK
-                            if _wi.shape[0] > 1:
-                                # samples weights
-                                for _n in (7,):
-                                    _key = f'{_k}_{_i}_{_n}'
-                                    running_log[_key].append(float(_wi[_n]))
-                            else:
-                                _key = f'{_k}_{_i}_0'
-                                running_log[_key].append(float(_wi))
-                        else:
-                            # samples weights
-                            for _n in (7,):
-                                _key = f'{_k}_{_i}_{_n}'
-                                running_log[_key].append(float(_wi[_n, 0]))
 
     def nstep_returns(self, rewards, mask, values, nsteps):
         # nstep is a hyperparameter that regulates the number of look aheads
@@ -487,10 +453,4 @@ class ActorCriticNetworkedLearner:
             _opt.load_state_dict(_states)
 
     def _logfilter(self, params):
-        return filter(self._lftr, params.items())
-
-    def _lftr(self, x):
-        return 'fc1.' in x[0] or self.args.critic_type == 'ac_critic_baseline'
-
-    def _joint_observations(self):
-        return self.args.networked_joint_observations
+        return filter(lambda x: 'fc1.' in x[0], params.items())
