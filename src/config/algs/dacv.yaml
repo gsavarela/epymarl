@@ -33,10 +33,9 @@ critic_type: "ac_critic_networked" # All weights begin at the same place.
 
 # Networked agents
 networked_edges: 1  # maps n_agents: n_edges
-networked_rounds: 5  # At each consensus round try this many consensus matrices.
-networked_interval: 10 # Try consensus at every networked_interval number of training steps.
-networked_consensus_critic: False
-
+networked_rounds: 10  # At each consensus round try this many consensus matrices.
+networked_interval: 5 # Try consensus at every networked_interval number of training steps.
+networked_policy: True # Try consensus on the actor
 
 name: "dacv"
 t_max: 20_050_000
