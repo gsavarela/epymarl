@@ -86,9 +86,8 @@ class _GymmaWrapper(MultiAgentEnv):
             self._env = getattr(pretrained, pretrained_wrapper)(self._env)
 
         self.n_agents = self._env.n_agents
+        self._reward_factor = self.n_agents if 'mpe' in key else 1
         self._obs = None
-        if 'mpe' in key:
-            self.adjust_rewards = self.n_agents
 
         self.longest_action_space = max(self._env.action_space, key=lambda x: x.n)
         self.longest_observation_space = max(
@@ -96,8 +95,7 @@ class _GymmaWrapper(MultiAgentEnv):
         )
 
         self._seed = kwargs["seed"]
-        self._joint_rewards = kwargs.get('joint_rewards', True)
-        self._shared_rewards = kwargs.get('shared_rewards', True)
+        self.joint_rewards = kwargs.get('joint_rewards', True)
         self._env.seed(self._seed)
 
     def step(self, actions):
@@ -113,13 +111,10 @@ class _GymmaWrapper(MultiAgentEnv):
             )
             for o in self._obs
         ]
-        if self._shared_rewards and not self._joint_rewards:
-            reward = [float(np.mean(reward))] * self.n_agents
-        if self._joint_rewards:
+        if self._reward_factor > 1:
+            reward = [rw * self._reward_factor for rw in reward]
+        if self.joint_rewards:
             reward = [float(sum(reward))]
-        if self.adjust_rewards > 1:
-            reward = [r / self.adjust_rewards for r in reward]
-
         return reward, all(done), {}
 
     def get_obs(self):
@@ -157,7 +152,7 @@ class _GymmaWrapper(MultiAgentEnv):
         return self.n_agents * flatdim(self.longest_observation_space)
 
     def get_reward_size(self):
-        if self._joint_rewards:
+        if self.joint_rewards:
             return 1
         else:
             return self.n_agents
