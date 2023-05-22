@@ -1,38 +1,126 @@
-"""Plots
-
+"""
 Reference
 ---------
-[1] Papoudakis, Georgios and Christianos, Filippos and Sch\"{a}fer, Lukas and Albrecht, Stefano 
+[1] Papoudakis, Georgios and Christianos, Filippos and Sch\"{a}fer, Lukas and Albrecht, Stefano
 "Benchmarking Multi-Agent Deep Reinforcement Learning Algorithms in Cooperative Tasks",
 Proceedings of the Neural Information Processing Systems Track on Datasets and Benchmarks, 2021
 """
-import json
-from typing import Dict
+from typing import Dict, Union, Tuple
 from pathlib import Path
+from operator import itemgetter
 import re
 import string
-from operator import itemgetter
-from collections import defaultdict
-from typing import List
 
-from utils import standard_error
 import numpy as np
-import matplotlib.pyplot as plt
-# legends for multiple x-axis
-import matplotlib.lines as mlines
-import matplotlib
-# matplotlib.use('Tkinter')
-matplotlib.use('QtCairo')
-# matplotlib.use('Cairo')
+import pandas as pd
 
-Array = np.ndarray
+import matplotlib
+import matplotlib.pyplot as plt
+
+from src.utils.stats import confidence_interval, confidence_interval_bootstrap
+from IPython.core.debugger import set_trace
+# from src.utils.stats import standard_error
+
 FIGURE_X = 6.0
 FIGURE_Y = 4.0
 MEAN_CURVE_COLOR = (0.89, 0.282, 0.192)
 SMOOTHING_CURVE_COLOR = (0.33, 0.33, 0.33)
 SEED_PATTERN = r"seed=(.*?)\)"
 M_PATTERN = r"M=(.*?)\,"
+FIGS_SAVE_DIR = "plots/dataframes"
 
+# legends for multiple x-axis
+# import matplotlib.lines as mlines
+matplotlib.use('QtCairo')
+
+Array = np.ndarray
+
+ALGO_ID_TO_ALGO_LBL = {
+    'NTWA2C': 'NTWA2C+PC',
+    'IA2C_NS': 'IA2C_NS',
+    'IA2C': 'IA2C',
+    'MAA2C_NS': 'MAA2C_NS',
+    'MAA2C': 'MAA2C',
+    'NTWQL': 'NTWQL',
+    'IQL_NS': 'IQL_NS',
+    'VDN_NS': 'VDN_NS',
+    'IQL': 'IQL',
+    'VDN': 'VDN',
+    'INDA2C': 'INDA2C',
+    'DACV': 'DACV'
+}
+
+def task_plot(
+    timesteps: Dict[Tuple[str], Array],
+    results: Dict[Tuple[str], Array],
+    std_errors: Dict[Tuple[str], Array],
+    suptitle: str,
+    save_directory_path: Path = None,
+) -> None:
+    """Plots Figure 11 from [1] taking into account observability
+
+    Episodic results of all algorithms with parameter sharing in all environments
+    showing the mean and the 95% confidence interval over five different seeds.
+
+    Parameters
+    ----------
+    timesteps: Dict[Tuple[str], Array]
+        Key is the task and value is the number of timesteps.
+    results: Dict[Tuple[str], Array]
+        Key is the task and value is the return collected during training, e.g, rewards.
+    std_errors: Dict[Tuple[str], Array]
+        Key is the task and value is the confidence interval.
+    suptitle: str,
+        The superior title
+    ylabel: str
+        The name of the metric.
+    save_directory_path: Path = None
+        Saves the reward plot on a pre-defined path.
+
+    """
+    fig = plt.figure()
+    fig.set_size_inches(FIGURE_X, FIGURE_Y)
+    normalize_y_axis = "Foraging" in suptitle
+    # minor_x_ticks = "rware" in suptitle
+    # normalize_y_axis = False
+    minor_x_ticks = False
+
+    for algo_task_name in timesteps:
+        algoname, taskname = algo_task_name
+
+
+        if algoname.startswith("NTW"):
+            marker, color = "^", "C0"
+        elif algoname.startswith("IA2C") or algoname.startswith("IQL"):
+            marker, color = "x", "C1"
+        elif algoname.startswith("INDA2C"):
+            marker, color = "|", "C3"
+        elif algoname.startswith("DACV"):
+            marker, color = "h", "C7"
+        elif algoname.startswith("MAA2C") or algoname.startswith("VDN"):
+            marker, color = "p", "C5"
+        else:
+            raise ValueError(f'{algoname} not recognizable.')
+        X = timesteps[algo_task_name]
+        Y = results[algo_task_name]
+        err = std_errors[algo_task_name]
+        plt.plot(X, Y, label=ALGO_ID_TO_ALGO_LBL[algoname], marker=marker, linestyle="-", c=color)
+        plt.fill_between(X, Y - err, Y + err, facecolor=color, alpha=0.25)
+
+    plt.xlabel("Environment Timesteps")
+    plt.ylabel("Episodic Return")
+    plt.legend(loc='best')
+    if normalize_y_axis:
+        plt.ylim(bottom=0, top=1.1)
+    plt.suptitle(suptitle)
+    if minor_x_ticks:
+        x_ticks = [x for x in X if (x - 5_000) % 5_000_000 == 0]
+        plt.xticks(ticks=x_ticks)
+
+    plt.grid(which="major", axis="both")
+    _savefig(suptitle, save_directory_path)
+    plt.show()
+    plt.close(fig)
 
 def _savefig(suptitle: str, save_directory_path: Path = None) -> None:
     """Saves a figure, named after suptitle, if save_directory_path is provided
@@ -97,336 +185,6 @@ def _snakefy(title_case: str) -> str:
     fmt = title_case.translate(str.maketrans("", "", string.punctuation))
     return "_".join(fmt.lower().split())
 
-
-def task_plot(
-    timesteps: Array,
-    returns: Array,
-    std_errors: Array,
-    suptitle: str,
-    algoname: str,
-    save_directory_path: Path = None,
-) -> None:
-    """Plots Figure 11 for a sigle algo from [1]
-
-    Episodic returns of all algorithms with parameter sharing in all environments
-    showing the mean and the 95% confidence interval over five different seeds.
-
-    Parameters
-    ----------
-    timesteps: Array
-        The number of timesteps.
-    returns: Array
-        The returns collected during training, e.g, rewards.
-    std_errors: Array,
-        The confidence interval.
-    algoname: str,
-        Legend
-    ylabel: str
-        The name of the metric.
-    suptitle: str
-        The title.
-    save_directory_path: Path = None
-        Saves the reward plot on a pre-defined path.
-
-    """
-    fig = plt.figure()
-    fig.set_size_inches(FIGURE_X, FIGURE_Y)
-    normalize_y_axis = "Foraging" in suptitle
-
-    if algoname.startswith("IA2C"):
-        marker, color = "x", "C1"
-    if algoname.startswith("IPPO"):
-        marker, color = "|", "C2"
-    elif algoname.startswith("MAA2C"):
-        marker, color = "p", "C5"
-    elif algoname.startswith("MAPPO"):
-        marker, color = "h", "C6"
-    elif algoname.startswith("SGLA2C"):
-        marker, color = "p", "C9"
-    elif algoname.startswith("DSTA2C"):
-        marker, color = "*", "C10"
-    elif algoname.startswith("INDA2C"):
-        marker, color = ">", "C11"
-    else:
-        marker, color = "^", "C0"
-
-    plt.plot(timesteps, returns, label=algoname, marker=marker, linestyle="-", c=color)
-    plt.fill_between(
-        timesteps,
-        returns - std_errors,
-        returns + std_errors,
-        facecolor=color,
-        alpha=0.25,
-    )
-
-    plt.xlabel("Environment Timesteps")
-    plt.ylabel("Episodic Return")
-    plt.legend(loc=4)
-    if normalize_y_axis:
-        plt.ylim(bottom=0, top=1.1)
-    plt.suptitle(suptitle)
-    plt.grid(which="major", axis="both")
-    _savefig(suptitle, save_directory_path)
-    plt.show()
-    plt.close(fig)
-
-
-def task_plot2(
-    timesteps: Dict,
-    returns: Dict,
-    std_errors: Dict,
-    suptitle: str,
-    save_directory_path: Path = None,
-) -> None:
-    """Plots Figure 11 from [1] for many algorithms
-
-    Episodic returns of all algorithms with parameter sharing in all environments
-    showing the mean and the 95% confidence interval over five different seeds.
-
-
-    Parameters
-    ----------
-    timesteps: Dict[Array]
-        Key is the algoname and value is the number of timesteps.
-    returns:  Dict[Array]
-        Key is the algoname and value is the return collected during training, e.g, rewards.
-    std_errors: Dict[Array]
-        Key is the algoname and value is the confidence interval.
-    suptitle: str,
-        The superior title
-    ylabel: str
-        The name of the metric.
-    save_directory_path: Path = None
-        Saves the reward plot on a pre-defined path.
-
-    """
-    fig = plt.figure()
-    fig.set_size_inches(FIGURE_X, FIGURE_Y)
-    normalize_y_axis = "Foraging" in suptitle
-    minor_x_ticks = "rware" in suptitle
-
-    for algoname in timesteps:
-
-        if algoname.startswith("IA2C"):
-            marker, color = "x", "C1"
-        elif algoname.startswith("IPPO"):
-            marker, color = "|", "C2"
-        elif algoname.startswith("MAA2C"):
-            marker, color = "p", "C5"
-        elif algoname.startswith("MAPPO"):
-            marker, color = "h", "C7"
-        elif algoname.startswith("SGLA2C"):
-            marker, color = "p", "C3"
-        elif algoname.startswith("DSTA2C"):
-            marker, color = "*", "C4"
-        elif algoname.startswith("INDA2C"):
-            marker, color = ">", "C6"
-        else:
-            marker, color = "^", "C0"
-        X = timesteps[algoname]
-        Y = returns[algoname]
-        err = std_errors[algoname]
-        plt.plot(X, Y, label=algoname, marker=marker, linestyle="-", c=color)
-        plt.fill_between(X, Y - err, Y + err, facecolor=color, alpha=0.25)
-
-    plt.xlabel("Environment Timesteps")
-    plt.ylabel("Episodic Return")
-    plt.legend(loc=4)
-    if normalize_y_axis:
-        plt.ylim(bottom=0, top=1.1)
-    plt.suptitle(suptitle)
-    if minor_x_ticks:
-        x_ticks = [x for x in X if (x - 5_000) % 5_000_000 == 0]
-        plt.xticks(ticks=x_ticks)
-
-    plt.grid(which="major", axis="both")
-    _savefig(suptitle, save_directory_path)
-    _savefig(suptitle, save_directory_path)
-    plt.show()
-    plt.close(fig)
-
-def task_plot3(
-    timesteps: Dict,
-    returns: Dict,
-    std_errors: Dict,
-    suptitle: str,
-    save_directory_path: Path = None,
-) -> None:
-    """Plots Figure 11 from [1] taking into account observability
-
-    Episodic returns of all algorithms with parameter sharing in all environments
-    showing the mean and the 95% confidence interval over five different seeds.
-
-    Parameters
-    ----------
-    timesteps: Dict[Array]
-        Key is the task and value is the number of timesteps.
-    returns:  Dict[Array]
-        Key is the task and value is the return collected during training, e.g, rewards.
-    std_errors: Dict[Array]
-        Key is the task and value is the confidence interval.
-    suptitle: str,
-        The superior title
-    ylabel: str
-        The name of the metric.
-    save_directory_path: Path = None
-        Saves the reward plot on a pre-defined path.
-
-    """
-    fig = plt.figure()
-    fig.set_size_inches(FIGURE_X, FIGURE_Y)
-    normalize_y_axis = "Foraging" in suptitle
-    minor_x_ticks = "rware" in suptitle
-
-    for algo_task_name in timesteps:
-
-        algoname, taskname = algo_task_name
-        ispartial = '-2s-' in taskname
-        label = f'{algoname}{"-PO" if ispartial else ""}'
-        if algoname.startswith("IA2C"):
-            marker, color = "x", "C1"
-        elif algoname.startswith("IPPO"):
-            marker, color = "|", "C2"
-        elif algoname.startswith("MAA2C"):
-            marker, color = "p", "C5"
-        elif algoname.startswith("MAPPO"):
-            marker, color = "h", "C7"
-        elif algoname.startswith("SGLA2C") or algoname.startswith("REGA2C"):
-            marker, color = "p", "C3"
-        elif algoname.startswith("DSTA2C"):
-            marker, color = "*", "C4"
-        elif algoname.startswith("INDA2C"):
-            if ispartial:
-                marker, color = ">", "C6"
-            else:
-                marker, color = "|", "C2"
-        else:
-            if 'CONSENSUS' in algoname:
-                marker, color = "^", "C0"
-            elif 'REGRESSION' in algoname or 'DIFA2C' in algoname:
-                marker, color = "v", "C5"
-            else:
-                marker, color = "^", "C0"
-
-        X = timesteps[algo_task_name]
-        Y = returns[algo_task_name]
-        err = std_errors[algo_task_name]
-        plt.plot(X, Y, label=label, marker=marker, linestyle="-", c=color)
-        plt.fill_between(X, Y - err, Y + err, facecolor=color, alpha=0.25)
-
-    plt.xlabel("Environment Timesteps")
-    plt.ylabel("Episodic Return")
-    plt.legend(loc=4)
-    if normalize_y_axis:
-        plt.ylim(bottom=0, top=1.1)
-    plt.suptitle(suptitle)
-    if minor_x_ticks:
-        x_ticks = [x for x in X if (x - 5_000) % 5_000_000 == 0]
-        plt.xticks(ticks=x_ticks)
-
-    plt.grid(which="major", axis="both")
-    _savefig(suptitle, save_directory_path)
-    plt.show()
-    plt.close(fig)
-
-
-def task_plot4(
-    timesteps: Dict,
-    returns: Dict,
-    std_errors: Dict,
-    suptitle: str,
-    save_directory_path: Path = None,
-    dual_x_axis: bool = False
-) -> None:
-    """Plots Figure 11 from [1] taking into account observability
-
-    Episodic returns of all algorithms with parameter sharing in all environments
-    showing the mean and the 95% confidence interval over five different seeds.
-
-    Parameters
-    ----------
-    timesteps: Dict[Array]
-        Key is the task and value is the number of timesteps.
-    returns:  Dict[Array]
-        Key is the task and value is the return collected during training, e.g, rewards.
-    std_errors: Dict[Array]
-        Key is the task and value is the confidence interval.
-    suptitle: str,
-        The superior title
-    ylabel: str
-        The name of the metric.
-    save_directory_path: Path = None
-        Saves the reward plot on a pre-defined path.
-
-    """
-    fig = plt.figure()
-    fig.set_size_inches(FIGURE_X, FIGURE_Y)
-    ax1 = fig.add_subplot(111)
-    ax2 = ax1.twiny()
-    lines = []
-    algonames = []
-
-    normalize_y_axis = "Foraging" in suptitle
-    minor_x_ticks = "rware" in suptitle
-
-    for algoname in timesteps:
-
-        if algoname.startswith("IA2C"):
-            marker, color = "x", "C1"
-        elif algoname.startswith("IPPO"):
-            marker, color = "|", "C2"
-        elif algoname.startswith("MAA2C"):
-            marker, color = "p", "C5"
-        elif algoname.startswith("MAPPO"):
-            marker, color = "h", "C7"
-        elif algoname.startswith("SGLA2C"):
-            marker, color = "p", "C3"
-        elif algoname.startswith("DSTA2C"):
-            marker, color = "*", "C4"
-        elif algoname.startswith("INDA2C"):
-            marker, color = ">", "C6"
-        else:
-            marker, color = "^", "C0"
-        kwargs = {
-            'label': algoname,
-            'marker': marker,
-            'linestyle': '-',
-            'c': color
-        }
-
-        
-        ax = ax2 if dual_x_axis and algoname.startswith("SGLA2C") else ax1
-        X = timesteps[algoname]
-        Y = returns[algoname]
-        err = std_errors[algoname]
-        
-        # ax.plot(X, Y, label=algoname, marker=marker, linestyle="-", c=color)
-        ax.plot(X, Y, **kwargs)
-        ax.fill_between(X, Y - err, Y + err, facecolor=color, alpha=0.25)
-        # for dual_x_axis we need to use a proxy artist to explicitly paint
-        lines.append(mlines.Line2D([], [], **kwargs))
-        algonames.append(algoname)
-
-
-    ax1.set_xlabel("Environment Timesteps")
-    plt.ylabel("Episodic Return")
-    ax1.legend(lines, algonames, loc=4)
-    # handles, labels = ax1.get_legend_handles_labels()
-    if normalize_y_axis:
-        plt.ylim(bottom=0, top=1.1)
-    plt.suptitle(suptitle)
-    if minor_x_ticks:
-        x_ticks = [x for x in X if (x - 5_000) % 5_000_000 == 0]
-        ax1.set_xticks(ticks=x_ticks)
-
-    if dual_x_axis and 'SGLA2C' in timesteps:
-        ax2.set_xlabel("SGLA2C Timesteps")
-        ax2.tick_params(axis='x', colors='C3')
-        ax2.title.set_color('red')
-    ax1.grid(which="major", axis="y")
-    _savefig(suptitle, save_directory_path)
-    plt.show()
-    plt.close(fig)
 
 def ablation_plot(
     timesteps: Dict,
@@ -507,453 +265,167 @@ def ablation_plot(
     plt.show()
     plt.close(fig)
 
-def main2():
-    """Plots aggregating models by  task"""
-    BASE_PATH = Path("results/sacred/")
-    # algos_paths = BASE_PATH.glob("*a2c")  # Pattern matching ia2c and maa2c
-    # algos_paths = BASE_PATH.glob("maa2c_ns")  # Only look for maa2c_ns
-    # Match many algorithms
-    algos_paths = []
-    # for pattern in ("maa2c", "sgla2c", "dsta2c"):
-    # for pattern in ("inda2c",):
-    for pattern in ("sgla2c",):
-        algos_paths += [*BASE_PATH.glob(pattern)]
+################################################################
+# Plot unif. performance (bar chart).
+################################################################
+def barchart(environment: str, algo: str, hp_df: pd.DataFrame, max_returns=True, bootstrap=True):
+    """BarChart: Return vs Hyper Parameter Group"""
+    fig = plt.figure()
+    fig.set_size_inches(7.0, 5.0)
+    fig.tight_layout()
 
-    def task_matcher(x):
-        _paths = []
+    errors = []
+    ys = []
 
-        for _pattern in (
-            # "Foraging-*8x8-2p-2f-coop*",
-            # "Foraging-*10x10-3p-3f*",
-            # "Foraging-*15x15-3p-5f*",
-            # "Foraging-*15x15-4p-3f*",
-            "Foraging-*15x15-4p-5f*",
-        ):
-            _paths += [*x.glob(f"lbforaging:{_pattern}")]
-        return _paths
+    # Iteration columns
+    # TODO: Create a generator to iterate on groups.
+    environments = hp_df.columns.get_level_values(0)
+    hypergroups = hp_df.columns.get_level_values(1)
+    keys = {eh for eh in zip(environments, hypergroups)}
+    keys = sorted(sorted(keys, key=itemgetter(1)), key=itemgetter(0))
 
-    steps = defaultdict(list)
-    results = defaultdict(list)
-    for algo_path in algos_paths:
-        algo_name = algo_path.stem.upper()
-        # Matches every lbforaging task.
-        # for task_path in algo_path.glob("lbforaging*"):
-        for task_path in task_matcher(algo_path):
+    suffix_a = 'MaxReturns' if max_returns else 'AvgReturns'
+    suffix_b = 'Bootstrap' if bootstrap else 'Standard'
+    suptitle = f"{environment.split(':')[-1]} ({suffix_a}, {suffix_b})"
+    for key in keys:
+        columns = [(*key, i) for i in range(3)]
 
-            task_name = task_path.stem.split(":")[-1].split("-v")[0]
-            sample_size = 0
+        df = pd.concat([hp_df.xs(q, level=(0, 1, 2), axis=1) for q in columns], axis=1)
 
-            for path in task_path.rglob("metrics.json"):
-                with path.open("r") as f:
-                    data = json.load(f)
+        # Here we check the returns
+        if max_returns:
+            idx = df.values.sum(axis=1).argmax()
+            mub = min(idx + 3, df.values.shape[0])     # Upper limit
+            mlb = max(idx - 2, 0)   # Lower limit
+            mub, mlb = mub + (2 - (idx - mlb)), mlb - (3 - (mub - idx))  # Adjust limits
+            
+            data = df.values[mlb:mub, :].flatten()
 
-                if "test_return_mean" in data:
-                    _steps = data["test_return_mean"]["steps"]
-                    _values = data["test_return_mean"]["values"]
-                    print(f"source: {task_name} n_points:{len(_values)}")
-
-                    # Get at most the 41 first evaluations
-                    steps[(algo_name, task_name)].append(_steps[:41])
-                    results[(algo_name, task_name)].append(_values[:41])
-                    sample_size += 1
-
-            if sample_size > 0:
-                steps[(algo_name, task_name)] = np.vstack(steps[(algo_name, task_name)])
-                results[(algo_name, task_name)] = np.vstack(
-                    results[(algo_name, task_name)]
-                )
-
-    # Unique algos and tasks
-    algo_names, task_names = zip(*[*results.keys()])
-    algo_names, task_names = sorted(set(algo_names)), sorted(set(task_names))
-
-    # Makes a plot per task
-    for task_name in task_names:
-        xs = defaultdict(list)
-        mus = defaultdict(list)
-        std_errors = defaultdict(list)
-
-        for algo_name in algo_names:
-            if (algo_name, task_name) in steps:
-                # Computes average returns
-                xs[algo_name] = np.mean(steps[(algo_name, task_name)], axis=0)
-                mus[algo_name] = np.mean(results[(algo_name, task_name)], axis=0)
-                std = np.std(results[(algo_name, task_name)], axis=0)
-                std_errors[algo_name] = standard_error(std, sample_size, 0.95)
-
-        task_plot2(
-            xs,
-            mus,
-            std_errors,
-            task_name,
-            Path.cwd()
-            / "plots"
-            / "-".join(algo_names)
-            / task_name.split("-")[0].upper(),
-        )
-
-def main3(
-    algonames: str = ["inda2c"],
-    size: int = 8,
-    players: int = 2,
-    food: int = 2,
-    coop: bool = True,
-    po: bool = False,
-    baseline_critic: bool = False
-):
-    """Plots aggregating models by task pattern
-
-    Use to compare partial observable settings and fully
-    observable settings.
-
-    po: bool = False
-    Force partial observability
-    """
-    BASE_PATH = Path("results/sacred/")
-    # BASE_PATH = Path("results/sacred/inda2c/baseline_critic")
-    # baseline_critic/lbforaging:Foraging-10x10-2p-2f-coop-v2
-    # algos_paths = BASE_PATH.glob("*a2c")  # Pattern matching ia2c and maa2c
-    # algos_paths = BASE_PATH.glob("maa2c_ns")  # Only look for maa2c_ns
-    # Match many algorithms
-    algos_paths = []
-    for algoname in algonames:
-        algos_paths += [*BASE_PATH.glob(algoname)]
-
-    if baseline_critic:
-        # /home/gvarela/ilu/epymarl/results/sacred/ntwa2c/nonlinear_critic-absolute_coordinates-algov2
-        # algos_paths = [algo_path / 'nonlinear_critic-absolute_coordinates-algov2' for algo_path in algos_paths]
-        # algos_paths = [algo_path / 'nonlinear_critic-relative_coordinates-algov3' for algo_path in algos_paths]
-        # algos_paths = [algo_path / 'nonlinear_critic-absolute_coordinates-algov3' for algo_path in algos_paths]
-        # algos_paths = [algo_path / 'nonlinear_critic-relative_coordinates-algov2' for algo_path in algos_paths]
-        # algos_paths = [algo_path / 'nonlinear_critic-regression_problem' for algo_path in algos_paths]
-        # algos_paths = [algo_path / 'nonlinear_critic-regression_problem-validation' for algo_path in algos_paths]
-        # algos_paths = [algo_path / 'nonlinear_critic-diffusion_validation' for algo_path in algos_paths]
-        # algos_paths = [algo_path / 'nonlinear_critic-regression_problem-target_updates' for algo_path in algos_paths]
-        # algos_paths = [algo_path / 'nonlinear_critic-regression_problem-hidden_64' for algo_path in algos_paths]
-        # algos_paths = [algo_path / 'nonlinear_critic-regression_problem' for algo_path in algos_paths]
-        # algos_paths = [algo_path / 'nonlinear_critic-full_observability_10steps' for algo_path in algos_paths]
-        # algos_paths = [algo_path / 'nonlinear_critic-regression_problem-10_steps' for algo_path in algos_paths]
-        # algos_paths = [algo_path / 'linear_critic-consensus_vs_regression' for algo_path in algos_paths]
-        # algos_paths = [algo_path / 'shallow_critic-top_4' for algo_path in algos_paths]
-        # algos_paths = [algo_path / 'shallow_critic-100_steps' for algo_path in algos_paths]
-        # algos_paths = [algo_path / 'nonlinear_critic-debug' for algo_path in algos_paths]
-        # algos_paths = [algo_path / '30_000_000' for algo_path in algos_paths]
-        algos_paths = [algo_path / 'random_seeds' for algo_path in algos_paths]
-        
-    # algos_paths = []
-    _coop = '-coop' if coop else ''
-    title = f'Foraging {size}x{size}-{players}p-{food}f{_coop}'
-    if baseline_critic:
-        # title += f' (AlgoV2-AbsoluteCoordinates)'
-        # title += f' (AlgoV3-RelativeCoordinates)'
-        # title += f' (AlgoV3-AbsoluteCoordinates)'
-        # title += f' (AlgoV2-RelativeCoordinates)'
-        # title += f' (RegressionProblem-Validation)'
-        # title += f' (RegressionProblem)'
-        # title += f' (DiffusionProblem)'
-        # title += f' (RegressionProblem-TargetUpdates)'
-        # title += f' (RegressionProblem-Hidden64)'
-        # title += f' (RegressionProblem-5STEPS)'
-        # title += f' (RegressionProblem-FO_10STEPS)'
-        # title += f' (LinearCritic)'
-        # title += f' (ShallowCritic-TOP_4)'
-        # title += f' (ShallowCritic-100_steps)'
-        title += f' (random_seeds)'
-
-    def task_pattern_builder(x):
-        _paths = []
-        partial = '2s-'if po else '*'
-
-        _pattern = f'Foraging-{partial}{size}x{size}-{players}p-{food}f{_coop}'
-        # _pattern = f'Foraging-{size}x{size}-{players}p-{food}f{_coop}'
-        # _paths += [*x.glob(f"lbforaging:{_pattern}-v2")]
-        _paths += [*x.glob(f"lbforaging:{_pattern}-v1")]
-        return _paths
-
-    steps = defaultdict(list)
-    results = defaultdict(list)
-    for algo_path in algos_paths:
-        # Matches every lbforaging task.
-        if baseline_critic:
-            algoname = algo_path.parent.stem.upper()
+            ylabel = 'Max Returns'
         else:
-            algoname = algo_path.stem.upper()
-        print(algoname, task_pattern_builder(algo_path))
-        for task_path in task_pattern_builder(algo_path):
+            data = df.values.flatten()
+            ylabel = 'Avg Returns'
 
-            task_name = task_path.stem.split(":")[-1].split("-v")[0]
-            key = (algoname, task_name)
-            sample_size = 0
+        y = data.mean()
+        if bootstrap:
+            ci = confidence_interval_bootstrap(data)
+        else:
+            ci = confidence_interval(data, data.shape[0], 0.95)
 
-            for path in task_path.rglob("metrics.json"):
-                with path.open("r") as f:
-                    data = json.load(f)
-
-                if "test_return_mean" in data:
-                    _steps = data["test_return_mean"]["steps"]
-                    _values = data["test_return_mean"]["values"]
-                    print(f"algoname: {algoname} source: {task_name} n_points:{len(_values)}")
-
-                    steps[key].append(_steps)
-                    results[key].append(_values)
-                    sample_size += 1
-
-            if sample_size > 0:
-                steps[key] = np.vstack(steps[key])
-                results[key] = np.vstack(
-                    results[key]
-                )
-
-    # Unique algos and tasks
-    algo_task_names = sorted(sorted([*results.keys()], key=itemgetter(1)), key=itemgetter(0))
-
-    # Makes a plot per task
-    xs = defaultdict(list)
-    mus = defaultdict(list)
-    std_errors = defaultdict(list)
-    for algo_task_name in algo_task_names:
-        # Computes average returns
-        xs[algo_task_name] = np.mean(steps[algo_task_name], axis=0)
-        mus[algo_task_name] = np.mean(results[algo_task_name], axis=0)
-        std = np.std(results[algo_task_name], axis=0)
-        std_errors[algo_task_name] = standard_error(std, sample_size, 0.95)
-
-    algonames, _ = zip(*algo_task_names)
-    algonames = sorted(set(algonames))
-    task_plot3(
-        xs,
-        mus,
-        std_errors,
-        title,
-        Path.cwd()
-        / "plots"
-        / "nonlinear"
-        / "-".join(algonames)
-        / title.split()[0].upper(),
+        # Move this to plots.py
+        error_top = ci[1] - y
+        error_bottom = y - ci[0]
+        errors.append([error_top, error_bottom])
+        ys.append(y)
+    errors = np.array(errors).T
+    xs = np.arange(len(ys))
+    plt.errorbar(xs, ys,
+        yerr=np.max(errors, 0),
+        fmt='o',
+        capsize=6,
+        zorder=50,
     )
+    plt.xticks(xs, labels=xs)
 
+    plt.grid()
+    plt.ylabel(ylabel)
+    plt.xlabel('Hyperparameter Groups')
+    plt.suptitle(suptitle)
 
-def main4(
-    algonames: List[str] = ["sgla2c", "dsta2c", "inda2c"],
-    size: int = 8,
-    players: int = 2,
-    food: int = 2,
-    coop: bool = False,
-    dual_x_axis: bool = False
-):
-    """Plots multi-models using per model task pattern
-
-    Requires every time series to have the same number of points
-    * inda2c: Use partial observable setting.
-    * sgla2c: Adjust timestep scale.
-    """
-    BASE_PATH = Path("results/sacred/")
-    # Match many algorithms
-    algos_paths = []
-    for algoname in algonames:
-        algos_paths += [*BASE_PATH.glob(algoname)]
-    _coop = '-coop' if coop else ''
-    title = f'Foraging {size}x{size}-{players}p-{food}f{_coop}'
-
-    def task_pattern_builder(x):
-        _paths = []
-        _partial = '-2s' if 'inda2c' in x.as_posix() else ''
-        _pattern = f'Foraging{_partial}-{size}x{size}-{players}p-{food}f{_coop}'
-        _paths += [*x.glob(f"lbforaging:{_pattern}*")]
-        return _paths
-
-    steps = defaultdict(list)
-    results = defaultdict(list)
-    taskname = title.lower()
-    req_ntest = 41  # Required number of tests 
-    for algo_path in algos_paths:
-        algoname = algo_path.stem.upper()
-        # Matches every lbforaging task.
-        print(algoname, task_pattern_builder(algo_path))
-        for task_path in task_pattern_builder(algo_path):
-
-            sample_size = 0
-            for path in task_path.rglob("metrics.json"):
-                with path.open("r") as f:
-                    data = json.load(f)
-
-                if "test_return_mean" in data:
-                    _steps = data["test_return_mean"]["steps"]
-                    _values = data["test_return_mean"]["values"]
-                    print(f"algo: {algoname}\tsource: {taskname}\tn_points:{len(_values)}")
-
-                    # Get at most the 41 first evaluations
-                    steps[algoname].append(_steps[:req_ntest])
-                    results[algoname].append(_values[:req_ntest])
-                    sample_size += 1
-
-            if sample_size > 0:
-                steps[algoname] = np.vstack(steps[algoname])
-                results[algoname] = np.vstack(
-                    results[algoname]
-                )
-
-            n_seeds, n_steps = steps[algoname].shape
-            if n_steps < req_ntest:
-
-                print(f'Warning: {algoname} has less points ({n_steps}) than required({req_ntest}). \n' +
-                       'Completing series with last observation')
-                # If there is not the required number of tests
-                prev_step = steps[algoname][:, -2][:, None]
-                for i in range(n_steps, req_ntest):
-                    step_size = steps[algoname][:, -1][:, None] - prev_step
-                    steps[algoname] = np.append(steps[algoname], steps[algoname][:, -1][:, None] + step_size, axis=1)
-                    results[algoname] = np.append(results[algoname], results[algoname][:, -1][:, None], axis=1)
-                    prev_step = steps[algoname][-1]
-                    
-    # Makes a plot per task
-    xs = defaultdict(list)
-    mus = defaultdict(list)
-    std_errors = defaultdict(list)
-    for algoname in algonames:
-        # Computes average returns
-        algoname = algoname.upper()
-        xs[algoname] = np.mean(steps[algoname], axis=0)
-        mus[algoname] = np.mean(results[algoname], axis=0)
-        std = np.std(results[algoname], axis=0)
-        std_errors[algoname] = standard_error(std, sample_size, 0.95)
-
-
-    task_plot4(
-        xs,
-        mus,
-        std_errors,
-        title,
+    _savefig(
+        suptitle,
         Path.cwd()
-        / "plots"
-        / "-".join(algonames)
-        / title.split()[0].upper(),
-        dual_x_axis=dual_x_axis
+        / 'plots'
+        / 'dataframes'
+        / algo.upper()
+        / environment.split(':')[0].upper()
     )
+    plt.show()
 
-def ablation(
-    algoname: str = 'ntwa2c',
-    size: int = 15,
-    players: int = 4,
-    food: int = 5,
-    coop: bool = False,
-    dual_x_axis: bool = False
-):
-    """Plots ablation for a particular scenario.
+################################################################
+# Plot sensitivity (bar chart).
+################################################################
+def barchart_sensitivity(environment: str, algo: str, sen_df: pd.DataFrame, max_returns=True, bootstrap=True):
+    """BarChart: Return vs Hyper Parameter Group"""
+    fig = plt.figure()
+    fig.set_size_inches(7.0, 5.0)
+    fig.tight_layout()
 
-    Uses parent folder as category for comparison.
-    """
-    BASE_PATH = Path(f"results/sacred/{algoname}/ablation-target")
+    categories = ['networked_edges', 'networked_rounds', 'networked_interval']
 
-    # Match many algorithms
-    _coop = '-coop' if coop else ''
-    title = f'Foraging {size}x{size}-{players}p-{food}f{_coop}'
+    # Iteration columns
+    # TODO: Create a generator to iterate on groups.
+    # environments = hp_df.columns.get_level_values(0)
+    # hypergroups = hp_df.columns.get_level_values(1)
+    # keys = {eh for eh in zip(environments, hypergroups)}
+    # keys = sorted(sorted(keys, key=itemgetter(1)), key=itemgetter(0))
+    #
+    suffix_a = 'MaxReturns' if max_returns else 'AvgReturns'
+    suffix_b = 'Bootstrap' if bootstrap else 'Standard'
+    # suptitle = f"{environment.split(':')[-1]} ({suffix_a}, {suffix_b})"
+    #
+    prefix = f"{environment.split(':')[-1]}"
+    # for key in keys:
+    #     columns = [(*key, i) for i in range(3)]
+    #
+    #     df = pd.concat([hp_df.xs(q, level=(0, 1, 2), axis=1) for q in columns], axis=1)
+    #
+    #     # Here we check the returns
+    #     if max_returns:
+    #         idx = df.values.sum(axis=1).argmax()
+    #         mub = min(idx + 3, df.values.shape[0])     # Upper limit
+    #         mlb = max(idx - 2, 0)   # Lower limit
+    #         mub, mlb = mub + (2 - (idx - mlb)), mlb - (3 - (mub - idx))  # Adjust limits
+    #         
+    #         data = df.values[mlb:mub, :].flatten()
+    #
+    #         ylabel = 'Max Returns'
+    #     else:
+    #         data = df.values.flatten()
+    #         ylabel = 'Avg Returns'
+    set_trace()
+    for category in categories:
+        suffix_c = category.title().replace('_', '')
+        suptitle = f'{prefix} ({suffix_a}, {suffix_b}, {suffix_c})'
+        xs = sen_df[category].unique()
 
-    def task_pattern_builder(x):
-        _paths = []
-        _partial = '-2s' if 'inda2c' in x.as_posix() else ''
-        _pattern = f'Foraging{_partial}-{size}x{size}-{players}p-{food}f{_coop}'
-        _paths += [*x.rglob(f"lbforaging:{_pattern}*")]
-        return _paths
+        errors = []
+        ys = []
+        for x in xs:
+            data = sen_df.loc[sen_df[category] == x, 'value']
+            y = data.mean()
+            ylabel = suffix_a
+            if bootstrap:
+                ci = confidence_interval_bootstrap(data)
+            else:
+                ci = confidence_interval(data, data.shape[0], 0.95)
 
-    steps = defaultdict(list)
-    results = defaultdict(list)
-    taskname = title.lower()
-    req_ntest = 41  # Required number of tests 
+            # Move this to plots.py
+            error_top = ci[1] - y
+            error_bottom = y - ci[0]
+            errors.append([error_top, error_bottom])
+            ys.append(y)
+        errors = np.array(errors).T
+        plt.errorbar(xs, ys,
+            yerr=np.max(errors, 0),
+            fmt='o',
+            capsize=6,
+            zorder=50,
+        )
+        plt.xticks(xs, labels=xs)
 
-    ablations = sorted(task_pattern_builder(BASE_PATH), key=lambda x: x.parent.stem)
-    # Matches every lbforaging task.
-    print(algoname, task_pattern_builder(BASE_PATH))
-    categorynames = []
-    for task_path in ablations:
-        categoryname = task_path.parent.stem
-        sample_size = 0
-        for path in task_path.rglob("metrics.json"):
-            with path.open("r") as f:
-                data = json.load(f)
+        plt.grid()
+        plt.ylabel(ylabel)
+        plt.xlabel(suffix_c)
+        plt.suptitle(suptitle)
 
-            if "test_return_mean" in data:
-                _steps = data["test_return_mean"]["steps"]
-                _values = data["test_return_mean"]["values"]
-                print(f"algo: {algoname}\tsource: {categoryname}\tn_points:{len(_values)}")
-
-                # Get at most the 41 first evaluations
-                steps[categoryname].append(_steps[:req_ntest])
-                results[categoryname].append(_values[:req_ntest])
-                sample_size += 1
-
-        if sample_size > 0:
-            steps[categoryname] = np.vstack(steps[categoryname])
-            results[categoryname] = np.vstack(
-                results[categoryname]
-            )
-
-        n_seeds, n_steps = steps[categoryname].shape
-        if n_steps < req_ntest:
-            print(f'Warning: {categoryname} has less points ({n_steps}) than required({req_ntest}). \n' +
-                   'Completing series with last observation')
-            # If there is not the required number of tests
-            prev_step = steps[categoryname][:, -2][:, None]
-            for i in range(n_steps, req_ntest):
-                step_size = steps[categoryname][:, -1][:, None] - prev_step
-                steps[categoryname] = np.append(steps[categoryname], steps[categoryname][:, -1][:, None] + step_size, axis=1)
-                results[categoryname] = np.append(results[categoryname], results[categoryname][:, -1][:, None], axis=1)
-                prev_step = steps[categoryname][-1]
-        categorynames.append(categoryname)
-
-    # Makes a plot per task
-    xs = defaultdict(list)
-    mus = defaultdict(list)
-    std_errors = defaultdict(list)
-    for categoryname in categorynames:
-        # Computes average returns
-        categoryname = categoryname.upper()
-        xs[categoryname] = np.mean(steps[categoryname], axis=0)
-        mus[categoryname] = np.mean(results[categoryname], axis=0)
-        std = np.std(results[categoryname], axis=0)
-        std_errors[categoryname] = standard_error(std, sample_size, 0.95)
-    
-    
-    ablation_plot(
-        xs,
-        mus,
-        std_errors,
-        title,
-        Path.cwd()
-        / "plots"
-        / "-".join(categorynames)
-        / title.split()[0].upper(),
-    )
-
-if __name__ == "__main__":
-    # ablation(
-    #     algoname='ntwa2c',
-    #     size=15,
-    #     players=4,
-    #     food=5,
-    #     coop=False,
-    #     dual_x_axis=False)
-
-    # main3(algonames=["inda2c", "ntwa2c"], size=10, players=2, food=2, coop=True, po=False)
-    # main3(algonames=["inda2c", "rega2c"], size=10, players=2, food=2, coop=True, po=False, baseline_critic=True)
-    # main3(algonames=["inda2c", "ntwa2c"], size=10, players=3, food=3, coop=False, po=True, baseline_critic=True)
-    # main3(algonames=["inda2c", "ntwa2c", "ia2c_ns"], size=10, players=3, food=3, coop=False, po=True, baseline_critic=True)
-    main3(algonames=["ia2c_ns", "ntwa2c"], size=15, players=3, food=5, coop=False, po=False, baseline_critic=True)
-    # main3(algonames=["ia2c_ns", "ntwa2c"], size=15, players=4, food=5, coop=False, po=False, baseline_critic=True)
-    # main3(algonames=["inda2c","ntwa2c"], size=15, players=3, food=3, coop=False, po=True)
-    # main3(algonames=["inda2c", "ntwa2c"], size=10, players=2, food=3, coop=True, po=False)
-    # main3(algonames=["inda2c"], size=15, players=3, food=3, coop=False, po=True)
-    # main4(size=8, players=2, food=2, coop=True, dual_x_axis=True)
-    # main4(size=10, players=3, food=3, dual_x_axis=True)
-    # main4(size=15, players=3, food=5, dual_x_axis=True)
-    # main4(size=15, players=4, food=3, dual_x_axis=True)
-    # main4(size=15, players=4, food=5, dual_x_axis=True)
-    # main3(algoname="inda2c", size=8, players=2, food=2, coop=True)
-    # main3(algoname="inda2c", size=10, players=3, food=3, coop=False)
-    # main3(algonames=["inda2c", "ntwa2c", "dsta2c"], size=15, players=3, food=5, coop=False)
-    # main3(algonames=["inda2c", "ntwa2c", "dsta2c"], size=15, players=4, food=3, coop=False)
-    # main3(algonames=["inda2c", "ntwa2c", "dsta2c"], size=15, players=4, food=5, coop=False)
-    # main3(algoname="inda2c", size=15, players=4, food=5, coop=False)
-    # algonames = ["sgla2c", "dsta2c", "inda2c"]
-    # main4(algonames=algonames, size=15, players=4, food=3, coop=False)
-    # main4(algonames=algonames, size=15, players=4, food=5, coop=False)
+        _savefig(
+            suptitle,
+            Path.cwd()
+            / 'plots'
+            / 'dataframes'
+            / algo.upper()
+            / environment.split(':')[0].upper()
+            / 'sensitivity'
+        )
+        plt.show()
