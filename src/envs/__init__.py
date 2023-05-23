@@ -86,7 +86,7 @@ class _GymmaWrapper(MultiAgentEnv):
             self._env = getattr(pretrained, pretrained_wrapper)(self._env)
 
         self.n_agents = self._env.n_agents
-        self._reward_factor = self.n_agents if 'mpe' in key else 1
+        self._reward_factor = self.n_agents if ('mpe' in key and 'v0' in key) else 1
         self._obs = None
 
         self.longest_action_space = max(self._env.action_space, key=lambda x: x.n)
@@ -112,7 +112,7 @@ class _GymmaWrapper(MultiAgentEnv):
             for o in self._obs
         ]
         if self._reward_factor > 1:
-            reward = [rw * self._reward_factor for rw in reward]
+            reward = [rw / self._reward_factor for rw in reward]
         if self.joint_rewards:
             reward = [float(sum(reward))]
         return reward, all(done), {}
