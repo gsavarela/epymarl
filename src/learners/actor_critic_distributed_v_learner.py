@@ -15,6 +15,8 @@ from modules.critics.mlp import MLP
 
 from components.consensus import consensus_matrices
 
+    
+
 class JointRewardPredictor(MLP):
     '''Forecast the joint rewards using the private reward'''
     def __init__(self, scheme, args):
@@ -371,11 +373,19 @@ class ActorCriticDistributedVLearner:
         
 
     def consensus_step(self, batch, mask, running_log, t_env):
-        self._consensus_step(batch, mask, running_log, t_env, self.critic, self.critic_params, enumerate(self.critic.critics), log=True)
-        if self.args.networked_policy:  # Consensus w.r.t actor
-            self._consensus_step(batch, mask, running_log, t_env, self.mac, self.agent_params, enumerate(self.mac.agent.agents), log=False)
+        # 1. Draw networked_rounds consensus matrices 
+        consensus_matrices = self._draw_consensus_matrices()
 
-    def _consensus_step(self, batch, mask, running_log, t_env, mas, mas_params, delegates, log=False):
+        # 2. Consensus w.r.t joint rewards
+        # TODO: (Re)Implement
+
+        # 3. Consensus w.r.t critic
+        self._consensus_step(batch, mask, running_log, t_env, self.critic, self.critic_params, enumerate(self.critic.critics), consensus_matrices, log=True)
+
+        if self.args.networked_policy:  # Consensus w.r.t actor
+            self._consensus_step(batch, mask, running_log, t_env, self.mac, self.agent_params, enumerate(self.mac.agent.agents), consensus_matrices, log=False)
+
+    def _consensus_step(self, batch, mask, running_log, t_env, mas, mas_params, mas_nns, consensus_matrices, log=False):
 
         t_max = batch.max_seq_length - 1
 
@@ -418,9 +428,8 @@ class ActorCriticDistributedVLearner:
 
             consensus_metropolis_logs = {}
             for k in range(self.consensus_rounds):
-                idx = np.random.randint(0, high=len(self.cwms))
-                cwm = self.cwms[idx]
-                consensus_metropolis_logs[k] = cwm.clone()
+                cwm = consensus_matrices[k].clone()
+                consensus_metropolis_logs[k] = cwm
 
                 for _key, _weights in consensus_parameters.items():
                     # [n_agents, features_in, features_out]
@@ -436,9 +445,9 @@ class ActorCriticDistributedVLearner:
                     consensus_parameters_logs[_key + f'_{k + 1}'] = [_w]
 
                 # update parameters after consensus
-                for _i, _delegate in delegates:
-                    for _key, _value in _delegate.named_parameters():
-                        _value.data = th.nn.parameter.Parameter(consensus_parameters[_key][0][_i, :])
+                for _i, _nn in mas_nns:
+                    for _key, _weights in _nn.named_parameters():
+                        _weights.data = th.nn.parameter.Parameter(consensus_parameters[_key][0][_i, :])
 
                 if log and (t_env - self.log_stats_t >= self.args.learner_log_interval):
                     vs = []
@@ -499,6 +508,10 @@ class ActorCriticDistributedVLearner:
             self.target_critic.parameters(), self.critic.parameters()
         ):
             target_param.data.copy_(target_param.data * (1.0 - tau) + param.data * tau)
+
+    def _draw_consensus_matrices(self):
+        indices = np.random.randint(0, high=len(self.cwms), size=self.args.networked_rounds)
+        return [self.cwms[ind] for ind in indices]
 
     def cuda(self):
         self.mac.cuda()
