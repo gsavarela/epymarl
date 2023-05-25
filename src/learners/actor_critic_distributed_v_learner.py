@@ -6,6 +6,7 @@ from operator import itemgetter
 import numpy as np
 import torch as th
 from torch.optim import Adam
+from functools import partial
 
 
 from components.episode_buffer import EpisodeBatch
@@ -14,8 +15,6 @@ from modules.critics import REGISTRY as critic_registry
 from modules.critics.mlp import MLP
 
 from components.consensus import consensus_matrices
-
-    
 
 class JointRewardPredictor(MLP):
     '''Forecast the joint rewards using the private reward'''
@@ -373,29 +372,35 @@ class ActorCriticDistributedVLearner:
         
 
     def consensus_step(self, batch, mask, running_log, t_env):
-        # 1. Draw networked_rounds consensus matrices 
-        consensus_matrices = self._draw_consensus_matrices()
+
+        # 1. Draw networked_rounds consensus matrices &
+        # Make a common callable interface
+        indices = np.random.randint(0, high=len(self.cwms), size=self.args.networked_rounds)
+        consensus_matrices =[self.cwms[ind] for ind in indices]
+        comm = partial(self._consensus_step, batch, mask, running_log, t_env, consensus_matrices)
 
         # 2. Consensus w.r.t joint rewards
-        # TODO: (Re)Implement
+        comm(self.joint_reward_params, enumerate(self.joint_reward_predictors))
 
         # 3. Consensus w.r.t critic
-        self._consensus_step(batch, mask, running_log, t_env, self.critic, self.critic_params, enumerate(self.critic.critics), consensus_matrices, log=True)
+        comm(self.critic_params, enumerate(self.critic.critics), mas_log=self.critic)
 
-        if self.args.networked_policy:  # Consensus w.r.t actor
-            self._consensus_step(batch, mask, running_log, t_env, self.mac, self.agent_params, enumerate(self.mac.agent.agents), consensus_matrices, log=False)
+        # 4. Consensus w.r.t actor
+        if self.args.networked_policy:  
+            comm(self.agent_params, enumerate(self.mac.agent.agents))
 
-    def _consensus_step(self, batch, mask, running_log, t_env, mas, mas_params, mas_nns, consensus_matrices, log=False):
+    def _consensus_step(self, batch, mask, running_log, t_env, consensus_matrices,  mas_params, mas_nns, mas_log=None):
 
         t_max = batch.max_seq_length - 1
 
         consensus_parameters = {}
         consensus_parameters_logs = {}
+        log = False and (mas_log is not None) # Remove False to log critic
         with th.no_grad():
             if log and (t_env - self.log_stats_t >= self.args.learner_log_interval): # LOG.
                 vs = []
                 for _i in range(self.n_agents):
-                    vs.append(mas(batch, _i)[:, :t_max])
+                    vs.append(mas_log(batch, _i)[:, :t_max])
                 v = th.cat(vs, dim=2)
                 v[mask==0] = 0
                 consensus_values = (v.sum(dim=-1, keepdims=True) / th.clamp(mask.sum(dim=-1, keepdims=True), min=1))
@@ -406,7 +411,7 @@ class ActorCriticDistributedVLearner:
                 # consolidates episode segregating by player
                 vs = []
                 for _i in range(self.n_agents):
-                    vs.append(mas(batch, _i, j=0)[:, :t_max])
+                    vs.append(mas_log(batch, _i, j=0)[:, :t_max])
                 v = th.cat(vs, dim=2)
                 v[mask==0] = 0
                 v_mean_batch_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
