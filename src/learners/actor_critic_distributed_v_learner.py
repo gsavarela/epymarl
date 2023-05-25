@@ -113,19 +113,26 @@ class ActorCriticDistributedVLearner:
         critic_mask = mask.clone()
 
         # This processes each player sequentially.
-        td_error, critic_train_stats = self.train_critic_sequential(
+        # Compute the target_values (forward pass critic network).
+        target_vals, current_vals, critic_train_stats = self.train_critic_sequential(
             self.critic, self.target_critic, batch, rewards, critic_mask
         )
 
-        j_rewards, critic_train_stats = self.joint_reward_prediction_step(
+        # Compute the joint rewards (forward pass joint reward network).
+        joint_rewards, critic_train_stats = self.joint_reward_prediction_step(
             rewards, batch, mask, critic_train_stats
         )
 
+        # Compute advantage target returns (using joint reward). 
+        target_returns = self.nstep_returns(
+            joint_rewards, mask, target_vals, self.args.q_nstep
+        )
+        # Compute advantage
+        advantages = target_returns - current_vals
         self.mac.init_hidden(batch.batch_size)
         pg_loss_acum = th.tensor(0.0)
         grad_norm_acum = th.tensor(0.0)
         joint_pi = []
-        advantages = j_rewards + td_error.detach()
 
         # initialize hidden states before new batch arrives.
         for _i, _opt, _params, _actions, _advantages, _mask in zip(
@@ -307,7 +314,7 @@ class ActorCriticDistributedVLearner:
             float((target_returns * mask).sum().item() / mask_elems)
         )
 
-        return masked_td_error, running_log
+        return target_vals, v, running_log
 
     def joint_reward_prediction_step(self, rewards, batch, mask, running_log):
 
@@ -355,7 +362,7 @@ class ActorCriticDistributedVLearner:
 
         with th.no_grad():
             masked_error = th.cat(masked_errors, dim=2)
-            j_rewards = th.cat(joint_rewards, dim=2)
+            joint_rewards = th.cat(joint_rewards, dim=2)
             
         running_log["j_reward_loss"].append(float(total_loss.item()))
         running_log["j_reward_grad_norm"].append(float(total_grad_norm.item()))
@@ -364,11 +371,11 @@ class ActorCriticDistributedVLearner:
             float(masked_error.abs().sum().item() / mask_elems)
         )
         # TODO: Sum agent axis
-        running_log["j_reward_mean"].append(float((j_rewards * mask).sum().item() / mask_elems))
+        running_log["j_reward_mean"].append(float((joint_rewards * mask).sum().item() / mask_elems))
         running_log["gt_reward_mean"].append(
             float((rewards * mask).sum().item() / mask_elems)
         )
-        return j_rewards, running_log
+        return joint_rewards, running_log
         
 
     def consensus_step(self, batch, mask, running_log, t_env):
