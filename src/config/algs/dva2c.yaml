@@ -38,5 +38,5 @@ networked_rounds: 5   # At each consensus round try this many consensus matrices
 networked_interval: 10 # Try consensus at every networked_interval number of training steps.
 networked_policy: False # Try consensus on the actor
 
-name: "dacv"
+name: "dva2c"
 t_max: 20_050_000
