@@ -33,8 +33,6 @@ from src.utils.loaders import loader
 import numpy as np
 
 from incense import ExperimentLoader
-from IPython.core.debugger import set_trace
-
 
 Array = np.ndarray
 ALGO_ID_TO_ALGO_LBL = {
@@ -110,7 +108,6 @@ def main(
     """
     for algo in algonames:
         df = loader(environment, algo, query_group=query_group)
-        set_trace()
 
         X = np.vstack(df.values.tolist())
         # Computes maximum returns

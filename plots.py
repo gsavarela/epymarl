@@ -18,7 +18,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 from src.utils.stats import confidence_interval, confidence_interval_bootstrap
-from IPython.core.debugger import set_trace
 # from src.utils.stats import standard_error
 
 FIGURE_X = 6.0
@@ -383,7 +382,6 @@ def barchart_sensitivity(environment: str, algo: str, sen_df: pd.DataFrame, max_
     #     else:
     #         data = df.values.flatten()
     #         ylabel = 'Avg Returns'
-    set_trace()
     for category in categories:
         suffix_c = category.title().replace('_', '')
         suptitle = f'{prefix} ({suffix_a}, {suffix_b}, {suffix_c})'

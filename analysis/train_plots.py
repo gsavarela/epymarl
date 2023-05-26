@@ -6,7 +6,6 @@ from typing import List
 from src.utils.stats import standard_error
 from src.utils.loaders import loader
 from src.utils.plots import task_plot, barchart
-from IPython.core.debugger import set_trace
 
 import numpy as np
 import pandas as pd
@@ -40,7 +39,6 @@ def main(
     # 1. Queries algos and aggregates runs
     dataframes = []
     for algo in algonames:
-        set_trace()
         df = loader(environment, algo, query_group=query_group)
         algo_task_names.append((algo.upper(), environment))
         dataframes.append(df)
@@ -60,7 +58,6 @@ def main(
     #     # HOTFIX
     #     df = df.loc[index, :]
     df = pd.concat([df.loc[index, :] for df in dataframes], axis=1)
-    set_trace()
     # 2. Unite runs and generate group statistics
     algo_task_names = sorted(sorted(algo_task_names, key=itemgetter(1)), key=itemgetter(0))
 

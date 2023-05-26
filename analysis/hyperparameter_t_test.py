@@ -29,8 +29,6 @@ matplotlib.use('QtCairo')
 
 from incense import ExperimentLoader
 
-from IPython.core.debugger import set_trace
-
 Array = np.ndarray
 # FIGURE_X = 6.0
 # FIGURE_Y = 4.0
@@ -350,7 +348,6 @@ def main(environment: str, algoname: str, hypergroup: Dict):
 
     path = path / environment
     path.mkdir(exist_ok=True)
-    set_trace()
     for sample_ab in combinations(samples, 2):
 
         # The sample with the greatest mean is assigned to the sample a
