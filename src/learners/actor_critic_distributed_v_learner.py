@@ -140,7 +140,7 @@ class ActorCriticDistributedVLearner:
                 rewards, batch, mask, critic_train_stats
             )
 
-            # Compute advantage target returns (using joint reward). 
+            # Compute advantage target returns (using joint reward).
             target_returns = self.nstep_returns(
                 joint_rewards, mask, target_vals, self.args.q_nstep
             )
@@ -235,7 +235,7 @@ class ActorCriticDistributedVLearner:
                 )
 
             def keep(x):  # keep keys
-                return 'j_reward_' in x or 'weight' in x or 'bias' in x or 'cwm' in x or '_mse_' in x or 'gt_reward' in x
+                return 'joint_reward_' in x or 'weight' in x or 'bias' in x or 'cwm' in x or '_mse_' in x or 'true_joint_reward' in x
 
             # debugging critic
             for key in filter(keep, critic_train_stats.keys()):
