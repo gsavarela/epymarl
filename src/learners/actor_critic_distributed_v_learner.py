@@ -28,7 +28,12 @@ class JointRewardPredictor(MLP):
         # observations
         input_shape = scheme["obs"]["vshape"]
         # actions
-        input_shape += scheme["avail_actions"]["vshape"][0] * args.n_agents
+        if getattr(args, 'networked_joint_actions', False):
+            # full action space observability
+            input_shape += scheme["avail_actions"]["vshape"][0] * args.n_agents
+        else:
+            # single agent observability
+            input_shape += scheme["avail_actions"]["vshape"][0]
         return input_shape
         
 
@@ -53,14 +58,15 @@ class ActorCriticDistributedVLearner:
             Adam(params=list(_params.values()), lr=args.lr) for _params in self.critic_params
         ]
         # Distributed V
-        jrp = JointRewardPredictor(scheme, args)
-        self.joint_reward_predictors = [
-            copy.deepcopy(jrp) for _ in range(args.n_agents)
-        ]
-        self.joint_reward_params = [dict(_c.named_parameters()) for _c in self.joint_reward_predictors]
-        self.joint_reward_optimisers = [
-            Adam(params=list(_params.values()), lr=args.lr) for _params in self.joint_reward_params
-        ]
+        if not self.joint_rewards:
+            jrp = JointRewardPredictor(scheme, args)
+            self.joint_reward_predictors = [
+                copy.deepcopy(jrp) for _ in range(args.n_agents)
+            ]
+            self.joint_reward_params = [dict(_c.named_parameters()) for _c in self.joint_reward_predictors]
+            self.joint_reward_optimisers = [
+                Adam(params=list(_params.values()), lr=args.lr) for _params in self.joint_reward_params
+            ]
 
         self.last_target_update_step = 0
         self.critic_training_steps = 0
@@ -70,8 +76,7 @@ class ActorCriticDistributedVLearner:
         if self.args.standardise_returns:
             self.ret_ms = RunningMeanStd(shape=(self.n_agents,), device=device)
         if self.args.standardise_rewards:
-            joint_rewards = self.args.env_args.get("joint_rewards", True)
-            if joint_rewards:
+            if self.joint_rewards:
                 self.rew_ms = RunningMeanStd(shape=(1,), device=device)
             else:
                 self.rew_ms = RunningMeanStd(shape=(self.n_agents,), device=device)
@@ -86,6 +91,14 @@ class ActorCriticDistributedVLearner:
 
         self.consensus_rounds = self.args.networked_rounds
         self.consensus_interval = self.args.networked_interval
+
+    @property
+    def joint_rewards(self):
+        return self.args.env_args.get('joint_rewards', False)
+
+    @property
+    def joint_actions(self):
+        return getattr(self.args, 'networked_joint_actions', False)
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
         # Get the relevant quantities
@@ -114,21 +127,26 @@ class ActorCriticDistributedVLearner:
 
         # This processes each player sequentially.
         # Compute the target_values (forward pass critic network).
-        target_vals, current_vals, critic_train_stats = self.train_critic_sequential(
+        td_errors, target_vals, current_vals, critic_train_stats = self.train_critic_sequential(
             self.critic, self.target_critic, batch, rewards, critic_mask
         )
 
-        # Compute the joint rewards (forward pass joint reward network).
-        joint_rewards, critic_train_stats = self.joint_reward_prediction_step(
-            rewards, batch, mask, critic_train_stats
-        )
+        if self.joint_rewards:
+            # We don't need an extra neural net
+            advantages = td_errors.detach().clone()
+        else:
+            # Compute the joint rewards (forward pass joint reward network).
+            joint_rewards, critic_train_stats = self.train_joint_reward_sequential(
+                rewards, batch, mask, critic_train_stats
+            )
 
-        # Compute advantage target returns (using joint reward). 
-        target_returns = self.nstep_returns(
-            joint_rewards, mask, target_vals, self.args.q_nstep
-        )
-        # Compute advantage
-        advantages = target_returns - current_vals
+            # Compute advantage target returns (using joint reward). 
+            target_returns = self.nstep_returns(
+                joint_rewards, mask, target_vals, self.args.q_nstep
+            )
+            # Compute advantage
+            advantages = (target_returns - current_vals).detach().clone()
+
         self.mac.init_hidden(batch.batch_size)
         pg_loss_acum = th.tensor(0.0)
         grad_norm_acum = th.tensor(0.0)
@@ -294,13 +312,13 @@ class ActorCriticDistributedVLearner:
                 vs.append(_v[:, :t_max])
 
         with th.no_grad():
-            masked_td_error = th.cat(masked_td_errors, dim=2)
+            masked_td_errors = th.cat(masked_td_errors, dim=2)
             v = th.cat(vs, dim=2)
         running_log["critic_loss"].append(float(total_loss.item()))
         running_log["critic_grad_norm"].append(float(total_grad_norm.item()))
         mask_elems = mask.sum().item()
         running_log["td_error_abs"].append(
-            float(masked_td_error.abs().sum().item() / mask_elems)
+            float(masked_td_errors.abs().sum().item() / mask_elems)
         )
         running_log["q_taken_mean"].append(float((v * mask).sum().item() / mask_elems))
 
@@ -314,16 +332,21 @@ class ActorCriticDistributedVLearner:
             float((target_returns * mask).sum().item() / mask_elems)
         )
 
-        return target_vals, v, running_log
+        return masked_td_errors, target_vals, v, running_log
 
-    def joint_reward_prediction_step(self, rewards, batch, mask, running_log):
+    def train_joint_reward_sequential(self, rewards, batch, mask, running_log):
 
         # receives actions from all agents
         with th.no_grad():
-            all_actions_onehot = batch["actions_onehot"].reshape(
-                (batch.batch_size, batch.max_seq_length, -1)
-            ).unsqueeze(dim=2).tile((1, 1, self.n_agents, 1))
-            inputs = th.cat((batch["obs"], all_actions_onehot), dim=-1)
+            if self.joint_actions:
+                # Tile onehot encoded actions for all agents into obs
+                actions_onehot = batch["actions_onehot"].reshape(
+                    (batch.batch_size, batch.max_seq_length, -1)
+                ).unsqueeze(dim=2).tile((1, 1, self.n_agents, 1)) 
+            else:
+                actions_onehot = batch["actions_onehot"]
+            inputs = th.cat((batch["obs"], actions_onehot), dim=-1)
+
         t_max = batch.max_seq_length - 1
 
         total_loss = th.tensor(0.0)
@@ -345,7 +368,7 @@ class ActorCriticDistributedVLearner:
             # FIXME: Remove this t_max
             _error = _target - _output[:, :t_max]
             _masked_error = _error * _mask
-            _loss = (_error**2).sum() / mask.sum()
+            _loss = (_masked_error**2).sum() / mask.sum()
 
             _opt.zero_grad()
             _loss.backward()
@@ -361,18 +384,18 @@ class ActorCriticDistributedVLearner:
                 joint_rewards.append(_output[:, :t_max])
 
         with th.no_grad():
-            masked_error = th.cat(masked_errors, dim=2)
+            masked_errors = th.cat(masked_errors, dim=2)
             joint_rewards = th.cat(joint_rewards, dim=2)
             
-        running_log["j_reward_loss"].append(float(total_loss.item()))
-        running_log["j_reward_grad_norm"].append(float(total_grad_norm.item()))
+        running_log["joint_reward_loss"].append(float(total_loss.item()))
+        running_log["joint_reward_grad_norm"].append(float(total_grad_norm.item()))
         mask_elems = mask.sum().item()
-        running_log["j_reward_error_abs"].append(
-            float(masked_error.abs().sum().item() / mask_elems)
+        running_log["joint_reward_error_abs"].append(
+            float(masked_errors.abs().sum().item() / mask_elems)
         )
         # TODO: Sum agent axis
-        running_log["j_reward_mean"].append(float((joint_rewards * mask).sum().item() / mask_elems))
-        running_log["gt_reward_mean"].append(
+        running_log["estimate_joint_reward_mean"].append(float((joint_rewards * mask).sum().item() / mask_elems))
+        running_log["true_joint_reward_mean"].append(
             float((rewards * mask).sum().item() / mask_elems)
         )
         return joint_rewards, running_log
@@ -387,7 +410,8 @@ class ActorCriticDistributedVLearner:
         comm = partial(self._consensus_step, batch, mask, running_log, t_env, consensus_matrices)
 
         # 2. Consensus w.r.t joint rewards
-        comm(self.joint_reward_params, enumerate(self.joint_reward_predictors))
+        if not self.joint_rewards:
+            comm(self.joint_reward_params, enumerate(self.joint_reward_predictors))
 
         # 3. Consensus w.r.t critic
         comm(self.critic_params, enumerate(self.critic.critics), mas_log=self.critic)
@@ -572,3 +596,4 @@ class ActorCriticDistributedVLearner:
 
     def _lftr(self, x):
         return 'fc1.' in x[0]
+    
