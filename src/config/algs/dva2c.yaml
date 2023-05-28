@@ -1,12 +1,12 @@
 # ---DACV specific parameters ---
-hidden_dim: 128 # MPE
-lr: 0.0005 # MPE
-standardise_rewards: True # MPE
-entropy_coef: 0.01  # MPE
-q_nstep: 10 # MPE: 1 corresponds to normal r + gammaV
+hidden_dim: 64 # LBF
+lr: 0.0005 # LBF
+use_rnn: True
+standardise_rewards: True
+entropy_coef: 0.01
 # update the target network every {} training steps
-target_update_interval_or_tau: 0.01 # MPE
-use_rnn: False # MPE
+target_update_interval_or_tau: 0.01 # LBF
+q_nstep: 5 # 1 corresponds to normal r + gammaV
 
 action_selector: "soft_policies"
 mask_before_softmax: True
@@ -18,8 +18,7 @@ batch_size: 10
 
 env_args:
   state_last_action: False # critic adds last action internally
-  joint_rewards: True
-  time_limit: 25 # MPE
+  joint_rewards: False
 
 obs_last_action: False
 obs_agent_id: False
@@ -34,8 +33,8 @@ critic_type: "ac_critic_networked" # All weights begin at the same place.
 
 # Networked agents
 networked_edges: 1  # maps n_agents: n_edges
-networked_rounds: 5   # At each consensus round try this many consensus matrices.
-networked_interval: 10 # Try consensus at every networked_interval number of training steps.
+networked_rounds: 10   # At each consensus round try this many consensus matrices.
+networked_interval: 5 # Try consensus at every networked_interval number of training steps.
 networked_policy: False # Try consensus on the actor
 networked_joint_actions: True # Agents observe the full action space (and joint_rewards: False)
 

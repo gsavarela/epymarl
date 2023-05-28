@@ -1,4 +1,13 @@
 # --- INDA2C specific parameters ---
+hidden_dim: 64 # LBF
+lr: 0.0005  # LBF
+standardise_rewards: True
+use_rnn: True
+entropy_coef: 0.01 # LBF
+# update the target network every {} training steps
+target_update_interval_or_tau: 0.01 # LBF
+q_nstep: 5 # 1 corresponds to normal r + gammaV
+
 action_selector: "soft_policies"
 mask_before_softmax: True
 
@@ -10,13 +19,8 @@ batch_size: 10
 env_args:
   state_last_action: False # critic adds last action internally
   joint_rewards: False
-  time_limit: 25
+  time_limit: 50
 
-
-# update the target network every {} training steps
-target_update_interval_or_tau: 0.01
-
-lr: 0.0005
 
 obs_agent_id: False
 obs_last_action: False
@@ -27,13 +31,9 @@ agent: "rnn_ns"
 agent_output_type: "pi_logits"
 learner: "actor_critic_decentralized_learner"
 entropy_coef: 0.01
-standardise_rewards: True
 standardise_returns: False
-use_rnn: True
-q_nstep: 5 # 1 corresponds to normal r + gammaV
 critic_type: "ac_critic_dec"
 
 name: "inda2c"
-
 t_max: 20_050_000
 
