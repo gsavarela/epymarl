@@ -13,8 +13,10 @@ from components.episode_buffer import EpisodeBatch
 from components.standarize_stream import RunningMeanStd
 from modules.critics import REGISTRY as critic_registry
 from modules.critics.mlp import MLP
+from IPython.core.debugger import set_trace
 
 from components.consensus import consensus_matrices
+
 
 class JointRewardPredictor(MLP):
     '''Forecast the joint rewards using the private reward'''
@@ -22,7 +24,6 @@ class JointRewardPredictor(MLP):
         input_shape = self._get_input_shape(scheme, args)
         hidden_dim = args.hidden_dim
         super(JointRewardPredictor, self).__init__(input_shape, hidden_dim, 1)
-
 
     def _get_input_shape(self, scheme, args):
         # observations
@@ -121,6 +122,10 @@ class ActorCriticDistributedVLearner:
             )
             return
 
+        # Hear communication channels for this timestep
+        indices = np.random.randint(0, high=len(self.cwms), size=self.args.networked_rounds)
+        consensus_matrices = [self.cwms[ind] for ind in indices]
+
         mask = mask.repeat(1, 1, self.n_agents)
 
         critic_mask = mask.clone()
@@ -135,17 +140,23 @@ class ActorCriticDistributedVLearner:
             # We don't need an extra neural net
             advantages = td_errors.detach().clone()
         else:
+            # TODO: This should work
+            # for k in range(self.consensus_rounds):
+            #     cwm = consensus_matrices[k].clone()
+            #     rewards = th.einsum('nm, btm-> btn', cwm, rewards)
+
             # Compute the joint rewards (forward pass joint reward network).
             joint_rewards, critic_train_stats = self.train_joint_reward_sequential(
                 rewards, batch, mask, critic_train_stats
             )
 
             # Compute advantage target returns (using joint reward).
-            target_returns = self.nstep_returns(
-                joint_rewards, mask, target_vals, self.args.q_nstep
-            )
+            # target_returns = self.nstep_returns(
+            #     joint_rewards, mask, target_vals, self.args.q_nstep
+            # )
             # Compute advantage
-            advantages = (target_returns - current_vals).detach().clone()
+            # advantages = ((target_returns - current_vals) * mask).detach().clone()
+            advantages = (joint_rewards + td_errors).detach().clone()
 
         self.mac.init_hidden(batch.batch_size)
         pg_loss_acum = th.tensor(0.0)
@@ -207,7 +218,7 @@ class ActorCriticDistributedVLearner:
 
         # After all updates perform consensus round.
         if self.critic_training_steps % self.consensus_interval == 0:
-            self.consensus_step(batch, critic_mask, critic_train_stats, t_env)
+            self.consensus_step(batch, critic_mask, critic_train_stats, t_env, consensus_matrices)
 
         if (
             self.args.target_update_interval_or_tau > 1
@@ -260,7 +271,6 @@ class ActorCriticDistributedVLearner:
             self.log_stats_t = t_env
 
     def train_critic_sequential(self, critic, target_critic, batch, rewards, mask):
-        # Optimise critic
         with th.no_grad():
             target_vals = th.cat([target_critic(batch, _i) for _i in range(self.n_agents)], dim=2)
 
@@ -298,6 +308,7 @@ class ActorCriticDistributedVLearner:
             _masked_td_error = _td_error * _mask
             _loss = (_masked_td_error**2).sum() / mask.sum()
 
+            current_values = _v[:, :t_max].detach().numpy()
             _opt.zero_grad()
             _loss.backward()
             _grad_norm = th.nn.utils.clip_grad_norm_(
@@ -310,20 +321,21 @@ class ActorCriticDistributedVLearner:
                 total_grad_norm += _grad_norm
                 masked_td_errors.append(_masked_td_error)
                 vs.append(_v[:, :t_max])
+            np.testing.assert_almost_equal(current_values, _v[:, :t_max].detach().numpy())
 
         with th.no_grad():
             masked_td_errors = th.cat(masked_td_errors, dim=2)
-            v = th.cat(vs, dim=2)
+            current_val = th.cat(vs, dim=2).detach()
         running_log["critic_loss"].append(float(total_loss.item()))
         running_log["critic_grad_norm"].append(float(total_grad_norm.item()))
         mask_elems = mask.sum().item()
         running_log["td_error_abs"].append(
             float(masked_td_errors.abs().sum().item() / mask_elems)
         )
-        running_log["q_taken_mean"].append(float((v * mask).sum().item() / mask_elems))
+        running_log["q_taken_mean"].append(float((current_val * mask).sum().item() / mask_elems))
 
         # consolidates episode segregating by player
-        v_taken_mean_player = ((v * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
+        v_taken_mean_player = ((current_val * mask).sum(dim=(0, 1)) / mask.sum(dim=(0, 1))).numpy().round(6)
         for _i in range(self.n_agents):
             key = f"v_taken_mean_player_{_i}"
             running_log[key].append(float(v_taken_mean_player[_i]))
@@ -332,7 +344,7 @@ class ActorCriticDistributedVLearner:
             float((target_returns * mask).sum().item() / mask_elems)
         )
 
-        return masked_td_errors, target_vals, v, running_log
+        return masked_td_errors, target_vals, current_val, running_log
 
     def train_joint_reward_sequential(self, rewards, batch, mask, running_log):
 
@@ -401,12 +413,12 @@ class ActorCriticDistributedVLearner:
         return joint_rewards, running_log
         
 
-    def consensus_step(self, batch, mask, running_log, t_env):
+    def consensus_step(self, batch, mask, running_log, t_env, consensus_matrices):
 
         # 1. Draw networked_rounds consensus matrices &
         # Make a common callable interface
-        indices = np.random.randint(0, high=len(self.cwms), size=self.args.networked_rounds)
-        consensus_matrices =[self.cwms[ind] for ind in indices]
+        # indices = np.random.randint(0, high=len(self.cwms), size=self.args.networked_rounds)
+        # consensus_matrices =[self.cwms[ind] for ind in indices]
         comm = partial(self._consensus_step, batch, mask, running_log, t_env, consensus_matrices)
 
         # 2. Consensus w.r.t joint rewards
@@ -417,7 +429,7 @@ class ActorCriticDistributedVLearner:
         comm(self.critic_params, enumerate(self.critic.critics), mas_log=self.critic)
 
         # 4. Consensus w.r.t actor
-        if self.args.networked_policy:  
+        if self.args.networked_policy:
             comm(self.agent_params, enumerate(self.mac.agent.agents))
 
     def _consensus_step(self, batch, mask, running_log, t_env, consensus_matrices,  mas_params, mas_nns, mas_log=None):
@@ -481,6 +493,7 @@ class ActorCriticDistributedVLearner:
                     consensus_parameters_logs[_key + f'_{k + 1}'] = [_w]
 
                 # update parameters after consensus
+                # TODO: Move this to out of the for loop (not log only)
                 for _i, _nn in mas_nns:
                     for _key, _weights in _nn.named_parameters():
                         _weights.data = th.nn.parameter.Parameter(consensus_parameters[_key][0][_i, :])
