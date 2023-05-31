@@ -86,10 +86,8 @@ class ActorCriticDistributedVLearner:
         def fn(x):
             return th.from_numpy(x.astype(np.float32))
 
-        # n_edges = self.args.networked_edges[self.n_agents]
         n_edges = self.args.networked_edges
         self.cwms = [*map(fn, consensus_matrices(self.n_agents, n_edges))]
-
         self.consensus_rounds = self.args.networked_rounds
         self.consensus_interval = self.args.networked_interval
 
@@ -145,18 +143,23 @@ class ActorCriticDistributedVLearner:
             #     cwm = consensus_matrices[k].clone()
             #     rewards = th.einsum('nm, btm-> btn', cwm, rewards)
 
+
+            # ERASEME: Perfect target
             # Compute the joint rewards (forward pass joint reward network).
+            # joint_rewards, critic_train_stats = self.train_joint_reward_sequential(
+            #     rewards, keepdim=True), batch, mask, critic_train_stats
+            # )
             joint_rewards, critic_train_stats = self.train_joint_reward_sequential(
-                rewards, batch, mask, critic_train_stats
+                rewards.detach().clone().sum(dim=2, keepdim=True), batch, mask, critic_train_stats
             )
 
             # Compute advantage target returns (using joint reward).
-            # target_returns = self.nstep_returns(
-            #     joint_rewards, mask, target_vals, self.args.q_nstep
-            # )
+            target_returns = self.nstep_returns(
+                joint_rewards, mask, target_vals, self.args.q_nstep
+            )
             # Compute advantage
-            # advantages = ((target_returns - current_vals) * mask).detach().clone()
-            advantages = (joint_rewards + td_errors).detach().clone()
+            advantages = ((target_returns - current_vals) * mask).detach().clone()
+            # advantages = (joint_rewards + td_errors).detach().clone()
 
         self.mac.init_hidden(batch.batch_size)
         pg_loss_acum = th.tensor(0.0)
@@ -354,7 +357,7 @@ class ActorCriticDistributedVLearner:
                 # Tile onehot encoded actions for all agents into obs
                 actions_onehot = batch["actions_onehot"].reshape(
                     (batch.batch_size, batch.max_seq_length, -1)
-                ).unsqueeze(dim=2).tile((1, 1, self.n_agents, 1)) 
+                ).unsqueeze(dim=2).tile((1, 1, self.n_agents, 1))
             else:
                 actions_onehot = batch["actions_onehot"]
             inputs = th.cat((batch["obs"], actions_onehot), dim=-1)
