@@ -112,6 +112,10 @@ class ActorCriticDistributedVLearner:
             self.rew_ms.update(rewards)
             rewards = (rewards - self.rew_ms.mean) / th.sqrt(self.rew_ms.var)
 
+        # SANITYCHECK_I: Rewards are joint rewards.
+        with th.no_grad():
+            rewards = rewards.sum(axis=2, keepdim=True)
+
         # No experiences to train on in this minibatch
         if mask.sum() == 0:
             self.logger.log_stat("Mask_Sum_Zero", 1, t_env)
@@ -149,16 +153,20 @@ class ActorCriticDistributedVLearner:
             # joint_rewards, critic_train_stats = self.train_joint_reward_sequential(
             #     rewards, keepdim=True), batch, mask, critic_train_stats
             # )
-            joint_rewards, critic_train_stats = self.train_joint_reward_sequential(
-                rewards.detach().clone().sum(dim=2, keepdim=True), batch, mask, critic_train_stats
-            )
+            # Perfect knowledge of the joint reward
+            # joint_rewards, critic_train_stats = self.train_joint_reward_sequential(
+            #     rewards.detach().clone().sum(dim=2, keepdim=True), batch, mask, critic_train_stats
+            # )
+            # SANITYCHECK_I: Rewards are joint rewards.
+            advantages = td_errors.detach().clone()
+
 
             # Compute advantage target returns (using joint reward).
-            target_returns = self.nstep_returns(
-                joint_rewards, mask, target_vals, self.args.q_nstep
-            )
+            # target_returns = self.nstep_returns(
+            #     joint_rewards, mask, target_vals, self.args.q_nstep
+            # )
             # Compute advantage
-            advantages = ((target_returns - current_vals) * mask).detach().clone()
+            # advantages = ((target_returns - current_vals) * mask).detach().clone()
             # advantages = (joint_rewards + td_errors).detach().clone()
 
         self.mac.init_hidden(batch.batch_size)
