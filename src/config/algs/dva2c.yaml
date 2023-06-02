@@ -6,7 +6,7 @@ standardise_rewards: True
 entropy_coef: 0.01
 # update the target network every {} training steps
 target_update_interval_or_tau: 0.01 # LBF
-q_nstep: 1 # 1 corresponds to normal r + gammaV
+q_nstep: 5 # 1 corresponds to normal r + gammaV
 
 action_selector: "soft_policies"
 mask_before_softmax: True
