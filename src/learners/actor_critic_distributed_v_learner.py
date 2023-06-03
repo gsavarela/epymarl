@@ -145,20 +145,20 @@ class ActorCriticDistributedVLearner:
 
 
             # Compute the joint rewards (forward pass joint reward network).
-            joint_rewards, critic_train_stats = self.train_joint_reward_sequential(
-                rewards, batch, mask, critic_train_stats
-            )
+            # joint_rewards, critic_train_stats = self.train_joint_reward_sequential(
+            #     rewards, batch, mask, critic_train_stats
+            # )
             # SANITYCHECK_I: Rewards are joint rewards.
             # advantages = td_errors.detach().clone()
 
 
             # SANITY CHECK II: Compute advantage target returns (using joint reward).
-            target_returns = self.nstep_returns(
-                joint_rewards, mask, target_vals, self.args.q_nstep
-            )
+            # target_returns = self.nstep_returns(
+            #     joint_rewards, mask, target_vals, self.args.q_nstep
+            # )
             # Compute advantage
-            advantages = ((target_returns - current_vals) * mask).detach().clone()
-            # advantages = (joint_rewards + td_errors).detach().clone()
+            # advantages = ((target_returns - current_vals) * mask).detach().clone()
+            advantages = td_errors.detach().clone()
 
         self.mac.init_hidden(batch.batch_size)
         pg_loss_acum = th.tensor(0.0)
