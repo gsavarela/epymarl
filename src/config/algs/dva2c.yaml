@@ -32,10 +32,10 @@ standardise_returns: False
 critic_type: "ac_critic_networked" # All weights begin at the same place.
 
 # Networked agents
-networked_edges: 3  # maps n_agents: n_edges
-networked_rounds: 1   # At each consensus round try this many consensus matrices.
-networked_interval: 1 # Try consensus at every networked_interval number of training steps.
-networked_policy: True # Try consensus on the actor
+networked_edges: 1  # maps n_agents: n_edges
+networked_rounds: 10   # At each consensus round try this many consensus matrices.
+networked_interval: 5 # Try consensus at every networked_interval number of training steps.
+networked_policy: False # Try consensus on the actor
 networked_joint_actions: False # Agents observe the full action space (and joint_rewards: False)
 
 name: "dva2c"

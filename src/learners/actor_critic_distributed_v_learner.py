@@ -13,7 +13,7 @@ from components.episode_buffer import EpisodeBatch
 from components.standarize_stream import RunningMeanStd
 from modules.critics import REGISTRY as critic_registry
 from modules.critics.mlp import MLP
-from IPython.core.debugger import set_trace
+# from IPython.core.debugger import set_trace
 
 from components.consensus import consensus_matrices
 
@@ -59,15 +59,15 @@ class ActorCriticDistributedVLearner:
             Adam(params=list(_params.values()), lr=args.lr) for _params in self.critic_params
         ]
         # Distributed V
-        if not self.joint_rewards:
-            jrp = JointRewardPredictor(scheme, args)
-            self.joint_reward_predictors = [
-                copy.deepcopy(jrp) for _ in range(args.n_agents)
-            ]
-            self.joint_reward_params = [dict(_c.named_parameters()) for _c in self.joint_reward_predictors]
-            self.joint_reward_optimisers = [
-                Adam(params=list(_params.values()), lr=args.lr) for _params in self.joint_reward_params
-            ]
+        # if not self.joint_rewards:
+        #     jrp = JointRewardPredictor(scheme, args)
+        #     self.joint_reward_predictors = [
+        #         copy.deepcopy(jrp) for _ in range(args.n_agents)
+        #     ]
+        #     self.joint_reward_params = [dict(_c.named_parameters()) for _c in self.joint_reward_predictors]
+        #     self.joint_reward_optimisers = [
+        #         Adam(params=list(_params.values()), lr=args.lr) for _params in self.joint_reward_params
+        #     ]
 
         self.last_target_update_step = 0
         self.critic_training_steps = 0
@@ -136,27 +136,24 @@ class ActorCriticDistributedVLearner:
             self.critic, self.target_critic, batch, rewards, critic_mask
         )
 
-        if self.joint_rewards:
-            # We don't need an extra neural net
-            advantages = td_errors.detach().clone()
-        else:
-            # TODO: This should work
-            # for k in range(self.consensus_rounds):
-            #     cwm = consensus_matrices[k].clone()
-            #     rewards = th.einsum('nm, btm-> btn', cwm, rewards)
+        advantages = td_errors.detach().clone()
+        # if self.joint_rewards:
+        #     # We don't need an extra neural net
+        #     advantages = td_errors.detach().clone()
+        # else:
 
-            # Compute the joint rewards (forward pass joint reward network).
-            joint_rewards, critic_train_stats = self.train_joint_reward_sequential(
-                rewards, batch, mask, critic_train_stats
-            )
+        #     # Compute the joint rewards (forward pass joint reward network).
+        #     joint_rewards, critic_train_stats = self.train_joint_reward_sequential(
+        #         rewards, batch, mask, critic_train_stats
+        #     )
 
-            # Compute advantage target returns (using joint reward).
-            # target_returns = self.nstep_returns(
-            #     joint_rewards, mask, target_vals, self.args.q_nstep
-            # )
-            # Compute advantage
-            # advantages = ((target_returns - current_vals) * mask).detach().clone()
-            advantages = (joint_rewards + td_errors).detach().clone()
+        #     # Compute advantage target returns (using joint reward).
+        #     target_returns = self.nstep_returns(
+        #         joint_rewards, mask, target_vals, self.args.q_nstep
+        #     )
+        #     # Compute advantage
+        #     # advantages = ((target_returns - current_vals) * mask).detach().clone()
+        #     advantages = (joint_rewards + td_errors).detach().clone()
 
         self.mac.init_hidden(batch.batch_size)
         pg_loss_acum = th.tensor(0.0)
@@ -422,8 +419,8 @@ class ActorCriticDistributedVLearner:
         comm = partial(self._consensus_step, batch, mask, running_log, t_env, consensus_matrices)
 
         # 2. Consensus w.r.t joint rewards
-        if not self.joint_rewards:
-            comm(self.joint_reward_params, enumerate(self.joint_reward_predictors))
+        # if not self.joint_rewards:
+        #     comm(self.joint_reward_params, enumerate(self.joint_reward_predictors))
 
         # 3. Consensus w.r.t critic
         comm(self.critic_params, enumerate(self.critic.critics), mas_log=self.critic)
