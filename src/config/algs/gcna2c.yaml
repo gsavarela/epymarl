@@ -13,10 +13,11 @@ action_selector: "epsilon_greedy"
 epsilon_start: 1.0
 epsilon_finish: 0.05
 
-runner: "parallel"
-buffer_size: 10
-batch_size_run: 10
-batch_size: 10
+runner: "episode"
+# runner: "parallel"
+# buffer_size: 10
+# batch_size_run: 10
+# batch_size: 10
 
 env_args:
   joint_rewards: False
@@ -29,7 +30,7 @@ obs_individual_obs: False
 mac: "dac"
 agent: "rnn_ns"
 agent_output_type: "q"
-learner: "q_networked_learner"
+learner: "actor_critic_graph_learner"
 standardise_returns: False
 double_q: True
 critic_type: "ac_gcn_ns" # All weights begin at the same place.
@@ -38,6 +39,9 @@ critic_type: "ac_gcn_ns" # All weights begin at the same place.
 networked_edges: 2  # maps n_agents: n_edges
 networked_rounds: 1  # At each consensus round try this many consensus matrices.
 networked_interval: 5 # Try consensus at every networked_interval number of training steps.
+
+# Graph agents
+pool_type: 'avg' # 'max'
 
 name: "gcna2c"
 t_max: 20_050_000
