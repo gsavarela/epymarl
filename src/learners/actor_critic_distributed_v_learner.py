@@ -11,8 +11,8 @@ from functools import partial
 
 from components.episode_buffer import EpisodeBatch
 from components.standarize_stream import RunningMeanStd
+from components.mlp import MLP
 from modules.critics import REGISTRY as critic_registry
-from modules.critics.mlp import MLP
 from IPython.core.debugger import set_trace
 
 from components.consensus import consensus_matrices

@@ -8,9 +8,10 @@ from .ac import ACCritic
 from .ac_ns import ACCriticNS
 from .ac_dec import ACCriticDecentralized
 from .ac_networked import ACCriticNetworked
+from .ac_gcn import GCNCritic
+from .ac_gcn_ns import GCNCriticNS
 
 REGISTRY = {}
-
 REGISTRY["coma_critic"] = COMACritic
 REGISTRY["cv_critic"] = CentralVCritic
 REGISTRY["coma_critic_ns"] = COMACriticNS
@@ -21,5 +22,5 @@ REGISTRY["ac_critic"] = ACCritic
 REGISTRY["ac_critic_ns"] = ACCriticNS
 REGISTRY["ac_critic_dec"] = ACCriticDecentralized
 REGISTRY["ac_critic_networked"] = ACCriticNetworked
-
-
+REGISTRY["ac_gcn"] = GCNCritic
+REGISTRY["ac_gcn_ns"] = GCNCriticNS

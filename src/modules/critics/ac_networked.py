@@ -3,7 +3,7 @@ spot.'''
 import numpy as np
 import torch as th
 import torch.nn as nn
-from modules.critics.mlp import MLP
+from components.mlp import MLP
 
 class ACCriticNetworked(nn.Module):
     def __init__(self, scheme, args):
