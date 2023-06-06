@@ -2,7 +2,7 @@ from functools import partial
 import torch as th
 import torch.nn as nn
 import torch.nn.functional as F
-from modules.gcn import GraphNet
+from components.gcn import GraphNet
 
 class ACGCNCritic(nn.Module):
     def __init__(self, scheme, args):

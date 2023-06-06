@@ -2,7 +2,8 @@ from functools import partial
 import torch as th
 import torch.nn as nn
 import torch.nn.functional as F
-from modules.gcn import GraphNet
+from components.gcn import GraphNet
+from IPython.core.debugger import set_trace
 
 class ACGCNCriticNS(nn.Module):
     def __init__(self, scheme, args):
@@ -19,7 +20,7 @@ class ACGCNCriticNS(nn.Module):
         # Set up network layers
         graph_net = partial(GraphNet, self.input_shape, args.hidden_dim, 1,
                             self.n_agents, pool_type=args.pool_type,
-                            use_agent_id=True)
+                            use_agent_id=args.obs_agent_id)
         self.critics = [graph_net(use_agent_id=i) for i in range(self.n_agents)]
         
     def forward(self, batch, t=None):
@@ -49,8 +50,8 @@ class ACGCNCriticNS(nn.Module):
         bs = batch.batch_size
         max_t = batch.max_seq_length if t is None else 1
         ts = slice(None) if t is None else slice(t, t+1)
+        set_trace()
         inputs = []
-        # observation
         inputs.append(batch["obs"][:, ts])
 
         # observations
@@ -68,7 +69,8 @@ class ACGCNCriticNS(nn.Module):
                 last_actions = last_actions.view(bs, max_t, 1, -1)
                 inputs.append(last_actions)
 
-        actions_onehot = batch["actions_onehot"]
-        inputs = th.cat((inputs, actions_onehot), dim=-1)
-        inputs = th.cat([x.reshape(bs * max_t, -1) for x in inputs], dim=1)
+        inputs.append(batch["actions_onehot"][:, ts])
+        # inputs = th.cat(inputs, dim=-1)
+        # [b, t, n, m1] + [b, t, n, m2] -> [bt, n, m1 + m2]
+        inputs = th.cat([x.reshape(bs * max_t, self.n_agents, -1) for x in inputs], dim=-1)
         return inputs, bs, max_t
