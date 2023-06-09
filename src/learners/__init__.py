@@ -9,6 +9,7 @@ from .actor_critic_decentralized_learner import ActorCriticDecentralizedLearner
 from .actor_critic_networked_learner import ActorCriticNetworkedLearner
 from .q_networked_learner import QNetworkedLearner
 from .actor_critic_distributed_v_learner import ActorCriticDistributedVLearner
+from .actor_critic_graph_learner import ActorCriticGraphLearner
 
 REGISTRY = {}
 
@@ -23,3 +24,4 @@ REGISTRY["actor_critic_decentralized_learner"] = ActorCriticDecentralizedLearner
 REGISTRY["actor_critic_networked_learner"] = ActorCriticNetworkedLearner
 REGISTRY["q_networked_learner"] = QNetworkedLearner
 REGISTRY["actor_critic_distributed_v_learner"] = ActorCriticDistributedVLearner
+REGISTRY["actor_critic_graph_learner"] = ActorCriticGraphLearner

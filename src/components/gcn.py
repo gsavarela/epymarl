@@ -1,8 +1,7 @@
 
-"""
-Credits
--------
-* https://github.com/IouJenLiu/PIC
+""" Credits
+    -------
+    * https://github.com/IouJenLiu/PIC
 """
 import torch
 import torch.nn as nn
@@ -11,7 +10,7 @@ import torch.nn.functional as F
 
 
 class GraphConvLayer(nn.Module):
-    """Implements a GCN layer."""
+    """Implements a GCN layer. """
 
     def __init__(self, input_shape, output_dim):
         super(GraphConvLayer, self).__init__()
@@ -19,9 +18,18 @@ class GraphConvLayer(nn.Module):
         self.input_shape = input_shape
         self.output_dim = output_dim
 
-    def forward(self, inputs, input_adj):
-        feat = self.fc(inputs)
-        out = torch.matmul(input_adj, feat)
+    def forward(self, inputs, adj):
+        """ 
+        :param inputs: observation of hidden state
+        :type: torch.tensor (b,a,m)
+        :param adj: the adjacency matrix
+        :type: torch.tensor (b,a,a)
+
+        :return: hidden representation h_out
+        :type: torch.tensor (b,a,out)
+        """
+        h = self.fc(inputs)
+        out = torch.einsum('bij, bim -> bjm', adj.float(), h)
         return out
 
     def __repr__(self):
@@ -31,6 +39,8 @@ class GraphConvLayer(nn.Module):
 
 class GraphNet(nn.Module):
     """Permutation invariant graph net (L=2)
+
+    Handles the partially observability case.
     A graph net that is used to pre-process actions and states, and 
     solve the order issue.
     """
@@ -44,6 +54,10 @@ class GraphNet(nn.Module):
         self.input_shape = input_shape
         self.n_agents = n_agents
         self.pool_type = pool_type
+        self.use_agent_id = use_agent_id    # Uses agent_id as a feature.
+        self.agent_id = agent_id
+        # TODO: include batch
+        
         # TODO: Deprecate this
         # if use_agent_id:
         #     agent_id_attr_dim = 2
@@ -58,20 +72,23 @@ class GraphNet(nn.Module):
         # self.V = nn.Linear(hidden_size, 1)
         # self.V.weight.data.mul_(0.1)
         # self.V.bias.data.mul_(0.1)
-
+        # TODO: Include fc in GCL
         self.gc1 = GraphConvLayer(input_shape, hidden_size)
-        self.fc1 = nn.Linear(input_shape, hidden_size)
+        self.fc1 = nn.Linear(input_shape, hidden_size)  # W_self
         self.gc2 = GraphConvLayer(hidden_size, hidden_size)
-        self.fc2 = nn.Linear(hidden_size, hidden_size)
+        self.fc2 = nn.Linear(hidden_size, hidden_size) # W_self
         self.fc3 = nn.Linear(hidden_size, output_dim)
         # self.V.weight.data.mul_(0.1)
         # self.V.bias.data.mul_(0.1)
 
 
         # Assumes a fully connected graph.
-        self.register_buffer('adj', (torch.ones(n_agents, n_agents) - torch.eye(n_agents)) / self.n_agents)
-        self.use_agent_id = use_agent_id
-        self.agent_id = agent_id
+        self.register_buffer('adj', (torch.ones(n_agents, n_agents) - torch.eye(n_agents).float()) / self.n_agents)
+        # Indicator for this particular agent
+        # Zero matrix with one basis array
+        # TODO: Provide this as a parameter 
+        # Mask that handles the partially observability case.
+        self.register_buffer('mask', torch.diag((torch.eye(n_agents)[:, agent_id])))
 
         # if use_agent_id:
         #     self.curr_agent_attr = nn.Parameter(
@@ -88,7 +105,7 @@ class GraphNet(nn.Module):
         #     agent_att = torch.cat(agent_att, -1)
         #     self.agent_att = agent_att.unsqueeze(0)
 
-    def forward(self, x):
+    def forward(self, x, adj=None):
         """
         :param x: [batch_size, self.input_shape, self.n_agent] tensor
         :return: [batch_size, self.output_dim] tensor
@@ -96,21 +113,24 @@ class GraphNet(nn.Module):
         # if self.use_agent_id:
         #     agent_att = torch.cat([self.agent_att] * x.shape[0], 0)
         #     x = torch.cat([x, agent_att], 1)
+        adj = self.adj if adj is None else adj.float()
+        
+        # TODO: Unite this into one single statement
+        # TODO: Change GraphConvLayer for multiple inputs 
+        y = F.relu(self.gc1(x, adj) +
+                   torch.einsum('ij, bim -> bjm', self.mask, self.fc1(x)))
+        # feat /= (1. * self.n_agents) # Is this really necessary?
+        u = F.relu(self.gc2(y, adj) +
+                   torch.einsum('ij, bim -> bjm', self.mask, self.fc2(y)))
+        # out += F.relu(self.fc2(feat))
+        # out /= (1. * self.n_agents)# Is this really necessary?
 
-        feat = F.relu(self.gc1(x, self.adj))
-        feat += F.relu(self.fc1(x))
-        feat /= (1. * self.n_agents)
-        out = F.relu(self.gc2(feat, self.adj))
-        out += F.relu(self.fc2(feat))
-        out /= (1. * self.n_agents)
-
-        # Pooling
+        # Pooling over the agent dimension.
         if self.pool_type == 'avg':
-            ret = out.mean(1)  # Pooling over the agent dimension.
+            z = u.mean(1)
         else:
-            ret, _ = out.max(1)
+            z, _ = u.max(1)
 
         # Compute V
-        V = self.fc3(ret)
-        return V
-
+        v = self.fc3(z).squeeze(1)
+        return v

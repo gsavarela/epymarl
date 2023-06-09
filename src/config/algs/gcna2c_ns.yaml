@@ -7,6 +7,7 @@ epsilon_anneal_time: 50_000
 evaluation_epsilon: 0.05
 # update the target network every {} episodes
 target_update_interval_or_tau: 200 # LBF: Refresh target
+q_nstep: 5
 
 # use epsilon greedy action selector
 action_selector: "epsilon_greedy"
@@ -23,7 +24,7 @@ env_args:
   joint_rewards: False
   time_limit: 50 # LBF: Max seq_length
 
-obs_agent_id: True
+obs_agent_id: False
 obs_last_action: False
 obs_individual_obs: False
 # use the Q_Learner to train
@@ -39,6 +40,7 @@ critic_type: "ac_gcn_ns" # All weights begin at the same place.
 networked_edges: 2  # maps n_agents: n_edges
 networked_rounds: 1  # At each consensus round try this many consensus matrices.
 networked_interval: 5 # Try consensus at every networked_interval number of training steps.
+networked_policy: True
 
 # Graph agents
 pool_type: 'avg' # 'max'

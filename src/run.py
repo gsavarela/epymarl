@@ -104,6 +104,7 @@ def run_sequential(args, logger):
         },
         "reward": {"vshape": (env_info["n_rewards"],)},
         "terminated": {"vshape": (1,), "dtype": th.uint8},
+        "A_adj": {"vshape": (args.n_agents, args.n_agents), "dtype": th.int32},
     }
     groups = {"agents": args.n_agents}
     preprocess = {"actions": ("actions_onehot", [OneHot(out_dim=args.n_actions)])}

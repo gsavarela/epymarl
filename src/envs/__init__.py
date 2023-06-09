@@ -10,6 +10,7 @@ from gym.spaces import flatdim
 import numpy as np
 from gym.wrappers import TimeLimit as GymTimeLimit
 # import robotic_warehouse
+from IPython.core.debugger import set_trace
 
 def env_fn(env, **kwargs) -> MultiAgentEnv:
     return env(**kwargs)
@@ -115,7 +116,7 @@ class _GymmaWrapper(MultiAgentEnv):
             reward = [rw / self._reward_factor for rw in reward]
         if self.joint_rewards:
             reward = [float(sum(reward))]
-        return reward, all(done), {}
+        return reward, all(done), info
 
     def get_obs(self):
         """ Returns all agent observations in a list """

@@ -2,7 +2,7 @@ from envs import REGISTRY as env_REGISTRY
 from functools import partial
 from components.episode_buffer import EpisodeBatch
 import numpy as np
-
+from IPython.core.debugger import set_trace
 
 class EpisodeRunner:
 
@@ -74,6 +74,8 @@ class EpisodeRunner:
                 "reward": [(reward,)],
                 "terminated": [(terminated != env_info.get("episode_limit", False),)],
             }
+            if 'A_adj' in env_info:
+                post_transition_data['A_adj'] = env_info.pop('A_adj')
 
             self.batch.update(post_transition_data, ts=self.t)
 
@@ -93,7 +95,10 @@ class EpisodeRunner:
         cur_stats = self.test_stats if test_mode else self.train_stats
         cur_returns = self.test_returns if test_mode else self.train_returns
         log_prefix = "test_" if test_mode else ""
-        cur_stats.update({k: cur_stats.get(k, 0) + env_info.get(k, 0) for k in set(cur_stats) | set(env_info)})
+        try:
+            cur_stats.update({k: cur_stats.get(k, 0) + env_info.get(k, 0) for k in set(cur_stats) | set(env_info)})
+        except Exception:
+            set_trace()
         cur_stats["n_episodes"] = 1 + cur_stats.get("n_episodes", 0)
         cur_stats["ep_length"] = self.t + cur_stats.get("ep_length", 0)
 
