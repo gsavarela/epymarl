@@ -3,16 +3,21 @@ hidden_dim: 64 # Size of hidden state for default rnn agent
 lr: 0.0003 # LBF: Learning rate for agents
 use_rnn: True # LBF: GRU
 standardise_rewards: True
-epsilon_anneal_time: 50_000
+entropy_coef: 0.01
 evaluation_epsilon: 0.05
 # update the target network every {} episodes
-target_update_interval_or_tau: 200 # LBF: Refresh target
+# target_update_interval_or_tau: 200 # LBF: Refresh target
+target_update_interval_or_tau: 0.01 # LBF
 q_nstep: 5
 
 # use epsilon greedy action selector
-action_selector: "epsilon_greedy"
-epsilon_start: 1.0
-epsilon_finish: 0.05
+# action_selector: "epsilon_greedy"
+# epsilon_start: 1.0
+# epsilon_finish: 0.05
+# epsilon_anneal_time: 50_000
+
+action_selector: "soft_policies"
+mask_before_softmax: True
 
 runner: "episode"
 # runner: "parallel"
@@ -30,10 +35,11 @@ obs_individual_obs: False
 # use the Q_Learner to train
 mac: "dac"
 agent: "rnn_ns"
-agent_output_type: "q"
+# agent_output_type: "q"  Q-learner
+agent_output_type: "pi_logits"
 learner: "actor_critic_graph_learner"
 standardise_returns: False
-double_q: True
+# double_q: True
 critic_type: "ac_gcn_ns" # All weights begin at the same place.
 
 # Networked agents

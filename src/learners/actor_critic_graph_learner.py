@@ -105,123 +105,233 @@ class ActorCriticGraphLearner:
         )
         # Calculate estimated Q-Values
         self.mac.init_hidden(batch.batch_size)
-
-        # Logging metrics
-        loss_acum = th.tensor(0.0)
+        pg_loss_acum = th.tensor(0.0)
         grad_norm_acum = th.tensor(0.0)
-        masked_td_error_acum = th.tensor(0.0)
-        masked_elems_acum = th.tensor(0.0)
-        chosen_action_qvals_acum = th.tensor(0.0)
-        target_mean_acum = th.tensor(0.0)
-        for _i, _opt, _params, _actions, _target_vals, _mask in zip(
+        joint_pi = []
+
+        # initialize hidden states before new batch arrives.
+        for _i, _opt, _params, _actions, _advantages, _mask in zip(
             range(self.n_agents),
             self.agent_optimisers,
             self.agent_params,
             th.tensor_split(actions, self.n_agents, dim=2),
-            th.tensor_split(target_vals.detach(), self.n_agents, dim=2),
+            th.tensor_split(advantages.detach(), self.n_agents, dim=2),
             th.tensor_split(mask, self.n_agents, dim=2),
         ):
-            # [b, t, 1] -> [b, t]
-            _actions.squeeze_(-1)
-            _target_vals.squeeze_(-1)
-            _mask.squeeze_(-1)
-            # _avail_actions.squeeze_(2)
 
+            _actions.squeeze_(dim=2)
+            _advantages.squeeze_(dim=2)
             mac_out = []
-            for t in range(batch.max_seq_length):
+            for t in range(batch.max_seq_length - 1):
                 agent_outs = self.mac.forward(batch, t=t, i=_i)
                 mac_out.append(agent_outs)
-
             mac_out = th.stack(mac_out, dim=1)  # Concat over time
 
-            # Pick the Q-Values for the actions taken by each agent
-            chosen_action_qvals = th.gather(mac_out[:, :-1], dim=-1, index=_actions).squeeze(-1)
+            _pi = mac_out
+            # Calculate policy grad with mask
+            _mask2 = _mask.tile((1, 1, self.n_actions))
 
-            # Calculate the Q-Values necessary for the target
-            # target_mac_out = []
-            # self.target_mac.init_hidden(batch.batch_size)
-            # for t in range(batch.max_seq_length):
-            #     target_agent_outs = self.target_mac.forward(batch, t=t, i=_i)
-            #     target_mac_out.append(target_agent_outs)
+            _pi[_mask2 == 0] = 1.0
 
-            # We don't need the first timesteps Q-Value estimate for calculating targets
-            # target_mac_out = th.stack(target_mac_out[1:], dim=1)  # Concat across time
-            # Mask out unavailable actions
-            # target_mac_out[_avail_actions[:, 1:] == 0] = -9999999
-            # Max over target Q-Values
-            # if self.args.double_q:
-            #     # Get actions that maximise live Q (for double q-learning)
-            #     mac_out_detach = mac_out.clone().detach()
-            #     mac_out_detach[_avail_actions == 0] = -9999999
-            #     cur_max_actions = mac_out_detach[:, 1:].max(dim=-1, keepdim=True)[1]
-            #     target_max_qvals = th.gather(target_mac_out, -1, cur_max_actions).squeeze(-1)
-            # else:
-            #     target_max_qvals = target_mac_out.max(dim=-1)[0]
-            # TODO: Plus or minus (?)
-            #     target_max_qvals = target_max_qvals * th.sqrt(self.ret_ms.var) + self.ret_ms.mean
-            # if self.args.standardise_returns:
+            _pi_taken = th.gather(_pi, dim=2, index=_actions).squeeze(2)
+            _log_pi_taken = th.log(_pi_taken + 1e-10)
 
-            # Calculate 1-step Q-Learning targets
-            if self.joint_rewards:
-                targets = rewards[:, :, 0] + self.args.gamma * (1 - terminated.squeeze(-1)) * _target_vals[:, 1:]
-            else:
-                targets = rewards[:, :, _i] + self.args.gamma * (1 - terminated.squeeze(-1)) * _target_vals[:, 1:]
+            _entropy = -th.sum(_pi * th.log(_pi + 1e-10), dim=-1)
 
-            if self.args.standardise_returns:
-                self.ret_ms.update(targets)
-                targets = (targets - self.ret_ms.mean) / th.sqrt(self.ret_ms.var)
+            # alternative
+            _pg_loss = (
+                -(
+                    (_advantages * _log_pi_taken + self.args.entropy_coef * _entropy)
+                    * _mask.squeeze(-1)
+                ).sum()
+                / _mask.sum()
+            )
 
-            # Td-error
-            td_error = (chosen_action_qvals - targets.detach())
-
-            # 0-out the targets that came from padded data
-            masked_td_error = td_error * _mask
-
-            # Normal L2 loss, take mean over actual data
-            loss = (masked_td_error ** 2).sum() / mask.squeeze(-1).sum()
-
-            # Optimise
+            # Optimise agents
             _opt.zero_grad()
-            loss.backward()
-            grad_norm = th.nn.utils.clip_grad_norm_(list(_params.values()), self.args.grad_norm_clip)
+            _pg_loss.backward()
+            _grad_norm = th.nn.utils.clip_grad_norm_(
+                list(_params.values()),
+                self.args.grad_norm_clip
+            )
             _opt.step()
+            with th.no_grad():
+                pg_loss_acum += _pg_loss.detach()
+                grad_norm_acum += _grad_norm.detach()
+                joint_pi.append(_pi.detach())
 
-            if t_env - self.log_stats_t >= self.args.learner_log_interval:
-                with th.no_grad():
-                    loss_acum += loss
-                    grad_norm_acum += grad_norm
-                    masked_td_error_acum += masked_td_error.abs().sum()
-                    masked_elems_acum += _mask.sum()
-                    chosen_action_qvals_acum += (_mask.squeeze(-1) * chosen_action_qvals).sum()
-                    target_mean_acum += (targets * _mask.squeeze(-1)).sum()
-                
+        self.critic_training_steps += 1
 
-        self.training_steps += 1
-        consensus_log = defaultdict(list)
-        if self.training_steps % self.consensus_interval == 0:
-            self.consensus_step(batch, mask, consensus_log, t_env)
-
-        if self.args.target_update_interval_or_tau > 1 and (self.training_steps - self.last_target_update_step) / self.args.target_update_interval_or_tau >= 1.0:
+        # After all updates perform consensus round.
+        if self.critic_training_steps % self.consensus_interval == 0:
+            self.consensus_step(batch, critic_mask, critic_train_stats, t_env)
+        if (
+            self.args.target_update_interval_or_tau > 1
+            and (self.critic_training_steps - self.last_target_update_step)
+            / self.args.target_update_interval_or_tau
+            >= 1.0
+        ):
             self._update_targets_hard()
-            self.last_target_update_step = self.training_steps
+            self.last_target_update_step = self.critic_training_steps
         elif self.args.target_update_interval_or_tau <= 1.0:
             self._update_targets_soft(self.args.target_update_interval_or_tau)
 
         if t_env - self.log_stats_t >= self.args.learner_log_interval:
-            self.logger.log_stat("loss", float(loss_acum.item()), t_env)
-            self.logger.log_stat("grad_norm", float(grad_norm_acum.item()), t_env)
-            self.logger.log_stat("td_error_abs", float(masked_td_error_acum.item() / masked_elems_acum), t_env)
-            self.logger.log_stat("q_taken_mean", float(chosen_action_qvals_acum.item() / (masked_elems_acum * self.args.n_agents)), t_env)
-            self.logger.log_stat("target_mean", float(target_mean_acum.item() / (masked_elems_acum * self.args.n_agents)), t_env)
-            for k, v in consensus_log.items():
-                self.logger.log_stat(k, v[0], t_env)
+
+            ts_logged = len(critic_train_stats["critic_loss"])
+            for key in [
+                "critic_loss",
+                "critic_grad_norm",
+                "td_error_abs",
+                "q_taken_mean",
+                "target_mean",
+            ]:
+                self.logger.log_stat(
+                    key, float(sum(critic_train_stats[key]) / ts_logged), t_env
+                )
+
+            def keep(x):  # keep keys
+                return 'v_' in x or 'weight' in x or 'bias' in x or 'cwm' in x or '_mse_' in x
+
+            # debugging critic
+            for key in filter(keep, critic_train_stats.keys()):
+                self.logger.log_stat(
+                    key, float(sum(critic_train_stats[key])), t_env
+                )
+
+            # debugging consensus
+            self.logger.log_stat(
+                "advantage_mean",
+                float((advantages * mask).sum().item() / mask.sum().item()),
+                t_env,
+            )
+            self.logger.log_stat("pg_loss", float(pg_loss_acum), t_env)
+            self.logger.log_stat("agent_grad_norm", float(grad_norm_acum), t_env)
+            self.logger.log_stat(
+                "pi_max",
+                float((th.stack(joint_pi, dim=2).max(dim=-1)[0] * mask).sum().item()
+                / mask.sum().item()),
+                t_env,
+            )
             self.log_stats_t = t_env
+        # Q-Values actor
+        # Logging metrics
+        # loss_acum = th.tensor(0.0)
+        # grad_norm_acum = th.tensor(0.0)
+        # masked_td_error_acum = th.tensor(0.0)
+        # masked_elems_acum = th.tensor(0.0)
+        # chosen_action_qvals_acum = th.tensor(0.0)
+        # target_mean_acum = th.tensor(0.0)
+        # for _i, _opt, _params, _actions, _target_vals, _mask in zip(
+        #     range(self.n_agents),
+        #     self.agent_optimisers,
+        #     self.agent_params,
+        #     th.tensor_split(actions, self.n_agents, dim=2),
+        #     th.tensor_split(target_vals.detach(), self.n_agents, dim=2),
+        #     th.tensor_split(mask, self.n_agents, dim=2),
+        # ):
+        #     # [b, t, 1] -> [b, t]
+        #     _actions.squeeze_(-1)
+        #     _target_vals.squeeze_(-1)
+        #     _mask.squeeze_(-1)
+        #     # _avail_actions.squeeze_(2)
+
+        #     mac_out = []
+        #     for t in range(batch.max_seq_length):
+        #         agent_outs = self.mac.forward(batch, t=t, i=_i)
+        #         mac_out.append(agent_outs)
+
+        #     mac_out = th.stack(mac_out, dim=1)  # Concat over time
+
+        #     # Pick the Q-Values for the actions taken by each agent
+        #     chosen_action_qvals = th.gather(mac_out[:, :-1], dim=-1, index=_actions).squeeze(-1)
+
+        #     # Calculate the Q-Values necessary for the target
+        #     # target_mac_out = []
+        #     # self.target_mac.init_hidden(batch.batch_size)
+        #     # for t in range(batch.max_seq_length):
+        #     #     target_agent_outs = self.target_mac.forward(batch, t=t, i=_i)
+        #     #     target_mac_out.append(target_agent_outs)
+
+        #     # We don't need the first timesteps Q-Value estimate for calculating targets
+        #     # target_mac_out = th.stack(target_mac_out[1:], dim=1)  # Concat across time
+        #     # Mask out unavailable actions
+        #     # target_mac_out[_avail_actions[:, 1:] == 0] = -9999999
+        #     # Max over target Q-Values
+        #     # if self.args.double_q:
+        #     #     # Get actions that maximise live Q (for double q-learning)
+        #     #     mac_out_detach = mac_out.clone().detach()
+        #     #     mac_out_detach[_avail_actions == 0] = -9999999
+        #     #     cur_max_actions = mac_out_detach[:, 1:].max(dim=-1, keepdim=True)[1]
+        #     #     target_max_qvals = th.gather(target_mac_out, -1, cur_max_actions).squeeze(-1)
+        #     # else:
+        #     #     target_max_qvals = target_mac_out.max(dim=-1)[0]
+        #     # TODO: Plus or minus (?)
+        #     #     target_max_qvals = target_max_qvals * th.sqrt(self.ret_ms.var) + self.ret_ms.mean
+        #     # if self.args.standardise_returns:
+
+        #     # Calculate 1-step Q-Learning targets
+        #     if self.joint_rewards:
+        #         targets = rewards[:, :, 0] + self.args.gamma * (1 - terminated.squeeze(-1)) * _target_vals[:, 1:]
+        #     else:
+        #         targets = rewards[:, :, _i] + self.args.gamma * (1 - terminated.squeeze(-1)) * _target_vals[:, 1:]
+
+        #     if self.args.standardise_returns:
+        #         self.ret_ms.update(targets)
+        #         targets = (targets - self.ret_ms.mean) / th.sqrt(self.ret_ms.var)
+
+        #     # Td-error
+        #     td_error = (chosen_action_qvals - targets.detach())
+
+        #     # 0-out the targets that came from padded data
+        #     masked_td_error = td_error * _mask
+
+        #     # Normal L2 loss, take mean over actual data
+        #     loss = (masked_td_error ** 2).sum() / mask.squeeze(-1).sum()
+
+        #     # Optimise
+        #     _opt.zero_grad()
+        #     loss.backward()
+        #     grad_norm = th.nn.utils.clip_grad_norm_(list(_params.values()), self.args.grad_norm_clip)
+        #     _opt.step()
+
+        #     if t_env - self.log_stats_t >= self.args.learner_log_interval:
+        #         with th.no_grad():
+        #             loss_acum += loss
+        #             grad_norm_acum += grad_norm
+        #             masked_td_error_acum += masked_td_error.abs().sum()
+        #             masked_elems_acum += _mask.sum()
+        #             chosen_action_qvals_acum += (_mask.squeeze(-1) * chosen_action_qvals).sum()
+        #             target_mean_acum += (targets * _mask.squeeze(-1)).sum()
+        #         
+
+        # self.training_steps += 1
+        # consensus_log = defaultdict(list)
+        # if self.training_steps % self.consensus_interval == 0:
+        #     self.consensus_step(batch, mask, consensus_log, t_env)
+
+        # if self.args.target_update_interval_or_tau > 1 and (self.training_steps - self.last_target_update_step) / self.args.target_update_interval_or_tau >= 1.0:
+        #     self._update_targets_hard()
+        #     self.last_target_update_step = self.training_steps
+        # elif self.args.target_update_interval_or_tau <= 1.0:
+        #     self._update_targets_soft(self.args.target_update_interval_or_tau)
+
+        # if t_env - self.log_stats_t >= self.args.learner_log_interval:
+        #     self.logger.log_stat("loss", float(loss_acum.item()), t_env)
+        #     self.logger.log_stat("grad_norm", float(grad_norm_acum.item()), t_env)
+        #     self.logger.log_stat("td_error_abs", float(masked_td_error_acum.item() / masked_elems_acum), t_env)
+        #     self.logger.log_stat("q_taken_mean", float(chosen_action_qvals_acum.item() / (masked_elems_acum * self.args.n_agents)), t_env)
+        #     self.logger.log_stat("target_mean", float(target_mean_acum.item() / (masked_elems_acum * self.args.n_agents)), t_env)
+        #     for k, v in consensus_log.items():
+        #         self.logger.log_stat(k, v[0], t_env)
+        #     self.log_stats_t = t_env
 
     def train_critic_sequential(self, critic, target_critic, batch, rewards, mask):
         # Optimise critic
         with th.no_grad():
             # target_vals = th.cat([target_critic(batch, _i) for _i in range(self.n_agents)], dim=2)
             target_vals = target_critic(batch)
+            
 
         if self.args.standardise_returns:
             target_vals = target_vals * th.sqrt(self.ret_ms.var) + self.ret_ms.mean
