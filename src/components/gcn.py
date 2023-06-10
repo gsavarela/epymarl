@@ -1,13 +1,12 @@
 
-""" Credits
-    -------
-    * https://github.com/IouJenLiu/PIC
+"""Credits
+   -------
+   * https://github.com/IouJenLiu/PIC
 """
 import torch
 import torch.nn as nn
-# from torch.nn.parameter import Parameter
 import torch.nn.functional as F
-
+import numpy as np  # TODO: Sanity check 
 
 class GraphConvLayer(nn.Module):
     """Implements a GCN layer. """
@@ -19,18 +18,26 @@ class GraphConvLayer(nn.Module):
         self.output_dim = output_dim
 
     def forward(self, inputs, adj):
-        """ 
-        :param inputs: observation of hidden state
-        :type: torch.tensor (b,a,m)
+        """Forward pass on the graph convolutional neural network
+
+        :param inputs: observation or hidden state
+        :type: torch.tensor (b,a,m) or (b,t,a,m)
         :param adj: the adjacency matrix
-        :type: torch.tensor (b,a,a)
+        :type: torch.tensor (b,a,a) or (b,t,a,a)
 
         :return: hidden representation h_out
         :type: torch.tensor (b,a,out)
         """
-        h = self.fc(inputs)
-        out = torch.einsum('bij, bim -> bjm', adj.float(), h)
-        return out
+        assert len(inputs.shape) in (3, 4)
+        assert len(adj.shape) == len(inputs.shape)
+        # assert adj.shape.equal(inputs.shape)
+        
+
+        # Consolidates accross agent dimension
+        oper = 'bij, bim -> bjm' if len(inputs.shape) == 3 else 'btij, btim -> btjm'
+        h_out = self.fc(inputs)
+        z_out = torch.einsum(oper, adj.float(), h_out)
+        return z_out
 
     def __repr__(self):
         return self.__class__.__name__ + ' (' \
@@ -83,7 +90,7 @@ class GraphNet(nn.Module):
 
 
         # Assumes a fully connected graph.
-        self.register_buffer('adj', (torch.ones(n_agents, n_agents) - torch.eye(n_agents).float()) / self.n_agents)
+        # self.register_buffer('adj', (torch.ones(n_agents, n_agents) - torch.eye(n_agents).float()) / self.n_agents)
         # Indicator for this particular agent
         # Zero matrix with one basis array
         # TODO: Provide this as a parameter 
@@ -110,27 +117,48 @@ class GraphNet(nn.Module):
         :param x: [batch_size, self.input_shape, self.n_agent] tensor
         :return: [batch_size, self.output_dim] tensor
         """
+        assert len(x.shape) in (3, 4)
+        assert len(adj.shape) == len(x.shape)
+        # assert adj.shape.equal(inputs.shape)
+        
+
+        # Consolidates accross agent dimension
+        oper = 'ij, bim -> bjm' if len(x.shape) == 3 else 'ij, btim -> btjm'
         # if self.use_agent_id:
         #     agent_att = torch.cat([self.agent_att] * x.shape[0], 0)
         #     x = torch.cat([x, agent_att], 1)
-        adj = self.adj if adj is None else adj.float()
+        # adj = self.adj if adj is None else adj.float()
         
         # TODO: Unite this into one single statement
         # TODO: Change GraphConvLayer for multiple inputs 
-        y = F.relu(self.gc1(x, adj) +
-                   torch.einsum('ij, bim -> bjm', self.mask, self.fc1(x)))
+        y1 = self.gc1(x, adj)
+        y2 = self.fc1(x)
+        y3 = torch.einsum(oper, self.mask, y2)
+
+        # ERASEME: Test einsum
+        if len(x.shape) == 4:
+            with torch.no_grad():
+                for ind, ctrl, test in zip(
+                        range(self.n_agents),
+                        torch.tensor_split(y2, self.n_agents, dim=2),
+                        torch.tensor_split(y3, self.n_agents, dim=2)):
+                    if ind == self.agent_id:
+                        np.testing.assert_almost_equal(test.detach().numpy(), ctrl.detach().numpy())
+                    else:
+                        np.testing.assert_almost_equal(np.zeros_like(test.detach().numpy()), test.detach().numpy())
+        y = F.relu(y1 + y3)
         # feat /= (1. * self.n_agents) # Is this really necessary?
         u = F.relu(self.gc2(y, adj) +
-                   torch.einsum('ij, bim -> bjm', self.mask, self.fc2(y)))
+                   torch.einsum(oper, self.mask, self.fc2(y)))
         # out += F.relu(self.fc2(feat))
         # out /= (1. * self.n_agents)# Is this really necessary?
-
         # Pooling over the agent dimension.
+        # [b, t, a, m] -> [b, t, a, m]
         if self.pool_type == 'avg':
-            z = u.mean(1)
+            z = u.mean(-2)
         else:
-            z, _ = u.max(1)
+            z, _ = u.max(-2)
 
-        # Compute V
-        v = self.fc3(z).squeeze(1)
+        # Compute V squeeze over output
+        v = self.fc3(z).squeeze(-1)
         return v
