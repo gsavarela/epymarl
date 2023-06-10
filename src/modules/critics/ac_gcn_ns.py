@@ -29,8 +29,8 @@ class ACGCNCriticNS(nn.Module):
             q_values = []
             for i in range(self.n_agents):
                 q_value = self.critics[i](inputs, adj)
-                q_values.append(q_value.view(bs, max_t, 1))
-            q_values = th.cat(q_values, dim=2)
+                q_values.append(q_value)
+            q_values = th.cat([q_v.view(bs, max_t, 1) for q_v in q_values], dim=2)
         else:
             return self.critics[i](inputs, adj).view(bs, max_t, 1)
         return q_values
@@ -74,6 +74,6 @@ class ACGCNCriticNS(nn.Module):
         inputs.append(batch["actions_onehot"][:, ts])
         # inputs = th.cat(inputs, dim=-1)
         # [b, t, n, m1] + [b, t, n, m2] -> [bt, n, m1 + m2]
-        inputs = th.cat([x.reshape(bs * max_t, self.n_agents, -1) for x in inputs], dim=-1)
-        adj = batch['A_adj'][:, ts].reshape(bs * max_t, self.n_agents, -1)
+        inputs = th.cat(inputs, dim=-1)
+        adj = batch['A_adj'][:, ts]
         return inputs, bs, max_t, adj
