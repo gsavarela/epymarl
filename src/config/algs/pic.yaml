@@ -29,5 +29,4 @@ agent_output_type: "pi_logits"
 critic_type: "ac_pic"
 pool_type: "max"
 name: "pic"
-
-t_max: 20_000_000
+t_max: 2_005_000
