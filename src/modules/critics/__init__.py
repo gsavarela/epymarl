@@ -8,7 +8,6 @@ from .ac import ACCritic
 from .ac_ns import ACCriticNS
 from .ac_dec import ACCriticDecentralized
 from .ac_networked import ACCriticNetworked
-from .ac_gcn import ACGCNCritic
 from .ac_gcn_ns import ACGCNCriticNS
 from .ac_pic import ACPIC
 
@@ -23,6 +22,5 @@ REGISTRY["ac_critic"] = ACCritic
 REGISTRY["ac_critic_ns"] = ACCriticNS
 REGISTRY["ac_critic_dec"] = ACCriticDecentralized
 REGISTRY["ac_critic_networked"] = ACCriticNetworked
-REGISTRY["ac_gcn"] = ACGCNCritic
 REGISTRY["ac_gcn_ns"] = ACGCNCriticNS
 REGISTRY["ac_pic"] = ACPIC

@@ -2,9 +2,8 @@ import torch as th
 import torch.nn as nn
 import torch.nn.functional as F
 from components.gcn import GraphNet
-from IPython.core.debugger import set_trace
 
-class ACGCNCritic(GraphNet):
+class ACPIC(GraphNet):
     def __init__(self, scheme, args):
         self.args = args
         self.n_actions = args.n_actions
@@ -14,7 +13,7 @@ class ACGCNCritic(GraphNet):
             self.input_shape += self.n_actions
         self.output_type = "q"
 
-        super(ACGCNCritic, self).__init__(
+        super(ACPIC, self).__init__(
             self.input_shape, args.hidden_dim, 1, self.n_agents,
             pool_type=args.pool_type, use_agent_id=args.obs_agent_id
         )
@@ -22,7 +21,7 @@ class ACGCNCritic(GraphNet):
         
     def forward(self, inputs, actions):
         inputs = th.cat((inputs, actions), dim=-1)
-        q = super(ACGCNCritic, self).forward(inputs)
+        q = super(ACPIC, self).forward(inputs)
         return q
 
     # TODO: Should be equal to individual learner
