@@ -1,4 +1,5 @@
-# ---DACV specific parameters ---
+# ---DVA2C specific parameters ---
+# DVA2C is equivalent to NTWA2C
 hidden_dim: 128 # MPE
 lr: 0.0005 # MPE
 standardise_rewards: True # MPE
@@ -18,7 +19,7 @@ batch_size: 10
 
 env_args:
   state_last_action: False # critic adds last action internally
-  joint_rewards: True
+  joint_rewards: False
   time_limit: 25 # MPE
 
 obs_last_action: False
@@ -37,7 +38,7 @@ networked_edges: 1  # maps n_agents: n_edges
 networked_rounds: 5   # At each consensus round try this many consensus matrices.
 networked_interval: 10 # Try consensus at every networked_interval number of training steps.
 networked_policy: False # Try consensus on the actor
-networked_joint_actions: True # Agents observe the full action space (and joint_rewards: False)
+# networked_joint_actions: True # Agents observe the full action space (and joint_rewards: False)
 
 name: "dva2c"
 t_max: 20_050_000

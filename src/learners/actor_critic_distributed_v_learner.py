@@ -13,29 +13,28 @@ from components.episode_buffer import EpisodeBatch
 from components.standarize_stream import RunningMeanStd
 from modules.critics import REGISTRY as critic_registry
 from modules.critics.mlp import MLP
-from IPython.core.debugger import set_trace
 
 from components.consensus import consensus_matrices
 
 
-class JointRewardPredictor(MLP):
-    '''Forecast the joint rewards using the private reward'''
-    def __init__(self, scheme, args):
-        input_shape = self._get_input_shape(scheme, args)
-        hidden_dim = args.hidden_dim
-        super(JointRewardPredictor, self).__init__(input_shape, hidden_dim, 1)
-
-    def _get_input_shape(self, scheme, args):
-        # observations
-        input_shape = scheme["obs"]["vshape"]
-        # actions
-        if getattr(args, 'networked_joint_actions', False):
-            # full action space observability
-            input_shape += scheme["avail_actions"]["vshape"][0] * args.n_agents
-        else:
-            # single agent observability
-            input_shape += scheme["avail_actions"]["vshape"][0]
-        return input_shape
+# class JointRewardPredictor(MLP):
+#     '''Forecast the joint rewards using the private reward'''
+#     def __init__(self, scheme, args):
+#         input_shape = self._get_input_shape(scheme, args)
+#         hidden_dim = args.hidden_dim
+#         super(JointRewardPredictor, self).__init__(input_shape, hidden_dim, 1)
+# 
+#     def _get_input_shape(self, scheme, args):
+#         # observations
+#         input_shape = scheme["obs"]["vshape"]
+#         # actions
+#         if getattr(args, 'networked_joint_actions', False):
+#             # full action space observability
+#             input_shape += scheme["avail_actions"]["vshape"][0] * args.n_agents
+#         else:
+#             # single agent observability
+#             input_shape += scheme["avail_actions"]["vshape"][0]
+#         return input_shape
         
 
 class ActorCriticDistributedVLearner:
@@ -59,15 +58,15 @@ class ActorCriticDistributedVLearner:
             Adam(params=list(_params.values()), lr=args.lr) for _params in self.critic_params
         ]
         # Distributed V
-        if not self.joint_rewards:
-            jrp = JointRewardPredictor(scheme, args)
-            self.joint_reward_predictors = [
-                copy.deepcopy(jrp) for _ in range(args.n_agents)
-            ]
-            self.joint_reward_params = [dict(_c.named_parameters()) for _c in self.joint_reward_predictors]
-            self.joint_reward_optimisers = [
-                Adam(params=list(_params.values()), lr=args.lr) for _params in self.joint_reward_params
-            ]
+        # if not self.joint_rewards:
+        #     jrp = JointRewardPredictor(scheme, args)
+        #     self.joint_reward_predictors = [
+        #         copy.deepcopy(jrp) for _ in range(args.n_agents)
+        #     ]
+        #     self.joint_reward_params = [dict(_c.named_parameters()) for _c in self.joint_reward_predictors]
+        #     self.joint_reward_optimisers = [
+        #         Adam(params=list(_params.values()), lr=args.lr) for _params in self.joint_reward_params
+        #     ]
 
         self.last_target_update_step = 0
         self.critic_training_steps = 0
@@ -97,9 +96,9 @@ class ActorCriticDistributedVLearner:
     def joint_rewards(self):
         return self.args.env_args.get('joint_rewards', False)
 
-    @property
-    def joint_actions(self):
-        return getattr(self.args, 'networked_joint_actions', False)
+    # @property
+    # def joint_actions(self):
+    #     return getattr(self.args, 'networked_joint_actions', False)
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
         # Get the relevant quantities
@@ -136,27 +135,28 @@ class ActorCriticDistributedVLearner:
             self.critic, self.target_critic, batch, rewards, critic_mask
         )
 
-        if self.joint_rewards:
-            # We don't need an extra neural net
-            advantages = td_errors.detach().clone()
-        else:
-            # TODO: This should work
-            # for k in range(self.consensus_rounds):
-            #     cwm = consensus_matrices[k].clone()
-            #     rewards = th.einsum('nm, btm-> btn', cwm, rewards)
+        advantages = td_errors.detach().clone()
+        # if self.joint_rewards:
+        #     # We don't need an extra neural net
+        #     advantages = td_errors.detach().clone()
+        # else:
+        #     # TODO: This should work
+        #     # for k in range(self.consensus_rounds):
+        #     #     cwm = consensus_matrices[k].clone()
+        #     #     rewards = th.einsum('nm, btm-> btn', cwm, rewards)
 
-            # Compute the joint rewards (forward pass joint reward network).
-            joint_rewards, critic_train_stats = self.train_joint_reward_sequential(
-                rewards, batch, mask, critic_train_stats
-            )
+        #     # Compute the joint rewards (forward pass joint reward network).
+        #     joint_rewards, critic_train_stats = self.train_joint_reward_sequential(
+        #         rewards, batch, mask, critic_train_stats
+        #     )
 
-            # Compute advantage target returns (using joint reward).
-            # target_returns = self.nstep_returns(
-            #     joint_rewards, mask, target_vals, self.args.q_nstep
-            # )
-            # Compute advantage
-            # advantages = ((target_returns - current_vals) * mask).detach().clone()
-            advantages = (joint_rewards + td_errors).detach().clone()
+        #     # Compute advantage target returns (using joint reward).
+        #     # target_returns = self.nstep_returns(
+        #     #     joint_rewards, mask, target_vals, self.args.q_nstep
+        #     # )
+        #     # Compute advantage
+        #     # advantages = ((target_returns - current_vals) * mask).detach().clone()
+        #     advantages = (joint_rewards + td_errors).detach().clone()
 
         self.mac.init_hidden(batch.batch_size)
         pg_loss_acum = th.tensor(0.0)
@@ -398,7 +398,7 @@ class ActorCriticDistributedVLearner:
         with th.no_grad():
             masked_errors = th.cat(masked_errors, dim=2)
             joint_rewards = th.cat(joint_rewards, dim=2)
-            
+
         running_log["joint_reward_loss"].append(float(total_loss.item()))
         running_log["joint_reward_grad_norm"].append(float(total_grad_norm.item()))
         mask_elems = mask.sum().item()
@@ -411,24 +411,18 @@ class ActorCriticDistributedVLearner:
             float((rewards * mask).sum().item() / mask_elems)
         )
         return joint_rewards, running_log
-        
+
 
     def consensus_step(self, batch, mask, running_log, t_env, consensus_matrices):
 
         # 1. Draw networked_rounds consensus matrices &
         # Make a common callable interface
-        # indices = np.random.randint(0, high=len(self.cwms), size=self.args.networked_rounds)
-        # consensus_matrices =[self.cwms[ind] for ind in indices]
         comm = partial(self._consensus_step, batch, mask, running_log, t_env, consensus_matrices)
 
-        # 2. Consensus w.r.t joint rewards
-        if not self.joint_rewards:
-            comm(self.joint_reward_params, enumerate(self.joint_reward_predictors))
-
-        # 3. Consensus w.r.t critic
+        # 2. Consensus w.r.t critic
         comm(self.critic_params, enumerate(self.critic.critics), mas_log=self.critic)
 
-        # 4. Consensus w.r.t actor
+        # 3. Consensus w.r.t actor
         if self.args.networked_policy:
             comm(self.agent_params, enumerate(self.mac.agent.agents))
 
