@@ -109,6 +109,7 @@ class ActorCriticDistributedVLearner:
         mask[:, 1:] = mask[:, 1:] * (1 - terminated[:, :-1])
 
 
+        # Disable this for computation
         if self.args.standardise_rewards:
             self.rew_ms.update(rewards)
             rewards = (rewards - self.rew_ms.mean) / th.sqrt(self.rew_ms.var)
@@ -129,10 +130,29 @@ class ActorCriticDistributedVLearner:
 
         critic_mask = mask.clone()
 
+        # Estimate returns locally
+        with th.no_grad():
+            target_vals = th.cat([self.target_critic(batch, _i) for _i in range(self.n_agents)], dim=2)
+
+        if self.args.standardise_returns:
+            target_vals = target_vals * th.sqrt(self.ret_ms.var) + self.ret_ms.mean
+
+        with th.no_grad():
+            target_returns = self.nstep_returns(
+                rewards, mask, target_vals, self.args.q_nstep
+            ) # [b, t, n]
+
+            # Perform consensus
+            target_returnsT = target_returns.permute((2, 0, 1)) # [n, b, t]
+            for k in range(self.consensus_rounds):
+                cwm = consensus_matrices[k].clone()
+                target_returnsT = th.einsum('nm, mij-> nij', cwm, target_returnsT)
+            target_returns = target_returnsT.permute((1, 2, 0))  # [b, t, n]
+
         # This processes each player sequentially.
         # Compute the target_values (forward pass critic network).
-        td_errors, target_vals, current_vals, critic_train_stats = self.train_critic_sequential(
-            self.critic, self.target_critic, batch, rewards, critic_mask
+        td_errors, _, critic_train_stats = self.train_critic_sequential(
+            self.critic, target_returns, batch, critic_mask
         )
 
         advantages = td_errors.detach().clone()
@@ -218,6 +238,10 @@ class ActorCriticDistributedVLearner:
 
         # After all updates perform consensus round.
         if self.critic_training_steps % self.consensus_interval == 0:
+            # Uses a different set of matrices.
+            # Hear communication channels for this timestep
+            indices = np.random.randint(0, high=len(self.cwms), size=self.args.networked_rounds)
+            consensus_matrices = [self.cwms[ind] for ind in indices]
             self.consensus_step(batch, critic_mask, critic_train_stats, t_env, consensus_matrices)
 
         if (
@@ -270,22 +294,23 @@ class ActorCriticDistributedVLearner:
             )
             self.log_stats_t = t_env
 
-    def train_critic_sequential(self, critic, target_critic, batch, rewards, mask):
-        with th.no_grad():
-            target_vals = th.cat([target_critic(batch, _i) for _i in range(self.n_agents)], dim=2)
+    def train_critic_sequential(self, critic, target_returns, batch, mask):
+        # Move to main block
+        # with th.no_grad():
+        #     target_vals = th.cat([target_critic(batch, _i) for _i in range(self.n_agents)], dim=2)
 
-        if self.args.standardise_returns:
-            target_vals = target_vals * th.sqrt(self.ret_ms.var) + self.ret_ms.mean
+        # if self.args.standardise_returns:
+        #     target_vals = target_vals * th.sqrt(self.ret_ms.var) + self.ret_ms.mean
 
-        target_returns = self.nstep_returns(
-            rewards, mask, target_vals, self.args.q_nstep
-        )
+        # target_returns = self.nstep_returns(
+        #     rewards, mask, target_vals, self.args.q_nstep
+        # )
 
-        if self.args.standardise_returns:
-            self.ret_ms.update(target_returns)
-            target_returns = (target_returns - self.ret_ms.mean) / th.sqrt(
-                self.ret_ms.var
-            )
+        # if self.args.standardise_returns:
+        #     self.ret_ms.update(target_returns)
+        #     target_returns = (target_returns - self.ret_ms.mean) / th.sqrt(
+        #         self.ret_ms.var
+        #     )
 
         running_log = defaultdict(list)
         t_max = batch.max_seq_length - 1
@@ -344,7 +369,7 @@ class ActorCriticDistributedVLearner:
             float((target_returns * mask).sum().item() / mask_elems)
         )
 
-        return masked_td_errors, target_vals, current_val, running_log
+        return masked_td_errors, current_val, running_log
 
     def train_joint_reward_sequential(self, rewards, batch, mask, running_log):
 
@@ -526,16 +551,16 @@ class ActorCriticDistributedVLearner:
                     break
                 elif step == nsteps:
                     nstep_return_t += (
-                        self.args.gamma**step * values[:, t] * mask[:, t]
+                        self.args.gamma ** step * values[:, t] * mask[:, t]
                     )
                 elif t == rewards.size(1) - 1 and self.args.add_value_last_step:
                     nstep_return_t += (
-                        self.args.gamma**step * rewards[:, t] * mask[:, t]
+                        self.args.gamma ** step * rewards[:, t] * mask[:, t]
                     )
                     nstep_return_t += self.args.gamma ** (step + 1) * values[:, t + 1]
                 else:
                     nstep_return_t += (
-                        self.args.gamma**step * rewards[:, t] * mask[:, t]
+                        self.args.gamma ** step * rewards[:, t] * mask[:, t]
                     )
             nstep_values[:, t_start, :] = nstep_return_t
         return nstep_values

@@ -2,7 +2,7 @@
 # DVA2C is equivalent to NTWA2C
 hidden_dim: 128 # MPE
 lr: 0.0005 # MPE
-standardise_rewards: True # MPE
+standardise_rewards: False # MPE
 entropy_coef: 0.01  # MPE
 q_nstep: 10 # MPE: 1 corresponds to normal r + gammaV
 # update the target network every {} training steps
