@@ -1,11 +1,12 @@
 # --- PIC specific parameters ---
-hidden_dim: 64  # LBF
-lr: 0.0003  # LBF
+hidden_dim: 129  # LBF
+lr: 0.01  # LBF
 standardise_rewards: True  # LBF
 use_rnn: False #LBF
 reg: 0.001 # LBF
+gamma: 0.95 # LBF
 # update the target network every {} episodes
-target_update_interval_or_tau: 200 # LBF
+target_update_interval_or_tau: 0.01 # LBF
 
 runner: "episode"
 buffer_size: 50000
@@ -13,20 +14,32 @@ batch_size: 32
 
 env_args:
   state_last_action: False # critic adds last action internally
-  joint_rewards: True
+  joint_rewards: False # Rewards must have agents 
 
-obs_agent_id: True
+obs_agent_id: False
 obs_last_action: False
 obs_individual_obs: False
 
 
 # use the madddpg_learner to train
-mac: "maddpg_mac"
+mac: "pic_mac"
 
 standardise_returns: False
 learner: "pic_learner"
 agent_output_type: "pi_logits"
-critic_type: "ac_pic"
-pool_type: "max"
+critic_type: "gcn_max"
 name: "pic"
 t_max: 2_005_000
+
+# Imported args from PIC
+tau: 0.01
+num_episodes: 30_000
+num_steps: 50
+updates_per_step: 8
+steps_per_actor_update: 100
+steps_per_critic_update: 100
+critic_updates_per_step: 8
+shuffle: null
+eval_freq: 1000
+
+

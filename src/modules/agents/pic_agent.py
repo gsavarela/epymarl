@@ -7,6 +7,7 @@ Liu, I., Yeh, R.A.  Schwing, A.G. Proceedings of the Conference on Robot Learnin
 """
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 class Actor(nn.Module):
     """
@@ -28,13 +29,13 @@ class Actor(nn.Module):
         x = F.relu(x)
         mu = self.mu(x)
         return mu
-
-class PICAgent(Actor):
-   """Thin wrapper for actor"""
-   def __init__(self, input_shape, args):
-       super(PICAgent, self).__init__(args.hidden_size, input_shape, args.n_actions)
-       self.args = args
-
-   def init_hidden(self):
-       # make hidden states on same device as model
-       return self.fc1.weight.new(1, self.args.hidden_dim).zero_()
+PICAgent = Actor
+# class PICAgent(Actor):
+#    """Thin wrapper for actor"""
+#    def __init__(self, input_shape, args):
+#        super(PICAgent, self).__init__(args.hidden_size, input_shape, args.n_actions)
+#        self.args = args
+# 
+#    def init_hidden(self):
+#        # make hidden states on same device as model
+#        return self.fc1.weight.new(1, self.args.hidden_dim).zero_()
